@@ -1,0 +1,48 @@
+{% extends 'almacen/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6"><h4>Asociaciones {{ anio.anio }}</h4></div>
+        <div class="col-6 text-end">
+          <a class="btn btn-primary" href="{% url 'asociaciones:asociacion_create' anio.pk %}">Nueva asociación</a>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Código</th>
+                <th>Activo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for asociacion in asociaciones %}
+              <tr>
+                <td>{{ asociacion.nombre }}</td>
+                <td>{{ asociacion.codigo }}</td>
+                <td>{% if asociacion.activo %}Sí{% else %}No{% endif %}</td>
+                <td>
+                  <a class="btn btn-outline-primary btn-sm" href="{% url 'asociaciones:asociacion_edit' asociacion.pk %}">Editar</a>
+                  <a class="btn btn-outline-secondary btn-sm" href="{% url 'asociaciones:asociacion_usuarios' asociacion.pk %}">Usuarios</a>
+                  <a class="btn btn-outline-info btn-sm" href="{% url 'asociaciones:expediente_caimus' asociacion.pk %}">Expediente</a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4">No hay asociaciones registradas.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

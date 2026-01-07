@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header img { max-height: 60px; }
+    .badge { padding: 4px 8px; background: #eee; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; }
+    th { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Resolución CAIMUS</h2>
+    <div>Correlativo: <strong>{{ resolucion.correlativo }}</strong></div>
+    <div>Fecha: {{ resolucion.fecha_emision }}</div>
+  </div>
+
+  <h4>Datos de la asociación</h4>
+  <p><strong>Nombre:</strong> {{ expediente.asociacion.nombre }}</p>
+  <p><strong>Año:</strong> {{ expediente.asociacion.anio.anio }}</p>
+  <p><strong>Representante legal:</strong> {{ expediente.representante_legal }}</p>
+  <p><strong>Institución:</strong> {{ expediente.institucion }}</p>
+
+  <h4>Resumen checklist</h4>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Documento</th>
+        <th>Sección</th>
+        <th>Entregado</th>
+        <th>Observaciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.numero }}</td>
+        <td>{{ item.titulo }}</td>
+        <td>{{ item.seccion }}</td>
+        <td>{% if item.entregado and item.pdf %}Sí{% else %}No{% endif %}</td>
+        <td>{{ item.observaciones }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h4>Observaciones generales</h4>
+  <p>{{ expediente.obs_general }}</p>
+
+  <h4>Recomendaciones</h4>
+  <p>{{ expediente.recomendaciones }}</p>
+
+  <p><strong>Aprobado por:</strong> {{ expediente.aprobado_por }}</p>
+</body>
+</html>
