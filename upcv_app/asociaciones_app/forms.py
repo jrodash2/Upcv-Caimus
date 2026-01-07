@@ -17,18 +17,34 @@ class AnioForm(forms.ModelForm):
     class Meta:
         model = Anio
         fields = ["anio", "activo"]
+        widgets = {
+            "anio": forms.NumberInput(attrs={"class": "form-control"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
 
 
 class AsociacionForm(forms.ModelForm):
     class Meta:
         model = Asociacion
         fields = ["anio", "nombre", "codigo", "activo"]
+        widgets = {
+            "anio": forms.Select(attrs={"class": "form-select"}),
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "codigo": forms.TextInput(attrs={"class": "form-control"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
 
 
 class AsociacionUsuarioForm(forms.ModelForm):
     class Meta:
         model = AsociacionUsuario
         fields = ["asociacion", "usuario", "rol_en_asociacion", "activo"]
+        widgets = {
+            "asociacion": forms.Select(attrs={"class": "form-select"}),
+            "usuario": forms.Select(attrs={"class": "form-select"}),
+            "rol_en_asociacion": forms.TextInput(attrs={"class": "form-control"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
 
 
 class ExpedienteCAIMUSForm(forms.ModelForm):
@@ -72,7 +88,8 @@ class RevisionExpedienteForm(forms.ModelForm):
         model = ExpedienteCAIMUS
         fields = ["estado", "observacion_admin"]
         widgets = {
-            "observacion_admin": forms.Textarea(attrs={"rows": 3}),
+            "estado": forms.Select(attrs={"class": "form-select"}),
+            "observacion_admin": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
         }
 
     def clean(self):

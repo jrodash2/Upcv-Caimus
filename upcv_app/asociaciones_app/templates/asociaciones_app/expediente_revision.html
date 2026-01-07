@@ -10,8 +10,14 @@
           {% csrf_token %}
           {{ form.non_field_errors }}
           <div class="row">
-            <div class="col-md-4">{{ form.estado.label_tag }} {{ form.estado }}</div>
-            <div class="col-md-8">{{ form.observacion_admin.label_tag }} {{ form.observacion_admin }}</div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.estado.id_for_label }}">{{ form.estado.label }}</label>
+              {{ form.estado }}
+            </div>
+            <div class="col-md-8 mb-3">
+              <label class="form-label" for="{{ form.observacion_admin.id_for_label }}">{{ form.observacion_admin.label }}</label>
+              {{ form.observacion_admin }}
+            </div>
           </div>
           <div class="mt-3">
             <button class="btn btn-primary" type="submit">Guardar</button>

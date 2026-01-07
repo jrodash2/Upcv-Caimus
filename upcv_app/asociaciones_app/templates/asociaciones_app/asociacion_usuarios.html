@@ -10,10 +10,24 @@
           {% csrf_token %}
           {{ form.non_field_errors }}
           <div class="row">
-            <div class="col-md-4">{{ form.asociacion.label_tag }} {{ form.asociacion }}</div>
-            <div class="col-md-4">{{ form.usuario.label_tag }} {{ form.usuario }}</div>
-            <div class="col-md-4">{{ form.rol_en_asociacion.label_tag }} {{ form.rol_en_asociacion }}</div>
-            <div class="col-md-2 mt-2">{{ form.activo.label_tag }} {{ form.activo }}</div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.asociacion.id_for_label }}">{{ form.asociacion.label }}</label>
+              {{ form.asociacion }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.usuario.id_for_label }}">{{ form.usuario.label }}</label>
+              {{ form.usuario }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.rol_en_asociacion.id_for_label }}">{{ form.rol_en_asociacion.label }}</label>
+              {{ form.rol_en_asociacion }}
+            </div>
+            <div class="col-md-2 mb-3">
+              <div class="form-check mt-4">
+                {{ form.activo }}
+                <label class="form-check-label" for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label>
+              </div>
+            </div>
           </div>
           <div class="mt-3">
             <button class="btn btn-primary" type="submit">Asignar</button>
