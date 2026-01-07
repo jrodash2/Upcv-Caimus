@@ -1,0 +1,31 @@
+{% extends 'almacen/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><h4>Revisión del expediente</h4></div>
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {{ form.non_field_errors }}
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.estado.id_for_label }}">{{ form.estado.label }}</label>
+              {{ form.estado }}
+            </div>
+            <div class="col-md-8 mb-3">
+              <label class="form-label" for="{{ form.observacion_admin.id_for_label }}">{{ form.observacion_admin.label }}</label>
+              {{ form.observacion_admin }}
+            </div>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-primary" type="submit">Guardar</button>
+            <a class="btn btn-outline-secondary" href="{% url 'asociaciones:expediente_caimus' expediente.asociacion.pk %}">Volver</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -292,6 +292,23 @@
       </ul>
     </li>
 
+    <li class="sidebar-list"><i class="fa fa-thumb-tack"></i>
+      <a class="sidebar-link sidebar-title" href="#">
+        <svg class="stroke-icon">
+          <use href="../assets/svg/icon-sprite.svg#stroke-gallery"></use>
+        </svg>
+        <svg class="fill-icon">
+          <use href="../assets/svg/icon-sprite.svg#fill-gallery"></use>
+        </svg>
+        <span>Asociaciones</span>
+      </a>
+      <ul class="sidebar-submenu">
+        <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
+        <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
+        <li><a href="{% url 'asociaciones:bandeja_revision' %}">Bandeja de revisión</a></li>
+      </ul>
+    </li>
+
   {% endif %}
 
   
@@ -416,6 +433,18 @@
 
   {% endif %}
 
+{% endif %}
+
+{% if user.is_authenticated and not es_administrador %}
+  <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="{% url 'asociaciones:mis_asociaciones' %}">
+    <svg class="stroke-icon">
+      <use href="../assets/svg/icon-sprite.svg#stroke-gallery"></use>
+    </svg>
+    <svg class="fill-icon">
+      <use href="../assets/svg/icon-sprite.svg#fill-gallery"></use>
+    </svg>
+    <span>Mis asociaciones</span></a>
+  </li>
 {% endif %}
 
 

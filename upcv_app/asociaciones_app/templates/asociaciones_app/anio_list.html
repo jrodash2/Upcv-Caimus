@@ -1,0 +1,46 @@
+{% extends 'almacen/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6"><h4>Años</h4></div>
+        <div class="col-6 text-end">
+          <a class="btn btn-primary" href="{% url 'asociaciones:anio_create' %}">Nuevo año</a>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Año</th>
+                <th>Activo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for anio in anios %}
+              <tr>
+                <td>{{ anio.anio }}</td>
+                <td>{% if anio.activo %}Sí{% else %}No{% endif %}</td>
+                <td>
+                  <a class="btn btn-outline-primary btn-sm" href="{% url 'asociaciones:anio_edit' anio.pk %}">Editar</a>
+                  <a class="btn btn-outline-secondary btn-sm" href="{% url 'asociaciones:asociacion_list' anio.pk %}">Asociaciones</a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3">No hay años registrados.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
