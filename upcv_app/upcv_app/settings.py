@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     'almacen_app.apps.AlmacenAppConfig',  # ✅ solo esta línea
+    'asociaciones_app.apps.AsociacionesAppConfig',
 ]
 
 
@@ -174,4 +175,3 @@ EMAIL_HOST_USER = 'informatica@upcv.gob.gt'
 EMAIL_HOST_PASSWORD = 'xtdj nvwz ymyw lqyr'  
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-

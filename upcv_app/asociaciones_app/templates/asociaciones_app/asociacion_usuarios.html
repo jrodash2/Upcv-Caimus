@@ -1,0 +1,52 @@
+{% extends 'almacen/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><h4>Asignaciones - {{ asociacion.nombre }}</h4></div>
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {{ form.non_field_errors }}
+          <div class="row">
+            <div class="col-md-4">{{ form.asociacion.label_tag }} {{ form.asociacion }}</div>
+            <div class="col-md-4">{{ form.usuario.label_tag }} {{ form.usuario }}</div>
+            <div class="col-md-4">{{ form.rol_en_asociacion.label_tag }} {{ form.rol_en_asociacion }}</div>
+            <div class="col-md-2 mt-2">{{ form.activo.label_tag }} {{ form.activo }}</div>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-primary" type="submit">Asignar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Activo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for asignacion in asignaciones %}
+              <tr>
+                <td>{{ asignacion.usuario.get_full_name|default:asignacion.usuario.username }}</td>
+                <td>{{ asignacion.rol_en_asociacion }}</td>
+                <td>{% if asignacion.activo %}Sí{% else %}No{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3">No hay usuarios asignados.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
