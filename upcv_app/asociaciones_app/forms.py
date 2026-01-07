@@ -36,64 +36,25 @@ class ExpedienteCAIMUSForm(forms.ModelForm):
         model = ExpedienteCAIMUS
         fields = ["institucion", "representante_legal", "obs_general", "recomendaciones"]
         widgets = {
-            "obs_general": forms.Textarea(attrs={"rows": 3}),
-            "recomendaciones": forms.Textarea(attrs={"rows": 3}),
+            "institucion": forms.TextInput(attrs={"class": "form-control"}),
+            "representante_legal": forms.TextInput(attrs={"class": "form-control"}),
+            "obs_general": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "recomendaciones": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
         }
 
 
 class ItemChecklistForm(forms.ModelForm):
     class Meta:
         model = ItemChecklistCAIMUS
-        fields = ["entregado", "pdf", "observaciones"]
+        fields = ["observaciones"]
         widgets = {
-            "observaciones": forms.Textarea(attrs={"rows": 2}),
+            "observaciones": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
         }
 
 
 class BaseItemChecklistFormSet(forms.BaseInlineFormSet):
     def clean(self):
         super().clean()
-        if any(self.errors):
-            return
-
-        section_data = {1: [], 2: [], 3: []}
-        for form in self.forms:
-            if not hasattr(form, "cleaned_data"):
-                continue
-            if form.cleaned_data.get("DELETE"):
-                continue
-            instancia = form.instance
-            entregado = form.cleaned_data.get("entregado")
-            pdf = form.cleaned_data.get("pdf")
-            if entregado and not (pdf or instancia.pdf):
-                form.add_error("pdf", "Debe adjuntar el PDF para marcar como entregado.")
-            if (pdf or instancia.pdf) and not entregado:
-                form.add_error("entregado", "Debe marcar como entregado cuando adjunta un PDF.")
-            section_data[instancia.seccion].append(
-                {
-                    "entregado": entregado,
-                    "pdf": bool(pdf or instancia.pdf),
-                    "form": form,
-                }
-            )
-
-        def section_complete(section_items):
-            return all(item["entregado"] and item["pdf"] for item in section_items) if section_items else False
-
-        sec1_complete = section_complete(section_data[1])
-        sec2_complete = section_complete(section_data[2])
-
-        if not sec1_complete:
-            for item in section_data[2]:
-                if item["entregado"] or item["pdf"]:
-                    item["form"].add_error(None, "La sección 2 se habilita al completar los 8 items de la sección 1.")
-                    break
-
-        if not sec2_complete:
-            for item in section_data[3]:
-                if item["entregado"] or item["pdf"]:
-                    item["form"].add_error(None, "La sección 3 se habilita al completar los 6 items de la sección 2.")
-                    break
 
 
 ItemChecklistFormSet = inlineformset_factory(

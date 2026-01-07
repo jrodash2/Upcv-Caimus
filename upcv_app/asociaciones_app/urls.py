@@ -16,6 +16,16 @@ urlpatterns = [
     path("<int:pk>/caimus/", views.expediente_caimus, name="expediente_caimus"),
     path("expedientes/<int:pk>/revision/", views.expediente_revision, name="expediente_revision"),
     path("expedientes/<int:pk>/resolucion/pdf/", views.resolucion_pdf, name="resolucion_pdf"),
+    path(
+        "expedientes/<int:expediente_id>/items/<int:item_id>/upload/",
+        views.item_upload,
+        name="item_upload",
+    ),
+    path(
+        "expedientes/<int:expediente_id>/items/<int:item_id>/observacion/",
+        views.item_observacion,
+        name="item_observacion",
+    ),
     path("bandeja-revision/", views.bandeja_revision, name="bandeja_revision"),
     path("asignaciones/", views.asignaciones_list, name="asignaciones_list"),
 ]

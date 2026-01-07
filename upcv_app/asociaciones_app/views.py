@@ -5,7 +5,9 @@ from typing import Dict, List
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
+from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -170,13 +172,16 @@ def expediente_caimus(request, pk):
 
     if request.method == "POST":
         form = ExpedienteCAIMUSForm(request.POST, instance=expediente)
-        formset = ItemChecklistFormSet(request.POST, request.FILES, instance=expediente)
+        formset = ItemChecklistFormSet(request.POST, instance=expediente)
         if form.is_valid() and formset.is_valid():
             expediente = form.save(commit=False)
             expediente.actualizado_por = request.user
             expediente.save()
             formset.save()
-            messages.success(request, "Expediente actualizado correctamente.")
+            if request.POST.get("save_item"):
+                messages.success(request, "Observación guardada correctamente.")
+            else:
+                messages.success(request, "Datos guardados correctamente.")
             return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
     else:
         form = ExpedienteCAIMUSForm(instance=expediente)
@@ -188,12 +193,6 @@ def expediente_caimus(request, pk):
 
     section_forms: Dict[int, List] = {1: [], 2: [], 3: []}
     for form_item in formset.forms:
-        if form_item.instance.seccion == 2 and not section1_enabled:
-            for field in ("entregado", "pdf", "observaciones"):
-                form_item.fields[field].widget.attrs["disabled"] = "disabled"
-        if form_item.instance.seccion == 3 and not section2_enabled:
-            for field in ("entregado", "pdf", "observaciones"):
-                form_item.fields[field].widget.attrs["disabled"] = "disabled"
         section_forms[form_item.instance.seccion].append(form_item)
 
     return render(
@@ -211,6 +210,55 @@ def expediente_caimus(request, pk):
             "es_admin": is_admin(request.user),
         },
     )
+
+
+def _section_completa(expediente: ExpedienteCAIMUS, seccion: int) -> bool:
+    return expediente.items.filter(seccion=seccion).exclude(pdf="").exclude(pdf__isnull=True).count() == expediente.items.filter(
+        seccion=seccion
+    ).count()
+
+
+@login_required
+@require_POST
+def item_upload(request, expediente_id, item_id):
+    expediente = get_object_or_404(ExpedienteCAIMUS, pk=expediente_id)
+    if not usuario_puede_ver_asociacion(request.user, expediente.asociacion):
+        raise PermissionDenied
+    item = get_object_or_404(expediente.items, pk=item_id)
+    archivo = request.FILES.get("pdf")
+    if not archivo:
+        messages.error(request, "Debe seleccionar un archivo PDF.")
+        return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+
+    if item.seccion == 2 and not _section_completa(expediente, 1):
+        messages.error(request, "La sección 2 está bloqueada hasta completar la sección 1.")
+        return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+    if item.seccion == 3 and not _section_completa(expediente, 2):
+        messages.error(request, "La sección 3 está bloqueada hasta completar la sección 2.")
+        return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+
+    item.pdf = archivo
+    try:
+        item.full_clean()
+    except ValidationError as exc:
+        messages.error(request, "; ".join(exc.messages))
+        return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+    item.save()
+    messages.success(request, "Archivo subido correctamente.")
+    return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+
+
+@login_required
+@require_POST
+def item_observacion(request, expediente_id, item_id):
+    expediente = get_object_or_404(ExpedienteCAIMUS, pk=expediente_id)
+    if not usuario_puede_ver_asociacion(request.user, expediente.asociacion):
+        raise PermissionDenied
+    item = get_object_or_404(expediente.items, pk=item_id)
+    item.observaciones = request.POST.get("observaciones", "")
+    item.save()
+    messages.success(request, "Observación guardada correctamente.")
+    return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
 
 @login_required

@@ -137,12 +137,12 @@ class ExpedienteCAIMUS(models.Model):
     def progress_stats(self) -> Dict[str, object]:
         items = self.items.all()
         total = items.count()
-        completados = items.filter(entregado=True).exclude(pdf="").exclude(pdf__isnull=True).count()
+        completados = items.exclude(pdf="").exclude(pdf__isnull=True).count()
         sections: Dict[int, Dict[str, int]] = {}
         for section in (1, 2, 3):
             section_items = items.filter(seccion=section)
             section_total = section_items.count()
-            section_done = section_items.filter(entregado=True).exclude(pdf="").exclude(pdf__isnull=True).count()
+            section_done = section_items.exclude(pdf="").exclude(pdf__isnull=True).count()
             sections[section] = {
                 "done": section_done,
                 "total": section_total,
@@ -207,6 +207,10 @@ class ItemChecklistCAIMUS(models.Model):
             models.UniqueConstraint(fields=["expediente", "numero"], name="unique_item_por_expediente"),
         ]
         ordering = ["numero"]
+
+    def save(self, *args, **kwargs) -> None:
+        self.entregado = bool(self.pdf)
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.numero}. {self.titulo}"
