@@ -188,6 +188,12 @@ def expediente_caimus(request, pk):
 
     section_forms: Dict[int, List] = {1: [], 2: [], 3: []}
     for form_item in formset.forms:
+        if form_item.instance.seccion == 2 and not section1_enabled:
+            for field in ("entregado", "pdf", "observaciones"):
+                form_item.fields[field].widget.attrs["disabled"] = "disabled"
+        if form_item.instance.seccion == 3 and not section2_enabled:
+            for field in ("entregado", "pdf", "observaciones"):
+                form_item.fields[field].widget.attrs["disabled"] = "disabled"
         section_forms[form_item.instance.seccion].append(form_item)
 
     return render(

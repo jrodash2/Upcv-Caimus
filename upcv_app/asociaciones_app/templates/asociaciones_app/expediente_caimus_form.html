@@ -94,30 +94,18 @@
                           <div class="text-muted small">{{ item_form.instance.hint }}</div>
                         </td>
                         <td>
-                          {% if section1_enabled %}
-                            {{ item_form.entregado }}
-                          {% else %}
-                            {{ item_form.entregado.as_widget(attrs={'disabled': 'disabled'}) }}
-                          {% endif %}
+                          {{ item_form.entregado }}
                           {{ item_form.entregado.errors }}
                         </td>
                         <td>
                           {% if item_form.instance.pdf %}
                             <a href="{{ item_form.instance.pdf.url }}" target="_blank">Ver PDF</a><br>
                           {% endif %}
-                          {% if section1_enabled %}
-                            {{ item_form.pdf }}
-                          {% else %}
-                            {{ item_form.pdf.as_widget(attrs={'disabled': 'disabled'}) }}
-                          {% endif %}
+                          {{ item_form.pdf }}
                           {{ item_form.pdf.errors }}
                         </td>
                         <td>
-                          {% if section1_enabled %}
-                            {{ item_form.observaciones }}
-                          {% else %}
-                            {{ item_form.observaciones.as_widget(attrs={'disabled': 'disabled'}) }}
-                          {% endif %}
+                          {{ item_form.observaciones }}
                           {{ item_form.observaciones.errors }}
                         </td>
                       </tr>
@@ -149,30 +137,18 @@
                           <div class="text-muted small">{{ item_form.instance.hint }}</div>
                         </td>
                         <td>
-                          {% if section2_enabled %}
-                            {{ item_form.entregado }}
-                          {% else %}
-                            {{ item_form.entregado.as_widget(attrs={'disabled': 'disabled'}) }}
-                          {% endif %}
+                          {{ item_form.entregado }}
                           {{ item_form.entregado.errors }}
                         </td>
                         <td>
                           {% if item_form.instance.pdf %}
                             <a href="{{ item_form.instance.pdf.url }}" target="_blank">Ver PDF</a><br>
                           {% endif %}
-                          {% if section2_enabled %}
-                            {{ item_form.pdf }}
-                          {% else %}
-                            {{ item_form.pdf.as_widget(attrs={'disabled': 'disabled'}) }}
-                          {% endif %}
+                          {{ item_form.pdf }}
                           {{ item_form.pdf.errors }}
                         </td>
                         <td>
-                          {% if section2_enabled %}
-                            {{ item_form.observaciones }}
-                          {% else %}
-                            {{ item_form.observaciones.as_widget(attrs={'disabled': 'disabled'}) }}
-                          {% endif %}
+                          {{ item_form.observaciones }}
                           {{ item_form.observaciones.errors }}
                         </td>
                       </tr>
