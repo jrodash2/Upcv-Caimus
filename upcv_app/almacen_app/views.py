@@ -226,8 +226,8 @@ def signin(request):
                 print(g.name)
                 if g.name == 'Administrador':
                     return redirect('almacen:dahsboard')
-                elif g.name == 'Departamento':
-                    return redirect('almacen:crear_requerimiento')
+                elif g.name == 'Asociacion':
+                    return redirect('almacen:dahsboard')
                 elif g.name == 'Almacen':
                     return redirect('almacen:dahsboard')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
