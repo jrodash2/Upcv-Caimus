@@ -243,4 +243,4 @@ def signin(request):
 
 
 def acceso_denegado(request, exception=None):
-    return render(request, 'scompras/403.html', status=403)
+    return render(request, 'almacen/403.html', status=403)
