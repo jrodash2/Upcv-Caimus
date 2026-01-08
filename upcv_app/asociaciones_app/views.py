@@ -197,15 +197,15 @@ def expediente_caimus(request, pk):
     section1_enabled = progress["sections"][1]["done"] == progress["sections"][1]["total"]
     section2_enabled = progress["sections"][2]["done"] == progress["sections"][2]["total"]
 
-    section_forms: Dict[int, List] = {1: [], 2: [], 3: []}
+    section_forms: Dict[str, List] = {"1": [], "2": [], "3": []}
     for form_item in formset.forms:
         seccion = form_item.instance.seccion
         try:
             seccion = int(seccion)
         except (TypeError, ValueError):
             seccion = None
-        if seccion in section_forms:
-            section_forms[seccion].append(form_item)
+        if seccion is not None and str(seccion) in section_forms:
+            section_forms[str(seccion)].append(form_item)
 
     return render(
         request,
