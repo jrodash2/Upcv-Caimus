@@ -215,7 +215,7 @@ class ItemChecklistCAIMUS(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["expediente", "numero"], name="unique_item_por_expediente"),
             models.CheckConstraint(
-                check=models.Q(seccion__in=[SECCION_1, SECCION_2, SECCION_3]),
+                check=models.Q(seccion__in=[1, 2, 3]),
                 name="itemchecklist_seccion_valida",
             ),
         ]
