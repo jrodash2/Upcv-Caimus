@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
+import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -42,6 +43,8 @@ from .permissions import (
     user_has_asociacion_access,
     user_has_expediente_access,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -201,11 +204,10 @@ def expediente_caimus(request, pk):
     section_forms: Dict[str, List] = {"1": [], "2": [], "3": []}
     for form_item in formset.forms:
         seccion = form_item.instance.seccion
-        if isinstance(seccion, str):
-            try:
-                seccion = int(seccion)
-            except ValueError:
-                seccion = None
+        try:
+            seccion = int(seccion)
+        except (TypeError, ValueError):
+            seccion = None
         if seccion not in (1, 2, 3):
             numero = form_item.instance.numero or 0
             if 1 <= numero <= 8:
@@ -217,7 +219,14 @@ def expediente_caimus(request, pk):
             if form_item.instance.pk and form_item.instance.seccion != seccion:
                 ItemChecklistCAIMUS.objects.filter(pk=form_item.instance.pk).update(seccion=seccion)
                 form_item.instance.seccion = seccion
-        section_forms[seccion].append(form_item)
+        section_forms.setdefault(seccion, []).append(form_item)
+
+    logger.debug(
+        "forms s1=%s s2=%s s3=%s",
+        len(section_forms[1]),
+        len(section_forms[2]),
+        len(section_forms[3]),
+    )
 
     return render(
         request,
