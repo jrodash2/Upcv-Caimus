@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
@@ -32,11 +32,15 @@ from .models import (
     crear_items_expediente,
     generar_correlativo,
 )
-from .utils import is_admin, obtener_asignacion_activa, usuario_puede_ver_asociacion
-
-
-def admin_required(view_func):
-    return user_passes_test(is_admin)(view_func)
+from .mixins import admin_required, asociacion_required
+from .permissions import (
+    get_asociaciones_usuario,
+    is_admin,
+    is_asociacion,
+    user_can_download_resolucion,
+    user_has_asociacion_access,
+    user_has_expediente_access,
+)
 
 
 @login_required
@@ -145,12 +149,14 @@ def asociacion_usuarios(request, pk):
     )
 
 
-@login_required
+@asociacion_required
 def mis_asociaciones(request):
     if is_admin(request.user):
         asociaciones = Asociacion.objects.all()
+    elif is_asociacion(request.user):
+        asociaciones = get_asociaciones_usuario(request.user)
     else:
-        asociaciones = Asociacion.objects.filter(usuarios__usuario=request.user, usuarios__activo=True)
+        raise PermissionDenied
     return render(
         request,
         "asociaciones_app/mis_asociaciones.html",
@@ -158,10 +164,10 @@ def mis_asociaciones(request):
     )
 
 
-@login_required
+@asociacion_required
 def expediente_caimus(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
-    if not usuario_puede_ver_asociacion(request.user, asociacion):
+    if not user_has_asociacion_access(request.user, asociacion):
         raise PermissionDenied
 
     expediente, creado = ExpedienteCAIMUS.objects.get_or_create(
@@ -193,7 +199,13 @@ def expediente_caimus(request, pk):
 
     section_forms: Dict[int, List] = {1: [], 2: [], 3: []}
     for form_item in formset.forms:
-        section_forms[form_item.instance.seccion].append(form_item)
+        seccion = form_item.instance.seccion
+        try:
+            seccion = int(seccion)
+        except (TypeError, ValueError):
+            seccion = None
+        if seccion in section_forms:
+            section_forms[seccion].append(form_item)
 
     return render(
         request,
@@ -218,11 +230,11 @@ def _section_completa(expediente: ExpedienteCAIMUS, seccion: int) -> bool:
     ).count()
 
 
-@login_required
+@asociacion_required
 @require_POST
 def item_upload(request, expediente_id, item_id):
     expediente = get_object_or_404(ExpedienteCAIMUS, pk=expediente_id)
-    if not usuario_puede_ver_asociacion(request.user, expediente.asociacion):
+    if not user_has_expediente_access(request.user, expediente):
         raise PermissionDenied
     item = get_object_or_404(expediente.items, pk=item_id)
     archivo = request.FILES.get("pdf")
@@ -248,11 +260,11 @@ def item_upload(request, expediente_id, item_id):
     return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
 
-@login_required
+@asociacion_required
 @require_POST
 def item_observacion(request, expediente_id, item_id):
     expediente = get_object_or_404(ExpedienteCAIMUS, pk=expediente_id)
-    if not usuario_puede_ver_asociacion(request.user, expediente.asociacion):
+    if not user_has_expediente_access(request.user, expediente):
         raise PermissionDenied
     item = get_object_or_404(expediente.items, pk=item_id)
     item.observaciones = request.POST.get("observaciones", "")
@@ -356,17 +368,11 @@ def asignaciones_list(request):
     )
 
 
-@login_required
+@asociacion_required
 def resolucion_pdf(request, pk):
     expediente = get_object_or_404(ExpedienteCAIMUS, pk=pk)
 
-    if is_admin(request.user):
-        permitido = expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO
-    else:
-        asignacion = obtener_asignacion_activa(request.user, expediente.asociacion)
-        permitido = bool(asignacion and expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO)
-
-    if not permitido:
+    if not user_can_download_resolucion(request.user, expediente):
         raise PermissionDenied
 
     resolucion = getattr(expediente, "resolucion", None)
