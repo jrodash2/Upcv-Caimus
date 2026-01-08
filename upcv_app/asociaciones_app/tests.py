@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
@@ -14,10 +16,13 @@ class AsociacionesTests(TestCase):
         self.admin_user = User.objects.create_user(username="admin", password="pass123")
         self.admin_user.groups.add(self.admin_group)
 
+        self.asociacion_group, _ = Group.objects.get_or_create(name="Asociacion")
         self.user = User.objects.create_user(username="user1", password="pass123")
+        self.user.groups.add(self.asociacion_group)
 
         self.anio = Anio.objects.create(anio=2026)
         self.asociacion = Asociacion.objects.create(anio=self.anio, nombre="Asociacion X", codigo="AX")
+        self.asociacion_otra = Asociacion.objects.create(anio=self.anio, nombre="Asociacion Y", codigo="AY")
 
     def test_usuario_no_asignado_no_puede_ver_expediente(self):
         client = Client()
@@ -114,3 +119,59 @@ class AsociacionesTests(TestCase):
         )
         item_sec2.refresh_from_db()
         self.assertEqual(item_sec2.observaciones, "Nota")
+
+    def test_asociacion_no_puede_acceder_vistas_admin(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:anios_list"))
+        self.assertEqual(response.status_code, 403)
+        response = client.get(reverse("asociaciones:asociacion_usuarios", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 403)
+        response = client.get(reverse("asociaciones:bandeja_revision"))
+        self.assertEqual(response.status_code, 403)
+        response = client.get(reverse("asociaciones:expediente_revision", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_asociacion_puede_ver_mis_asociaciones(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:mis_asociaciones"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.asociacion.nombre)
+
+    def test_asociacion_no_puede_ver_otra_asociacion(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion_otra.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_asociacion_no_puede_descargar_resolucion_sin_aprobacion(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:resolucion_pdf", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_asociacion_puede_descargar_resolucion_aprobada(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            estado=ExpedienteCAIMUS.ESTADO_APROBADO,
+        )
+        ResolucionExpediente.objects.create(
+            expediente=expediente,
+            correlativo="RES-2026-001",
+            fecha_emision=date.today(),
+            generado_por=self.admin_user,
+            contenido_snapshot={"asociacion": self.asociacion.nombre},
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:resolucion_pdf", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 200)

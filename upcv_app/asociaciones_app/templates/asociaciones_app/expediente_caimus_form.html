@@ -61,9 +61,14 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {% for item_form in section_forms.1 %}
+                    {% for item_form in section_forms_1 %}
                     <tr data-item="{{ item_form.instance.numero }}" data-section="1">
-                      <td>{{ item_form.instance.numero }}</td>
+                      <td>
+                        {{ item_form.instance.numero }}
+                        {% for hidden in item_form.hidden_fields %}
+                          {{ hidden }}
+                        {% endfor %}
+                      </td>
                       <td>
                         <strong>{{ item_form.instance.titulo }}</strong>
                         <div class="text-muted small">{{ item_form.instance.hint }}</div>
@@ -126,9 +131,14 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {% for item_form in section_forms.2 %}
+                    {% for item_form in section_forms_2 %}
                     <tr data-item="{{ item_form.instance.numero }}" data-section="2">
-                      <td>{{ item_form.instance.numero }}</td>
+                      <td>
+                        {{ item_form.instance.numero }}
+                        {% for hidden in item_form.hidden_fields %}
+                          {{ hidden }}
+                        {% endfor %}
+                      </td>
                       <td>
                         <strong>{{ item_form.instance.titulo }}</strong>
                         <div class="text-muted small">{{ item_form.instance.hint }}</div>
@@ -190,9 +200,14 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {% for item_form in section_forms.3 %}
+                    {% for item_form in section_forms_3 %}
                     <tr data-item="{{ item_form.instance.numero }}" data-section="3">
-                      <td>{{ item_form.instance.numero }}</td>
+                      <td>
+                        {{ item_form.instance.numero }}
+                        {% for hidden in item_form.hidden_fields %}
+                          {{ hidden }}
+                        {% endfor %}
+                      </td>
                       <td>
                         <strong>{{ item_form.instance.titulo }}</strong>
                         <div class="text-muted small">{{ item_form.instance.hint }}</div>
