@@ -199,7 +199,9 @@ def expediente_caimus(request, pk):
 
     section_forms: Dict[int, List] = {1: [], 2: [], 3: []}
     for form_item in formset.forms:
-        section_forms[form_item.instance.seccion].append(form_item)
+        seccion = form_item.instance.seccion
+        if seccion in section_forms:
+            section_forms[seccion].append(form_item)
 
     return render(
         request,
