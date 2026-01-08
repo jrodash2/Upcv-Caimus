@@ -435,7 +435,7 @@
 
 {% endif %}
 
-{% if user.is_authenticated and not es_administrador %}
+{% if user.is_authenticated and es_asociacion %}
   <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="{% url 'asociaciones:mis_asociaciones' %}">
     <svg class="stroke-icon">
       <use href="../assets/svg/icon-sprite.svg#stroke-gallery"></use>
