@@ -200,6 +200,10 @@ def expediente_caimus(request, pk):
     section_forms: Dict[int, List] = {1: [], 2: [], 3: []}
     for form_item in formset.forms:
         seccion = form_item.instance.seccion
+        try:
+            seccion = int(seccion)
+        except (TypeError, ValueError):
+            seccion = None
         if seccion in section_forms:
             section_forms[seccion].append(form_item)
 
