@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -28,6 +28,7 @@ from .models import (
     AsociacionUsuario,
     ExpedienteCAIMUS,
     ExpedienteEstadoHistorial,
+    ItemChecklistCAIMUS,
     ResolucionExpediente,
     crear_items_expediente,
     generar_correlativo,
@@ -178,7 +179,7 @@ def expediente_caimus(request, pk):
 
     if request.method == "POST":
         form = ExpedienteCAIMUSForm(request.POST, instance=expediente)
-        formset = ItemChecklistFormSet(request.POST, instance=expediente)
+        formset = ItemChecklistFormSet(request.POST, request.FILES, instance=expediente)
         if form.is_valid() and formset.is_valid():
             expediente = form.save(commit=False)
             expediente.actualizado_por = request.user
@@ -199,13 +200,13 @@ def expediente_caimus(request, pk):
 
     section_forms: Dict[str, List] = {"1": [], "2": [], "3": []}
     for form_item in formset.forms:
-        seccion = form_item.instance.seccion
-        try:
-            seccion = int(seccion)
-        except (TypeError, ValueError):
-            seccion = None
-        if seccion is not None and str(seccion) in section_forms:
-            section_forms[str(seccion)].append(form_item)
+        seccion = _normalizar_seccion_item(form_item.instance)
+        if seccion is None:
+            continue
+        if form_item.instance.seccion != seccion:
+            form_item.instance.seccion = seccion
+            form_item.instance.save(update_fields=["seccion"])
+        section_forms[seccion].append(form_item)
 
     return render(
         request,
@@ -216,6 +217,9 @@ def expediente_caimus(request, pk):
             "form": form,
             "formset": formset,
             "section_forms": section_forms,
+            "section_forms_1": section_forms[1],
+            "section_forms_2": section_forms[2],
+            "section_forms_3": section_forms[3],
             "progress": progress,
             "section1_enabled": section1_enabled,
             "section2_enabled": section2_enabled,
@@ -228,6 +232,24 @@ def _section_completa(expediente: ExpedienteCAIMUS, seccion: int) -> bool:
     return expediente.items.filter(seccion=seccion).exclude(pdf="").exclude(pdf__isnull=True).count() == expediente.items.filter(
         seccion=seccion
     ).count()
+
+
+def _normalizar_seccion_item(item: ItemChecklistCAIMUS) -> Optional[int]:
+    if item.seccion in (
+        ItemChecklistCAIMUS.SECCION_1,
+        ItemChecklistCAIMUS.SECCION_2,
+        ItemChecklistCAIMUS.SECCION_3,
+    ):
+        return item.seccion
+    if item.numero is None:
+        return ItemChecklistCAIMUS.SECCION_1
+    if 1 <= item.numero <= 8:
+        return ItemChecklistCAIMUS.SECCION_1
+    if 9 <= item.numero <= 14:
+        return ItemChecklistCAIMUS.SECCION_2
+    if 15 <= item.numero <= 17:
+        return ItemChecklistCAIMUS.SECCION_3
+    return ItemChecklistCAIMUS.SECCION_1
 
 
 @asociacion_required
