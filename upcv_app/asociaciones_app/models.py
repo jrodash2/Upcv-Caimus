@@ -186,9 +186,18 @@ CHECKLIST_ITEMS: List[ChecklistItemDefinition] = [
 
 
 class ItemChecklistCAIMUS(models.Model):
+    SECCION_1 = 1
+    SECCION_2 = 2
+    SECCION_3 = 3
+    SECCION_CHOICES = [
+        (SECCION_1, "Sección 1"),
+        (SECCION_2, "Sección 2"),
+        (SECCION_3, "Sección 3"),
+    ]
+
     expediente = models.ForeignKey(ExpedienteCAIMUS, on_delete=models.CASCADE, related_name="items")
     numero = models.PositiveIntegerField()
-    seccion = models.PositiveIntegerField()
+    seccion = models.PositiveIntegerField(choices=SECCION_CHOICES)
     titulo = models.CharField(max_length=255)
     hint = models.TextField(blank=True)
     entregado = models.BooleanField(default=False)
@@ -205,6 +214,10 @@ class ItemChecklistCAIMUS(models.Model):
         verbose_name_plural = "Items checklist CAIMUS"
         constraints = [
             models.UniqueConstraint(fields=["expediente", "numero"], name="unique_item_por_expediente"),
+            models.CheckConstraint(
+                check=models.Q(seccion__in=[SECCION_1, SECCION_2, SECCION_3]),
+                name="itemchecklist_seccion_valida",
+            ),
         ]
         ordering = ["numero"]
 
