@@ -200,12 +200,23 @@ def expediente_caimus(request, pk):
 
     section_forms: Dict[str, List] = {"1": [], "2": [], "3": []}
     for form_item in formset.forms:
-        seccion = _normalizar_seccion_item(form_item.instance)
-        if seccion is None:
-            continue
-        if form_item.instance.seccion != seccion:
-            form_item.instance.seccion = seccion
-            form_item.instance.save(update_fields=["seccion"])
+        seccion = form_item.instance.seccion
+        if isinstance(seccion, str):
+            try:
+                seccion = int(seccion)
+            except ValueError:
+                seccion = None
+        if seccion not in (1, 2, 3):
+            numero = form_item.instance.numero or 0
+            if 1 <= numero <= 8:
+                seccion = 1
+            elif 9 <= numero <= 14:
+                seccion = 2
+            else:
+                seccion = 3
+            if form_item.instance.pk and form_item.instance.seccion != seccion:
+                ItemChecklistCAIMUS.objects.filter(pk=form_item.instance.pk).update(seccion=seccion)
+                form_item.instance.seccion = seccion
         section_forms[seccion].append(form_item)
 
     return render(
