@@ -33,7 +33,7 @@
                 <div class="col-md-6 mt-2">{{ form.obs_general.label_tag }} {{ form.obs_general }}</div>
                 <div class="col-md-6 mt-2">{{ form.recomendaciones.label_tag }} {{ form.recomendaciones }}</div>
               </div>
-              <div class="mt-3">
+              <div class="mt-3 d-flex gap-2 flex-wrap">
                 <button class="btn btn-primary" type="submit" name="save_all" value="1">Guardar datos generales</button>
               </div>
             </div>
@@ -87,7 +87,7 @@
                           <a href="{{ item_form.instance.pdf.url }}" target="_blank">Ver PDF</a>
                         {% endif %}
                         <input type="file" class="form-control mt-2 file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf">
-                        <button type="button" class="btn btn-outline-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}">
+                        <button type="button" class="btn btn-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}">
                           {% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
                         </button>
                       </td>
@@ -96,7 +96,7 @@
                         {{ item_form.observaciones.errors }}
                       </td>
                       <td>
-                        <button type="button" class="btn btn-outline-secondary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
+                        <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
                           Guardar observación
                         </button>
                       </td>
@@ -108,10 +108,10 @@
             </div>
           </div>
 
-          <div class="mt-3">
+          <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
             <button class="btn btn-primary" type="submit" name="save_all" value="1">Guardar todo</button>
             {% if expediente.is_print_enabled %}
-              <button class="btn btn-outline-secondary" type="button" onclick="window.print()">Imprimir expediente</button>
+              <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir expediente</button>
             {% else %}
               <span class="text-muted ms-2">Disponible cuando el administrador apruebe.</span>
             {% endif %}
@@ -134,7 +134,7 @@
           <div class="card-header"><h5>Resolución</h5></div>
           <div class="card-body">
             {% if expediente.is_print_enabled %}
-              <a class="btn btn-outline-success btn-sm" href="{% url 'asociaciones:resolucion_pdf' expediente.pk %}" target="_blank">
+              <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:resolucion_pdf' expediente.pk %}" target="_blank">
                 {% if es_admin %}Generar Resolución PDF{% else %}Descargar Resolución PDF{% endif %}
               </a>
             {% else %}
@@ -154,9 +154,9 @@
                 <textarea name="observacion_admin" class="form-control" rows="3"></textarea>
               </div>
               <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-warning" name="estado" value="EN_REVISION" type="submit">Marcar En revisión</button>
-                <button class="btn btn-success" name="estado" value="APROBADO" type="submit">Aprobar</button>
-                <button class="btn btn-danger" name="estado" value="RECHAZADO" type="submit">Rechazar</button>
+                <button class="btn btn-primary" name="estado" value="EN_REVISION" type="submit">Marcar En revisión</button>
+                <button class="btn btn-primary" name="estado" value="APROBADO" type="submit">Aprobar</button>
+                <button class="btn btn-primary" name="estado" value="RECHAZADO" type="submit">Rechazar</button>
               </div>
             </form>
           </div>
