@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -136,23 +136,12 @@ class ExpedienteCAIMUS(models.Model):
 
     def progress_stats(self) -> Dict[str, object]:
         items = self.items.all()
-        total = items.count()
+        total = len(CHECKLIST_ITEMS)
         completados = items.exclude(pdf="").exclude(pdf__isnull=True).count()
-        sections: Dict[int, Dict[str, int]] = {}
-        for section in (1, 2, 3):
-            section_items = items.filter(seccion=section)
-            section_total = section_items.count()
-            section_done = section_items.exclude(pdf="").exclude(pdf__isnull=True).count()
-            sections[section] = {
-                "done": section_done,
-                "total": section_total,
-                "percent": int((section_done / section_total) * 100) if section_total else 0,
-            }
         return {
             "total": total,
             "done": completados,
             "percent": int((completados / total) * 100) if total else 0,
-            "sections": sections,
         }
 
 
@@ -165,23 +154,48 @@ class ChecklistItemDefinition:
 
 
 CHECKLIST_ITEMS: List[ChecklistItemDefinition] = [
-    ChecklistItemDefinition(1, 1, "Documento de constitución", "Acta o documento legal de la asociación."),
-    ChecklistItemDefinition(2, 1, "Nombramiento de junta directiva", "Documento vigente de nombramiento."),
-    ChecklistItemDefinition(3, 1, "Representación legal", "Identificación del representante legal."),
-    ChecklistItemDefinition(4, 1, "NIT de la asociación", "Constancia vigente."),
-    ChecklistItemDefinition(5, 1, "Patente de comercio", "Si aplica."),
-    ChecklistItemDefinition(6, 1, "Plan de trabajo anual", "Documento firmado."),
-    ChecklistItemDefinition(7, 1, "Presupuesto aprobado", "Detalle financiero anual."),
-    ChecklistItemDefinition(8, 1, "Estado financiero", "Último estado financiero disponible."),
-    ChecklistItemDefinition(9, 2, "Informe de actividades", "Resumen de actividades ejecutadas."),
-    ChecklistItemDefinition(10, 2, "Informe de cumplimiento", "Detalle de objetivos alcanzados."),
-    ChecklistItemDefinition(11, 2, "Informe de auditoría", "Si aplica, con dictamen."),
-    ChecklistItemDefinition(12, 2, "Listado de beneficiarios", "Detalle de beneficiarios del período."),
-    ChecklistItemDefinition(13, 2, "Convenios vigentes", "Convenios activos con entidades."),
-    ChecklistItemDefinition(14, 2, "Otros respaldos", "Documentación adicional relevante."),
-    ChecklistItemDefinition(15, 3, "Acta de aprobación", "Acta de aprobación del expediente."),
-    ChecklistItemDefinition(16, 3, "Informe final", "Informe final del período."),
-    ChecklistItemDefinition(17, 3, "Compromisos", "Compromisos asumidos por la asociación."),
+    ChecklistItemDefinition(1, 1, "Solicitud dirigida al señor Ministro de Gobernación", ""),
+    ChecklistItemDefinition(2, 1, "Plan Operativo Anual -POA-", ""),
+    ChecklistItemDefinition(
+        3,
+        1,
+        "Copia legalizada del Testimonio de la Escritura Pública Constitutiva de la entidad",
+        "",
+    ),
+    ChecklistItemDefinition(4, 1, "Constancia de inscripción y actualización de datos -RTU-", ""),
+    ChecklistItemDefinition(5, 1, "Solvencia Fiscal vigente", ""),
+    ChecklistItemDefinition(
+        6,
+        1,
+        "Constancia de Inventario de Cuentas emitida por el Ministerio de Finanzas Públicas.",
+        "",
+    ),
+    ChecklistItemDefinition(
+        7,
+        1,
+        "Certificación de la constancia de inscripción de la entidad en el Registro de Personas Jurídicas -REPEJU-",
+        "",
+    ),
+    ChecklistItemDefinition(8, 1, "Copia legalizada -DPI- de representante legal", ""),
+    ChecklistItemDefinition(
+        9,
+        1,
+        "Copia legalizada del Acta Notarial de nombramiento de representante legal",
+        "",
+    ),
+    ChecklistItemDefinition(
+        10,
+        1,
+        "Constancia de inscripción y actualización de datos -RTU- del representante legal",
+        "",
+    ),
+    ChecklistItemDefinition(11, 1, "Solvencia Fiscal vigente, del Representante Legal", ""),
+    ChecklistItemDefinition(
+        12,
+        1,
+        "Certificación de la constancia de inscripción en el Registro de Personas Jurídicas -REPEJU-",
+        "",
+    ),
 ]
 
 
@@ -197,7 +211,7 @@ class ItemChecklistCAIMUS(models.Model):
 
     expediente = models.ForeignKey(ExpedienteCAIMUS, on_delete=models.CASCADE, related_name="items")
     numero = models.PositiveIntegerField()
-    seccion = models.PositiveIntegerField(choices=SECCION_CHOICES)
+    seccion = models.PositiveIntegerField(choices=SECCION_CHOICES, default=SECCION_1)
     titulo = models.CharField(max_length=255)
     hint = models.TextField(blank=True)
     entregado = models.BooleanField(default=False)
@@ -264,22 +278,159 @@ class ResolucionExpediente(models.Model):
 
 
 def crear_items_expediente(expediente: ExpedienteCAIMUS) -> None:
-    existentes = set(expediente.items.values_list("numero", flat=True))
+    existentes = {item.numero: item for item in expediente.items.all()}
+    numeros_validos = {item.numero for item in CHECKLIST_ITEMS}
     items_to_create = []
+    items_to_update = []
     for item in CHECKLIST_ITEMS:
-        if item.numero in existentes:
-            continue
-        items_to_create.append(
-            ItemChecklistCAIMUS(
-                expediente=expediente,
-                numero=item.numero,
-                seccion=item.seccion,
-                titulo=item.titulo,
-                hint=item.hint,
+        existente = existentes.get(item.numero)
+        if existente is None:
+            items_to_create.append(
+                ItemChecklistCAIMUS(
+                    expediente=expediente,
+                    numero=item.numero,
+                    seccion=item.seccion,
+                    titulo=item.titulo,
+                    hint=item.hint,
+                )
             )
-        )
+            continue
+        actualizado = False
+        if existente.seccion != item.seccion:
+            existente.seccion = item.seccion
+            actualizado = True
+        if existente.titulo != item.titulo:
+            existente.titulo = item.titulo
+            actualizado = True
+        if existente.hint != item.hint:
+            existente.hint = item.hint
+            actualizado = True
+        if actualizado:
+            items_to_update.append(existente)
     if items_to_create:
         ItemChecklistCAIMUS.objects.bulk_create(items_to_create)
+    if items_to_update:
+        ItemChecklistCAIMUS.objects.bulk_update(items_to_update, ["seccion", "titulo", "hint"])
+    extra_items = expediente.items.exclude(numero__in=numeros_validos)
+    if extra_items.exists():
+        extra_items.delete()
+
+
+MESES_CHOICES = [
+    (1, "Enero"),
+    (2, "Febrero"),
+    (3, "Marzo"),
+    (4, "Abril"),
+    (5, "Mayo"),
+    (6, "Junio"),
+    (7, "Julio"),
+    (8, "Agosto"),
+    (9, "Septiembre"),
+    (10, "Octubre"),
+    (11, "Noviembre"),
+    (12, "Diciembre"),
+]
+
+
+class InformeMensual(models.Model):
+    ESTADO_BORRADOR = "BORRADOR"
+    ESTADO_EN_REVISION = "EN_REVISION"
+    ESTADO_APROBADO = "APROBADO"
+    ESTADO_RECHAZADO = "RECHAZADO"
+
+    ESTADOS = [
+        (ESTADO_BORRADOR, "Borrador"),
+        (ESTADO_EN_REVISION, "En revisión"),
+        (ESTADO_APROBADO, "Aprobado"),
+        (ESTADO_RECHAZADO, "Rechazado"),
+    ]
+
+    asociacion = models.ForeignKey(Asociacion, on_delete=models.CASCADE, related_name="informes_mensuales")
+    mes = models.PositiveSmallIntegerField(choices=MESES_CHOICES)
+    pdf = models.FileField(
+        upload_to="informes/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size],
+    )
+    observaciones_usuario = models.TextField(blank=True)
+    estado = models.CharField(choices=ESTADOS, default=ESTADO_BORRADOR, max_length=20)
+    observacion_admin = models.TextField(blank=True)
+    aprobado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="informes_aprobados",
+    )
+    aprobado_en = models.DateTimeField(null=True, blank=True)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="informes_creados",
+    )
+    actualizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="informes_actualizados",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Informe mensual"
+        verbose_name_plural = "Informes mensuales"
+        constraints = [
+            models.UniqueConstraint(fields=["asociacion", "mes"], name="unique_informe_mes_asociacion"),
+        ]
+        ordering = ["mes"]
+
+    def __str__(self) -> str:
+        return f"{self.asociacion} - {self.get_mes_display()}"
+
+    def save(self, *args, **kwargs) -> None:
+        if self.pdf and self.estado == self.ESTADO_BORRADOR:
+            self.estado = self.ESTADO_EN_REVISION
+        super().save(*args, **kwargs)
+
+
+class InformeEstadoHistorial(models.Model):
+    informe = models.ForeignKey(InformeMensual, on_delete=models.CASCADE, related_name="historial_estados")
+    estado_anterior = models.CharField(max_length=20, choices=InformeMensual.ESTADOS)
+    estado_nuevo = models.CharField(max_length=20, choices=InformeMensual.ESTADOS)
+    observacion = models.TextField(blank=True)
+    cambiado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    cambiado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Historial de estado de informe"
+        verbose_name_plural = "Historial de estados de informes"
+        ordering = ["-cambiado_en"]
+
+    def __str__(self) -> str:
+        return f"{self.informe} {self.estado_anterior} -> {self.estado_nuevo}"
+
+
+def crear_informes_mensuales(asociacion: Asociacion, usuario: Optional[models.Model] = None) -> None:
+    existentes = set(asociacion.informes_mensuales.values_list("mes", flat=True))
+    informes = []
+    for mes, _label in MESES_CHOICES:
+        if mes in existentes:
+            continue
+        informes.append(
+            InformeMensual(
+                asociacion=asociacion,
+                mes=mes,
+                creado_por=usuario,
+                actualizado_por=usuario,
+            )
+        )
+    if informes:
+        InformeMensual.objects.bulk_create(informes)
 
 
 def generar_correlativo(anio: int) -> str:
