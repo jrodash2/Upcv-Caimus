@@ -42,10 +42,10 @@
           <div class="card mt-4">
             <div class="card-header d-flex justify-content-between align-items-center">
               <div>
-                <h5>Checklist - Sección 1</h5>
-                <p class="text-muted mb-0">Completa los 8 items para habilitar la sección 2.</p>
+                <h5>Checklist</h5>
+                <p class="text-muted mb-0">Completa los documentos requeridos para el expediente CAIMUS.</p>
               </div>
-              <span class="badge bg-secondary">{{ progress.sections.1.done }}/{{ progress.sections.1.total }}</span>
+              <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
             </div>
             <div class="card-body">
               <div class="table-responsive">
@@ -61,8 +61,8 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {% for item_form in section_forms_1 %}
-                    <tr data-item="{{ item_form.instance.numero }}" data-section="1">
+                    {% for item_form in formset %}
+                    <tr data-item="{{ item_form.instance.numero }}">
                       <td>
                         {{ item_form.instance.numero }}
                         {% for hidden in item_form.hidden_fields %}
@@ -71,7 +71,9 @@
                       </td>
                       <td>
                         <strong>{{ item_form.instance.titulo }}</strong>
-                        <div class="text-muted small">{{ item_form.instance.hint }}</div>
+                        {% if item_form.instance.hint %}
+                          <div class="text-muted small">{{ item_form.instance.hint }}</div>
+                        {% endif %}
                       </td>
                       <td>
                         {% if item_form.instance.pdf %}
@@ -86,145 +88,6 @@
                         {% endif %}
                         <input type="file" class="form-control mt-2 file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf">
                         <button type="button" class="btn btn-outline-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}">
-                          {% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
-                        </button>
-                      </td>
-                      <td>
-                        {{ item_form.observaciones }}
-                        {{ item_form.observaciones.errors }}
-                      </td>
-                      <td>
-                        <button type="button" class="btn btn-outline-secondary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
-                          Guardar observación
-                        </button>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div class="card mt-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <div>
-                <h5>Checklist - Sección 2</h5>
-                <p class="text-muted mb-0">Completa los 6 items para habilitar la sección 3.</p>
-              </div>
-              <span class="badge bg-secondary">{{ progress.sections.2.done }}/{{ progress.sections.2.total }}</span>
-            </div>
-            <div class="card-body">
-              {% if not section1_enabled %}
-                <div class="alert alert-warning">La sección 2 se habilita al completar la sección 1.</div>
-              {% endif %}
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Documento</th>
-                      <th>Estado</th>
-                      <th>PDF</th>
-                      <th>Observaciones</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for item_form in section_forms_2 %}
-                    <tr data-item="{{ item_form.instance.numero }}" data-section="2">
-                      <td>
-                        {{ item_form.instance.numero }}
-                        {% for hidden in item_form.hidden_fields %}
-                          {{ hidden }}
-                        {% endfor %}
-                      </td>
-                      <td>
-                        <strong>{{ item_form.instance.titulo }}</strong>
-                        <div class="text-muted small">{{ item_form.instance.hint }}</div>
-                      </td>
-                      <td>
-                        {% if item_form.instance.pdf %}
-                          <span class="badge bg-success">Subido</span>
-                        {% else %}
-                          <span class="badge bg-secondary">Pendiente</span>
-                        {% endif %}
-                      </td>
-                      <td>
-                        {% if item_form.instance.pdf %}
-                          <a href="{{ item_form.instance.pdf.url }}" target="_blank">Ver PDF</a>
-                        {% endif %}
-                        <input type="file" class="form-control mt-2 file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf" {% if not section1_enabled %}disabled{% endif %}>
-                        <button type="button" class="btn btn-outline-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}" {% if not section1_enabled %}disabled{% endif %}>
-                          {% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
-                        </button>
-                      </td>
-                      <td>
-                        {{ item_form.observaciones }}
-                        {{ item_form.observaciones.errors }}
-                      </td>
-                      <td>
-                        <button type="button" class="btn btn-outline-secondary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
-                          Guardar observación
-                        </button>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div class="card mt-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <div>
-                <h5>Checklist - Sección 3</h5>
-              </div>
-              <span class="badge bg-secondary">{{ progress.sections.3.done }}/{{ progress.sections.3.total }}</span>
-            </div>
-            <div class="card-body">
-              {% if not section2_enabled %}
-                <div class="alert alert-warning">La sección 3 se habilita al completar la sección 2.</div>
-              {% endif %}
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Documento</th>
-                      <th>Estado</th>
-                      <th>PDF</th>
-                      <th>Observaciones</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for item_form in section_forms_3 %}
-                    <tr data-item="{{ item_form.instance.numero }}" data-section="3">
-                      <td>
-                        {{ item_form.instance.numero }}
-                        {% for hidden in item_form.hidden_fields %}
-                          {{ hidden }}
-                        {% endfor %}
-                      </td>
-                      <td>
-                        <strong>{{ item_form.instance.titulo }}</strong>
-                        <div class="text-muted small">{{ item_form.instance.hint }}</div>
-                      </td>
-                      <td>
-                        {% if item_form.instance.pdf %}
-                          <span class="badge bg-success">Subido</span>
-                        {% else %}
-                          <span class="badge bg-secondary">Pendiente</span>
-                        {% endif %}
-                      </td>
-                      <td>
-                        {% if item_form.instance.pdf %}
-                          <a href="{{ item_form.instance.pdf.url }}" target="_blank">Ver PDF</a>
-                        {% endif %}
-                        <input type="file" class="form-control mt-2 file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf" {% if not section2_enabled %}disabled{% endif %}>
-                        <button type="button" class="btn btn-outline-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}" {% if not section2_enabled %}disabled{% endif %}>
                           {% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
                         </button>
                       </td>
@@ -264,9 +127,6 @@
             <div class="progress mb-2">
               <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress.percent }}%"></div>
             </div>
-            <p class="mb-1"><strong>Sección 1:</strong> {{ progress.sections.1.done }} / {{ progress.sections.1.total }}</p>
-            <p class="mb-1"><strong>Sección 2:</strong> {{ progress.sections.2.done }} / {{ progress.sections.2.total }}</p>
-            <p><strong>Sección 3:</strong> {{ progress.sections.3.done }} / {{ progress.sections.3.total }}</p>
           </div>
         </div>
 

@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
-import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -29,9 +26,11 @@ from .models import (
     AsociacionUsuario,
     ExpedienteCAIMUS,
     ExpedienteEstadoHistorial,
-    ItemChecklistCAIMUS,
+    InformeEstadoHistorial,
+    InformeMensual,
     ResolucionExpediente,
     crear_items_expediente,
+    crear_informes_mensuales,
     generar_correlativo,
 )
 from .mixins import admin_required, asociacion_required
@@ -44,7 +43,6 @@ from .permissions import (
     user_has_expediente_access,
 )
 
-logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -182,7 +180,12 @@ def expediente_caimus(request, pk):
 
     if request.method == "POST":
         form = ExpedienteCAIMUSForm(request.POST, instance=expediente)
-        formset = ItemChecklistFormSet(request.POST, request.FILES, instance=expediente)
+        formset = ItemChecklistFormSet(
+            request.POST,
+            request.FILES,
+            instance=expediente,
+            queryset=expediente.items.order_by("numero"),
+        )
         if form.is_valid() and formset.is_valid():
             expediente = form.save(commit=False)
             expediente.actualizado_por = request.user
@@ -195,38 +198,9 @@ def expediente_caimus(request, pk):
             return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
     else:
         form = ExpedienteCAIMUSForm(instance=expediente)
-        formset = ItemChecklistFormSet(instance=expediente)
+        formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.order_by("numero"))
 
     progress = expediente.progress_stats()
-    section1_enabled = progress["sections"][1]["done"] == progress["sections"][1]["total"]
-    section2_enabled = progress["sections"][2]["done"] == progress["sections"][2]["total"]
-
-    section_forms: Dict[str, List] = {"1": [], "2": [], "3": []}
-    for form_item in formset.forms:
-        seccion = form_item.instance.seccion
-        try:
-            seccion = int(seccion)
-        except (TypeError, ValueError):
-            seccion = None
-        if seccion not in (1, 2, 3):
-            numero = form_item.instance.numero or 0
-            if 1 <= numero <= 8:
-                seccion = 1
-            elif 9 <= numero <= 14:
-                seccion = 2
-            else:
-                seccion = 3
-            if form_item.instance.pk and form_item.instance.seccion != seccion:
-                ItemChecklistCAIMUS.objects.filter(pk=form_item.instance.pk).update(seccion=seccion)
-                form_item.instance.seccion = seccion
-        section_forms.setdefault(seccion, []).append(form_item)
-
-    logger.debug(
-        "forms s1=%s s2=%s s3=%s",
-        len(section_forms[1]),
-        len(section_forms[2]),
-        len(section_forms[3]),
-    )
 
     return render(
         request,
@@ -236,40 +210,10 @@ def expediente_caimus(request, pk):
             "expediente": expediente,
             "form": form,
             "formset": formset,
-            "section_forms": section_forms,
-            "section_forms_1": section_forms[1],
-            "section_forms_2": section_forms[2],
-            "section_forms_3": section_forms[3],
             "progress": progress,
-            "section1_enabled": section1_enabled,
-            "section2_enabled": section2_enabled,
             "es_admin": is_admin(request.user),
         },
     )
-
-
-def _section_completa(expediente: ExpedienteCAIMUS, seccion: int) -> bool:
-    return expediente.items.filter(seccion=seccion).exclude(pdf="").exclude(pdf__isnull=True).count() == expediente.items.filter(
-        seccion=seccion
-    ).count()
-
-
-def _normalizar_seccion_item(item: ItemChecklistCAIMUS) -> Optional[int]:
-    if item.seccion in (
-        ItemChecklistCAIMUS.SECCION_1,
-        ItemChecklistCAIMUS.SECCION_2,
-        ItemChecklistCAIMUS.SECCION_3,
-    ):
-        return item.seccion
-    if item.numero is None:
-        return ItemChecklistCAIMUS.SECCION_1
-    if 1 <= item.numero <= 8:
-        return ItemChecklistCAIMUS.SECCION_1
-    if 9 <= item.numero <= 14:
-        return ItemChecklistCAIMUS.SECCION_2
-    if 15 <= item.numero <= 17:
-        return ItemChecklistCAIMUS.SECCION_3
-    return ItemChecklistCAIMUS.SECCION_1
 
 
 @asociacion_required
@@ -284,11 +228,8 @@ def item_upload(request, expediente_id, item_id):
         messages.error(request, "Debe seleccionar un archivo PDF.")
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
-    if item.seccion == 2 and not _section_completa(expediente, 1):
-        messages.error(request, "La sección 2 está bloqueada hasta completar la sección 1.")
-        return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
-    if item.seccion == 3 and not _section_completa(expediente, 2):
-        messages.error(request, "La sección 3 está bloqueada hasta completar la sección 2.")
+    if archivo.content_type != "application/pdf":
+        messages.error(request, "El archivo debe ser un PDF válido.")
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
     item.pdf = archivo
@@ -313,6 +254,125 @@ def item_observacion(request, expediente_id, item_id):
     item.save()
     messages.success(request, "Observación guardada correctamente.")
     return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+
+
+@asociacion_required
+def informes_mensuales(request, pk):
+    asociacion = get_object_or_404(Asociacion, pk=pk)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    crear_informes_mensuales(asociacion, request.user)
+    informes = asociacion.informes_mensuales.all()
+    puede_subir = is_admin(request.user) or user_has_asociacion_access(request.user, asociacion)
+    return render(
+        request,
+        "asociaciones_app/informes_mensuales.html",
+        {
+            "asociacion": asociacion,
+            "informes": informes,
+            "es_admin": is_admin(request.user),
+            "puede_subir": puede_subir,
+        },
+    )
+
+
+@asociacion_required
+@require_POST
+def informe_upload(request, asociacion_id, mes):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    if mes not in range(1, 13):
+        messages.error(request, "Mes inválido.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    informe, _creado = InformeMensual.objects.get_or_create(
+        asociacion=asociacion,
+        mes=mes,
+        defaults={"creado_por": request.user, "actualizado_por": request.user},
+    )
+    archivo = request.FILES.get("pdf")
+    if not archivo:
+        messages.error(request, "Debe seleccionar un archivo PDF.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if archivo.content_type != "application/pdf":
+        messages.error(request, "El archivo debe ser un PDF válido.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+    informe.pdf = archivo
+    informe.estado = InformeMensual.ESTADO_EN_REVISION
+    informe.observacion_admin = ""
+    informe.aprobado_por = None
+    informe.aprobado_en = None
+    informe.actualizado_por = request.user
+    try:
+        informe.full_clean()
+    except ValidationError as exc:
+        messages.error(request, "; ".join(exc.messages))
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    informe.save()
+    messages.success(request, f"Informe de {informe.get_mes_display()} cargado correctamente.")
+    return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+
+@asociacion_required
+@require_POST
+def informe_observacion(request, asociacion_id, mes):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    if is_admin(request.user):
+        raise PermissionDenied
+    if mes not in range(1, 13):
+        messages.error(request, "Mes inválido.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
+    informe.observaciones_usuario = request.POST.get("observaciones", "")
+    informe.actualizado_por = request.user
+    informe.save()
+    messages.success(request, "Observación guardada correctamente.")
+    return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+
+@login_required
+@admin_required
+@require_POST
+def informe_estado(request, asociacion_id, mes):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if mes not in range(1, 13):
+        messages.error(request, "Mes inválido.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
+    estado_anterior = informe.estado
+    estado_nuevo = request.POST.get("estado")
+    if estado_nuevo not in dict(InformeMensual.ESTADOS):
+        messages.error(request, "Estado inválido.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    observacion_admin = request.POST.get("observacion_admin", "")
+    if estado_nuevo == InformeMensual.ESTADO_RECHAZADO and not observacion_admin:
+        messages.error(request, "Debe indicar la observación del rechazo.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+    informe.estado = estado_nuevo
+    if estado_nuevo == InformeMensual.ESTADO_APROBADO:
+        informe.aprobado_por = request.user
+        informe.aprobado_en = timezone.now()
+        informe.observacion_admin = ""
+    else:
+        informe.aprobado_por = None
+        informe.aprobado_en = None
+        informe.observacion_admin = observacion_admin
+    informe.actualizado_por = request.user
+    informe.save()
+
+    InformeEstadoHistorial.objects.create(
+        informe=informe,
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado_nuevo,
+        observacion=observacion_admin,
+        cambiado_por=request.user,
+    )
+    messages.success(request, "Estado actualizado correctamente.")
+    return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 
 
 @login_required
