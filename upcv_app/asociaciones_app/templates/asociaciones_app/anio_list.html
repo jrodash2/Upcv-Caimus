@@ -29,8 +29,10 @@
                 <td>{{ anio.anio }}</td>
                 <td>{% if anio.activo %}Sí{% else %}No{% endif %}</td>
                 <td>
-                  <a class="btn btn-outline-primary btn-sm" href="{% url 'asociaciones:anio_edit' anio.pk %}">Editar</a>
-                  <a class="btn btn-outline-secondary btn-sm" href="{% url 'asociaciones:asociacion_list' anio.pk %}">Asociaciones</a>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:anio_edit' anio.pk %}">Editar</a>
+                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:asociacion_list' anio.pk %}">Asociaciones</a>
+                  </div>
                 </td>
               </tr>
               {% empty %}

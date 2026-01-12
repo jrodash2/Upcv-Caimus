@@ -19,9 +19,9 @@
               {{ form.observacion_admin }}
             </div>
           </div>
-          <div class="mt-3">
+          <div class="mt-3 d-flex gap-2 flex-wrap">
             <button class="btn btn-primary" type="submit">Guardar</button>
-            <a class="btn btn-outline-secondary" href="{% url 'asociaciones:expediente_caimus' expediente.asociacion.pk %}">Volver</a>
+            <a class="btn btn-primary" href="{% url 'asociaciones:expediente_caimus' expediente.asociacion.pk %}">Volver</a>
           </div>
         </form>
       </div>

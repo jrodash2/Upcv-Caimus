@@ -7,7 +7,14 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from .models import Anio, Asociacion, AsociacionUsuario, ExpedienteCAIMUS, ItemChecklistCAIMUS, ResolucionExpediente
+from .models import (
+    Anio,
+    Asociacion,
+    AsociacionUsuario,
+    ExpedienteCAIMUS,
+    InformeMensual,
+    ResolucionExpediente,
+)
 
 
 class AsociacionesTests(TestCase):
@@ -75,7 +82,7 @@ class AsociacionesTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_bloqueo_secciones_no_permite_subir(self):
+    def test_subir_pdf_sin_bloqueo_secciones(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.user)
         item_sec2 = expediente.items.create(numero=9, seccion=2, titulo="Doc 2", hint="")
@@ -88,7 +95,7 @@ class AsociacionesTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         item_sec2.refresh_from_db()
-        self.assertFalse(item_sec2.pdf)
+        self.assertTrue(item_sec2.pdf)
 
     def test_subir_pdf_marca_entregado_y_reemplaza(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
@@ -175,3 +182,53 @@ class AsociacionesTests(TestCase):
         client.login(username="user1", password="pass123")
         response = client.get(reverse("asociaciones:resolucion_pdf", args=[expediente.pk]))
         self.assertEqual(response.status_code, 200)
+
+    def test_asociacion_no_puede_ver_informes_otra_asociacion(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        InformeMensual.objects.create(asociacion=self.asociacion_otra, mes=1)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:informes_mensuales", args=[self.asociacion_otra.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_asociacion_no_puede_aprobar_informe(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(asociacion=self.asociacion, mes=1)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(
+            reverse("asociaciones:informe_estado", args=[self.asociacion.pk, informe.mes]),
+            {"estado": InformeMensual.ESTADO_APROBADO},
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_puede_aprobar_informe(self):
+        informe = InformeMensual.objects.create(asociacion=self.asociacion, mes=1)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(
+            reverse("asociaciones:informe_estado", args=[self.asociacion.pk, informe.mes]),
+            {"estado": InformeMensual.ESTADO_APROBADO},
+        )
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_APROBADO)
+
+    def test_subir_informe_pdf_marca_revision_y_conserva_observaciones(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=1,
+            observaciones_usuario="Obs",
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        archivo = SimpleUploadedFile("informe.pdf", b"%PDF-1.4 test", content_type="application/pdf")
+        client.post(
+            reverse("asociaciones:informe_upload", args=[self.asociacion.pk, informe.mes]),
+            {"pdf": archivo},
+        )
+        informe.refresh_from_db()
+        self.assertTrue(informe.pdf)
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_EN_REVISION)
+        self.assertEqual(informe.observaciones_usuario, "Obs")

@@ -51,8 +51,10 @@
                 <td>{{ expediente.asociacion.anio.anio }}</td>
                 <td>{{ expediente.get_estado_display }}</td>
                 <td>
-                  <a class="btn btn-outline-primary btn-sm" href="{% url 'asociaciones:expediente_caimus' expediente.asociacion.pk %}">Abrir</a>
-                  <a class="btn btn-outline-secondary btn-sm" href="{% url 'asociaciones:expediente_revision' expediente.pk %}">Revisar</a>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:expediente_caimus' expediente.asociacion.pk %}">Abrir</a>
+                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:expediente_revision' expediente.pk %}">Revisar</a>
+                  </div>
                 </td>
               </tr>
               {% empty %}
