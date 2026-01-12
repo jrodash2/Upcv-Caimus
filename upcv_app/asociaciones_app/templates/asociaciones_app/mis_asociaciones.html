@@ -12,9 +12,10 @@
             <h5>{{ asociacion.nombre }}</h5>
             <p class="text-muted">{{ asociacion.anio.anio }} - {{ asociacion.codigo }}</p>
             <div class="btn-group">
-              <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:expediente_caimus' asociacion.pk %}">Expediente</a>
-              <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:informes_mensuales' asociacion.pk %}">Informes</a>
-            </div>
+  <a class="btn btn-primary btn-sm me-2" href="{% url 'asociaciones:expediente_caimus' asociacion.pk %}">Expediente</a>
+  <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:informes_mensuales' asociacion.pk %}">Informes</a>
+</div>
+
           </div>
         </div>
       </div>
