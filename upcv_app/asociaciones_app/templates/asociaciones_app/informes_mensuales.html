@@ -1,0 +1,167 @@
+{% extends 'almacen/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-8">
+          <h4>Informes mensuales - {{ asociacion.nombre }}</h4>
+          <p class="text-muted">Año {{ asociacion.anio.anio }} · Código {{ asociacion.codigo }}</p>
+        </div>
+        <div class="col-4 text-end">
+          <a class="btn btn-outline-primary btn-sm" href="{% url 'asociaciones:expediente_caimus' asociacion.pk %}">Expediente</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5>Checklist de informes mensuales</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th>Estado</th>
+                <th>PDF</th>
+                <th>Observaciones</th>
+                <th>Observación admin</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for informe in informes %}
+              <tr>
+                <td>{{ informe.get_mes_display }}</td>
+                <td>
+                  <span class="badge bg-{% if informe.estado == 'APROBADO' %}success{% elif informe.estado == 'RECHAZADO' %}danger{% elif informe.estado == 'EN_REVISION' %}warning{% else %}secondary{% endif %}">
+                    {{ informe.get_estado_display }}
+                  </span>
+                </td>
+                <td>
+                  {% if informe.pdf %}
+                    <a href="{{ informe.pdf.url }}" target="_blank">Ver PDF</a>
+                  {% endif %}
+                  {% if not es_admin %}
+                    <input type="file" class="form-control mt-2 file-input" data-informe-mes="{{ informe.mes }}" accept="application/pdf">
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:informe_upload' asociacion.pk informe.mes %}">
+                      {% if informe.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
+                    </button>
+                  {% endif %}
+                </td>
+                <td>
+                  <textarea class="form-control" rows="2" {% if es_admin %}readonly{% endif %}>{{ informe.observaciones_usuario }}</textarea>
+                </td>
+                <td>
+                  {% if es_admin %}
+                    <textarea class="form-control" rows="2" name="observacion_admin" form="estado-form-{{ informe.mes }}">{{ informe.observacion_admin }}</textarea>
+                  {% else %}
+                    {{ informe.observacion_admin|default:"-" }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if not es_admin %}
+                    <button type="button" class="btn btn-outline-secondary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:informe_observacion' asociacion.pk informe.mes %}">
+                      Guardar
+                    </button>
+                  {% else %}
+                    <form method="post" id="estado-form-{{ informe.mes }}" action="{% url 'asociaciones:informe_estado' asociacion.pk informe.mes %}">
+                      {% csrf_token %}
+                      <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-success btn-sm" name="estado" value="APROBADO" type="submit">Aprobar</button>
+                        <button class="btn btn-danger btn-sm" name="estado" value="RECHAZADO" type="submit">Rechazar</button>
+                      </div>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6">No hay informes registrados.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not es_admin %}
+<script>
+  const getCookie = (name) => {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  };
+
+  const notify = (message, type) => {
+    if (window.jQuery && jQuery.notify) {
+      jQuery.notify({ message: message }, { type: type || 'success' });
+    } else {
+      alert(message);
+    }
+  };
+
+  document.querySelectorAll('.upload-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const row = button.closest('tr');
+      const input = row.querySelector('.file-input');
+      if (!input.files.length) {
+        notify('Debe seleccionar un archivo PDF.', 'warning');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('pdf', input.files[0]);
+      const response = await fetch(button.dataset.uploadUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+      });
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else if (response.ok) {
+        notify('Archivo subido correctamente.');
+        window.location.reload();
+      } else {
+        notify('No se pudo subir el archivo.', 'danger');
+      }
+    });
+  });
+
+  document.querySelectorAll('.save-obs-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const row = button.closest('tr');
+      const textarea = row.querySelector('textarea');
+      const formData = new FormData();
+      formData.append('observaciones', textarea.value);
+      const response = await fetch(button.dataset.obsUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+      });
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else if (response.ok) {
+        notify('Observación guardada correctamente.');
+      } else {
+        notify('No se pudo guardar la observación.', 'danger');
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}
