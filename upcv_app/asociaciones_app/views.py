@@ -263,6 +263,7 @@ def informes_mensuales(request, pk):
         raise PermissionDenied
     crear_informes_mensuales(asociacion, request.user)
     informes = asociacion.informes_mensuales.all()
+    puede_subir = is_admin(request.user) or user_has_asociacion_access(request.user, asociacion)
     return render(
         request,
         "asociaciones_app/informes_mensuales.html",
@@ -270,6 +271,7 @@ def informes_mensuales(request, pk):
             "asociacion": asociacion,
             "informes": informes,
             "es_admin": is_admin(request.user),
+            "puede_subir": puede_subir,
         },
     )
 
@@ -308,7 +310,7 @@ def informe_upload(request, asociacion_id, mes):
         messages.error(request, "; ".join(exc.messages))
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe.save()
-    messages.success(request, "Archivo subido correctamente.")
+    messages.success(request, f"Informe de {informe.get_mes_display()} cargado correctamente.")
     return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 
 

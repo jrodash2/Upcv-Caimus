@@ -43,13 +43,23 @@
                 </td>
                 <td>
                   {% if informe.pdf %}
-                    <a href="{{ informe.pdf.url }}" target="_blank">Ver PDF</a>
+                    <span class="badge bg-success">Subido</span>
+                    <div class="mt-1">
+                      <a href="{{ informe.pdf.url }}" target="_blank">Ver PDF</a>
+                    </div>
+                  {% else %}
+                    <span class="badge bg-secondary">Pendiente</span>
                   {% endif %}
-                  {% if not es_admin %}
-                    <input type="file" class="form-control mt-2 file-input" data-informe-mes="{{ informe.mes }}" accept="application/pdf">
-                    <button type="button" class="btn btn-outline-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:informe_upload' asociacion.pk informe.mes %}">
-                      {% if informe.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
-                    </button>
+                  {% if puede_subir %}
+                    <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload' asociacion.pk informe.mes %}">
+                      {% csrf_token %}
+                      <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
+                      <button class="btn btn-primary btn-sm mt-2" type="submit">
+                        {% if informe.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
+                      </button>
+                    </form>
+                  {% else %}
+                    <div class="text-muted small mt-2">Sin permisos</div>
                   {% endif %}
                 </td>
                 <td>
@@ -115,32 +125,6 @@
       alert(message);
     }
   };
-
-  document.querySelectorAll('.upload-btn').forEach((button) => {
-    button.addEventListener('click', async () => {
-      const row = button.closest('tr');
-      const input = row.querySelector('.file-input');
-      if (!input.files.length) {
-        notify('Debe seleccionar un archivo PDF.', 'warning');
-        return;
-      }
-      const formData = new FormData();
-      formData.append('pdf', input.files[0]);
-      const response = await fetch(button.dataset.uploadUrl, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
-        body: formData,
-      });
-      if (response.redirected) {
-        window.location.href = response.url;
-      } else if (response.ok) {
-        notify('Archivo subido correctamente.');
-        window.location.reload();
-      } else {
-        notify('No se pudo subir el archivo.', 'danger');
-      }
-    });
-  });
 
   document.querySelectorAll('.save-obs-btn').forEach((button) => {
     button.addEventListener('click', async () => {
