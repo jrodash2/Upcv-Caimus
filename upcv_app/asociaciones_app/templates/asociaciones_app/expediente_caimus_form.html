@@ -45,7 +45,15 @@
                 <h5>Checklist</h5>
                 <p class="text-muted mb-0">Completa los documentos requeridos para el expediente CAIMUS.</p>
               </div>
-              <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
+              <div class="d-flex gap-2 flex-wrap align-items-center">
+                <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
+                {% if es_admin %}
+                <form method="post" action="{% url 'asociaciones:expediente_sync_checklist' asociacion.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-primary btn-sm" type="submit">Sincronizar checklist del año</button>
+                </form>
+                {% endif %}
+              </div>
             </div>
             <div class="card-body">
               <div class="table-responsive">
