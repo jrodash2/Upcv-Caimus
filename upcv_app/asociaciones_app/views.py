@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
@@ -499,10 +500,11 @@ def informe_resolucion_pdf(request, asociacion_id, mes):
         raise PermissionDenied
     informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
     if informe.estado != InformeMensual.ESTADO_APROBADO:
+        messages.error(request, "La constancia estará disponible cuando el informe sea aprobado.")
         raise PermissionDenied
 
     resolucion = getattr(informe, "resolucion", None)
-    if resolucion is None and is_admin(request.user):
+    if resolucion is None:
         correlativo = generar_correlativo_informe(asociacion.anio.anio, informe.mes)
         resolucion = ResolucionInformeMensual.objects.create(
             informe=informe,
@@ -516,9 +518,15 @@ def informe_resolucion_pdf(request, asociacion_id, mes):
                 "estado": informe.estado,
             },
         )
-    if resolucion is None:
-        messages.warning(request, "La constancia aún no ha sido emitida por el administrador.")
-        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+    nombre_archivo = (
+        f"constancia_informe_{informe.mes:02d}_{asociacion.codigo or asociacion.pk}_{asociacion.anio.anio}.pdf"
+    )
+    if resolucion.archivo_pdf and resolucion.archivo_pdf.storage.exists(resolucion.archivo_pdf.name):
+        archivo = resolucion.archivo_pdf.open("rb")
+        response = HttpResponse(archivo.read(), content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
+        return response
 
     html = render_to_string(
         "asociaciones_app/informe_resolucion_pdf.html",
@@ -530,8 +538,9 @@ def informe_resolucion_pdf(request, asociacion_id, mes):
         request=request,
     )
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    resolucion.archivo_pdf.save(nombre_archivo, ContentFile(pdf), save=True)
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f"inline; filename=Constancia-Informe-{resolucion.correlativo}.pdf"
+    response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
     return response
 
 
