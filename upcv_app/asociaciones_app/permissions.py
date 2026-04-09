@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.db import models
 from django.db.models import QuerySet
 
 from .models import Asociacion, AsociacionUsuario, ExpedienteCAIMUS
@@ -44,6 +45,13 @@ def user_has_expediente_access(user, expediente: ExpedienteCAIMUS) -> bool:
     return user_has_asociacion_access(user, expediente.asociacion)
 
 
+def expediente_esta_completo(expediente: ExpedienteCAIMUS) -> bool:
+    items = expediente.items.all()
+    if not items.exists():
+        return False
+    return not items.filter(models.Q(pdf="") | models.Q(pdf__isnull=True)).exists()
+
+
 def user_can_download_resolucion(user, expediente: ExpedienteCAIMUS) -> bool:
     if expediente.estado != ExpedienteCAIMUS.ESTADO_APROBADO:
         return False
@@ -51,9 +59,10 @@ def user_can_download_resolucion(user, expediente: ExpedienteCAIMUS) -> bool:
         return True
     if not is_asociacion(user):
         return False
-    return AsociacionUsuario.objects.filter(
+    tiene_asignacion = AsociacionUsuario.objects.filter(
         usuario=user,
         asociacion=expediente.asociacion,
         activo=True,
         asociacion__activo=True,
     ).exists()
+    return tiene_asignacion and expediente_esta_completo(expediente)

@@ -16,6 +16,7 @@ from .forms import (
     AnioForm,
     AsociacionForm,
     AsociacionUsuarioForm,
+    ChecklistAnioItemFormSet,
     ExpedienteCAIMUSForm,
     ItemChecklistFormSet,
     RevisionExpedienteForm,
@@ -35,6 +36,7 @@ from .models import (
 )
 from .mixins import admin_required, asociacion_required
 from .permissions import (
+    expediente_esta_completo,
     get_asociaciones_usuario,
     is_admin,
     is_asociacion,
@@ -79,6 +81,43 @@ def anio_edit(request, pk):
     else:
         form = AnioForm(instance=anio)
     return render(request, "asociaciones_app/anio_form.html", {"form": form, "titulo": "Editar año"})
+
+
+@login_required
+@admin_required
+def anio_checklist(request, pk):
+    anio = get_object_or_404(Anio, pk=pk)
+    formset = ChecklistAnioItemFormSet(instance=anio, prefix="checklist")
+    return render(
+        request,
+        "asociaciones_app/anio_checklist_form.html",
+        {
+            "anio": anio,
+            "formset": formset,
+        },
+    )
+
+
+@login_required
+@admin_required
+@require_POST
+def anio_checklist_guardar(request, pk):
+    anio = get_object_or_404(Anio, pk=pk)
+    formset = ChecklistAnioItemFormSet(request.POST, instance=anio, prefix="checklist")
+    if formset.is_valid():
+        formset.save()
+        messages.success(request, "Checklist del año guardado correctamente.")
+        return redirect("asociaciones:anio_checklist", pk=anio.pk)
+    messages.error(request, "Revise los datos del checklist antes de guardar.")
+    return render(
+        request,
+        "asociaciones_app/anio_checklist_form.html",
+        {
+            "anio": anio,
+            "formset": formset,
+        },
+        status=400,
+    )
 
 
 @login_required
@@ -177,6 +216,11 @@ def expediente_caimus(request, pk):
         defaults={"creado_por": request.user, "actualizado_por": request.user},
     )
     crear_items_expediente(expediente)
+    if not asociacion.anio.checklist_items.filter(activo=True).exists():
+        messages.warning(
+            request,
+            "El año no tenía checklist configurado. Se aplicó una plantilla base para continuar.",
+        )
 
     if request.method == "POST":
         form = ExpedienteCAIMUSForm(request.POST, instance=expediente)
@@ -201,6 +245,13 @@ def expediente_caimus(request, pk):
         formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.order_by("numero"))
 
     progress = expediente.progress_stats()
+    expediente_completo = expediente_esta_completo(expediente)
+    puede_descargar_resolucion = (
+        is_asociacion(request.user)
+        and user_has_expediente_access(request.user, expediente)
+        and expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO
+        and expediente_completo
+    )
 
     return render(
         request,
@@ -212,8 +263,23 @@ def expediente_caimus(request, pk):
             "formset": formset,
             "progress": progress,
             "es_admin": is_admin(request.user),
+            "es_asociacion": is_asociacion(request.user),
+            "expediente_completo": expediente_completo,
+            "puede_descargar_resolucion": puede_descargar_resolucion,
         },
     )
+
+
+@asociacion_required
+@require_POST
+def expediente_sync_checklist(request, pk):
+    if not is_admin(request.user):
+        raise PermissionDenied
+    asociacion = get_object_or_404(Asociacion, pk=pk)
+    expediente = get_object_or_404(ExpedienteCAIMUS, asociacion=asociacion)
+    crear_items_expediente(expediente)
+    messages.success(request, "Checklist del expediente sincronizado con el año.")
+    return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
 
 
 @asociacion_required
