@@ -36,6 +36,7 @@ from .models import (
 )
 from .mixins import admin_required, asociacion_required
 from .permissions import (
+    expediente_esta_completo,
     get_asociaciones_usuario,
     is_admin,
     is_asociacion,
@@ -244,6 +245,13 @@ def expediente_caimus(request, pk):
         formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.order_by("numero"))
 
     progress = expediente.progress_stats()
+    expediente_completo = expediente_esta_completo(expediente)
+    puede_descargar_resolucion = (
+        is_asociacion(request.user)
+        and user_has_expediente_access(request.user, expediente)
+        and expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO
+        and expediente_completo
+    )
 
     return render(
         request,
@@ -255,6 +263,9 @@ def expediente_caimus(request, pk):
             "formset": formset,
             "progress": progress,
             "es_admin": is_admin(request.user),
+            "es_asociacion": is_asociacion(request.user),
+            "expediente_completo": expediente_completo,
+            "puede_descargar_resolucion": puede_descargar_resolucion,
         },
     )
 

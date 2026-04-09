@@ -33,6 +33,26 @@ class AsociacionesTests(TestCase):
         self.asociacion = Asociacion.objects.create(anio=self.anio, nombre="Asociacion X", codigo="AX")
         self.asociacion_otra = Asociacion.objects.create(anio=self.anio, nombre="Asociacion Y", codigo="AY")
 
+    def _crear_expediente_aprobado_completo(self):
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            estado=ExpedienteCAIMUS.ESTADO_APROBADO,
+        )
+        crear_items_expediente(expediente)
+        item = expediente.items.first()
+        item.pdf = SimpleUploadedFile("doc.pdf", b"%PDF-1.4 test", content_type="application/pdf")
+        item.save()
+        ResolucionExpediente.objects.create(
+            expediente=expediente,
+            correlativo="RES-2026-001",
+            fecha_emision=date.today(),
+            generado_por=self.admin_user,
+            contenido_snapshot={"asociacion": self.asociacion.nombre},
+        )
+        return expediente
+
     def test_usuario_no_asignado_no_puede_ver_expediente(self):
         client = Client()
         client.login(username="user1", password="pass123")
@@ -168,11 +188,21 @@ class AsociacionesTests(TestCase):
 
     def test_asociacion_puede_descargar_resolucion_aprobada(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = self._crear_expediente_aprobado_completo()
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:resolucion_pdf", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_asociacion_no_puede_descargar_resolucion_si_expediente_incompleto(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
         expediente = ExpedienteCAIMUS.objects.create(
             asociacion=self.asociacion,
             creado_por=self.admin_user,
             estado=ExpedienteCAIMUS.ESTADO_APROBADO,
         )
+        crear_items_expediente(expediente)
         ResolucionExpediente.objects.create(
             expediente=expediente,
             correlativo="RES-2026-001",
@@ -183,7 +213,50 @@ class AsociacionesTests(TestCase):
         client = Client()
         client.login(username="user1", password="pass123")
         response = client.get(reverse("asociaciones:resolucion_pdf", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_asociacion_ve_boton_descargar_si_aprobado_y_completo(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = self._crear_expediente_aprobado_completo()
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Descargar Resolución PDF")
+
+    def test_asociacion_no_ve_boton_descargar_si_falta_pdf(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            estado=ExpedienteCAIMUS.ESTADO_APROBADO,
+        )
+        crear_items_expediente(expediente)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Descargar Resolución PDF")
+
+    def test_asociacion_no_ve_boton_descargar_si_no_aprobado(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = self._crear_expediente_aprobado_completo()
+        expediente.estado = ExpedienteCAIMUS.ESTADO_EN_REVISION
+        expediente.save(update_fields=["estado"])
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Descargar Resolución PDF")
+
+    def test_admin_no_ve_boton_descargar_resolucion(self):
+        expediente = self._crear_expediente_aprobado_completo()
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Descargar Resolución PDF")
 
     def test_asociacion_no_puede_ver_informes_otra_asociacion(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
