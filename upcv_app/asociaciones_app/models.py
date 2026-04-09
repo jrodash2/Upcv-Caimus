@@ -31,6 +31,81 @@ class Anio(models.Model):
         return str(self.anio)
 
 
+@dataclass(frozen=True)
+class ChecklistItemDefinition:
+    numero: int
+    seccion: int
+    titulo: str
+    hint: str
+
+
+DEFAULT_CHECKLIST_ITEMS: List[ChecklistItemDefinition] = [
+    ChecklistItemDefinition(1, 1, "Solicitud dirigida al señor Ministro de Gobernación", ""),
+    ChecklistItemDefinition(2, 1, "Plan Operativo Anual -POA-", ""),
+    ChecklistItemDefinition(
+        3,
+        1,
+        "Copia legalizada del Testimonio de la Escritura Pública Constitutiva de la entidad",
+        "",
+    ),
+    ChecklistItemDefinition(4, 1, "Constancia de inscripción y actualización de datos -RTU-", ""),
+    ChecklistItemDefinition(5, 1, "Solvencia Fiscal vigente", ""),
+    ChecklistItemDefinition(
+        6,
+        1,
+        "Constancia de Inventario de Cuentas emitida por el Ministerio de Finanzas Públicas.",
+        "",
+    ),
+    ChecklistItemDefinition(
+        7,
+        1,
+        "Certificación de la constancia de inscripción de la entidad en el Registro de Personas Jurídicas -REPEJU-",
+        "",
+    ),
+    ChecklistItemDefinition(8, 1, "Copia legalizada -DPI- de representante legal", ""),
+    ChecklistItemDefinition(
+        9,
+        1,
+        "Copia legalizada del Acta Notarial de nombramiento de representante legal",
+        "",
+    ),
+    ChecklistItemDefinition(
+        10,
+        1,
+        "Constancia de inscripción y actualización de datos -RTU- del representante legal",
+        "",
+    ),
+    ChecklistItemDefinition(11, 1, "Solvencia Fiscal vigente, del Representante Legal", ""),
+    ChecklistItemDefinition(
+        12,
+        1,
+        "Certificación de la constancia de inscripción en el Registro de Personas Jurídicas -REPEJU-",
+        "",
+    ),
+]
+
+
+class ChecklistAnioItem(models.Model):
+    anio = models.ForeignKey(Anio, on_delete=models.CASCADE, related_name="checklist_items")
+    numero = models.PositiveIntegerField()
+    titulo = models.CharField(max_length=255)
+    descripcion = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Item checklist por año"
+        verbose_name_plural = "Items checklist por año"
+        constraints = [
+            models.UniqueConstraint(fields=["anio", "numero"], name="unique_checklist_anio_numero"),
+        ]
+        ordering = ["numero"]
+
+    def __str__(self) -> str:
+        return f"{self.anio.anio} - {self.numero}. {self.titulo}"
+
+
 class Asociacion(models.Model):
     anio = models.ForeignKey(Anio, on_delete=models.CASCADE, related_name="asociaciones")
     nombre = models.CharField(max_length=255)
@@ -136,67 +211,13 @@ class ExpedienteCAIMUS(models.Model):
 
     def progress_stats(self) -> Dict[str, object]:
         items = self.items.all()
-        total = len(CHECKLIST_ITEMS)
+        total = items.count()
         completados = items.exclude(pdf="").exclude(pdf__isnull=True).count()
         return {
             "total": total,
             "done": completados,
             "percent": int((completados / total) * 100) if total else 0,
         }
-
-
-@dataclass(frozen=True)
-class ChecklistItemDefinition:
-    numero: int
-    seccion: int
-    titulo: str
-    hint: str
-
-
-CHECKLIST_ITEMS: List[ChecklistItemDefinition] = [
-    ChecklistItemDefinition(1, 1, "Solicitud dirigida al señor Ministro de Gobernación", ""),
-    ChecklistItemDefinition(2, 1, "Plan Operativo Anual -POA-", ""),
-    ChecklistItemDefinition(
-        3,
-        1,
-        "Copia legalizada del Testimonio de la Escritura Pública Constitutiva de la entidad",
-        "",
-    ),
-    ChecklistItemDefinition(4, 1, "Constancia de inscripción y actualización de datos -RTU-", ""),
-    ChecklistItemDefinition(5, 1, "Solvencia Fiscal vigente", ""),
-    ChecklistItemDefinition(
-        6,
-        1,
-        "Constancia de Inventario de Cuentas emitida por el Ministerio de Finanzas Públicas.",
-        "",
-    ),
-    ChecklistItemDefinition(
-        7,
-        1,
-        "Certificación de la constancia de inscripción de la entidad en el Registro de Personas Jurídicas -REPEJU-",
-        "",
-    ),
-    ChecklistItemDefinition(8, 1, "Copia legalizada -DPI- de representante legal", ""),
-    ChecklistItemDefinition(
-        9,
-        1,
-        "Copia legalizada del Acta Notarial de nombramiento de representante legal",
-        "",
-    ),
-    ChecklistItemDefinition(
-        10,
-        1,
-        "Constancia de inscripción y actualización de datos -RTU- del representante legal",
-        "",
-    ),
-    ChecklistItemDefinition(11, 1, "Solvencia Fiscal vigente, del Representante Legal", ""),
-    ChecklistItemDefinition(
-        12,
-        1,
-        "Certificación de la constancia de inscripción en el Registro de Personas Jurídicas -REPEJU-",
-        "",
-    ),
-]
 
 
 class ItemChecklistCAIMUS(models.Model):
@@ -210,6 +231,13 @@ class ItemChecklistCAIMUS(models.Model):
     ]
 
     expediente = models.ForeignKey(ExpedienteCAIMUS, on_delete=models.CASCADE, related_name="items")
+    plantilla_item = models.ForeignKey(
+        ChecklistAnioItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items_expediente",
+    )
     numero = models.PositiveIntegerField()
     seccion = models.PositiveIntegerField(choices=SECCION_CHOICES, default=SECCION_1)
     titulo = models.CharField(max_length=255)
@@ -278,42 +306,48 @@ class ResolucionExpediente(models.Model):
 
 
 def crear_items_expediente(expediente: ExpedienteCAIMUS) -> None:
-    existentes = {item.numero: item for item in expediente.items.all()}
-    numeros_validos = {item.numero for item in CHECKLIST_ITEMS}
+    plantilla_qs = expediente.asociacion.anio.checklist_items.filter(activo=True).order_by("numero")
+    if not plantilla_qs.exists():
+        ChecklistAnioItem.objects.bulk_create(
+            [
+                ChecklistAnioItem(
+                    anio=expediente.asociacion.anio,
+                    numero=item.numero,
+                    titulo=item.titulo,
+                    descripcion=item.hint,
+                    activo=True,
+                )
+                for item in DEFAULT_CHECKLIST_ITEMS
+            ]
+        )
+        plantilla_qs = expediente.asociacion.anio.checklist_items.filter(activo=True).order_by("numero")
+
+    existentes = {
+        item.plantilla_item_id: item
+        for item in expediente.items.exclude(plantilla_item_id__isnull=True)
+    }
+    existentes_por_numero = {item.numero: item for item in expediente.items.all()}
     items_to_create = []
-    items_to_update = []
-    for item in CHECKLIST_ITEMS:
-        existente = existentes.get(item.numero)
+    for item in plantilla_qs:
+        existente = existentes.get(item.id) or existentes_por_numero.get(item.numero)
         if existente is None:
             items_to_create.append(
                 ItemChecklistCAIMUS(
                     expediente=expediente,
+                    plantilla_item=item,
                     numero=item.numero,
-                    seccion=item.seccion,
+                    seccion=ItemChecklistCAIMUS.SECCION_1,
                     titulo=item.titulo,
-                    hint=item.hint,
+                    hint=item.descripcion,
                 )
             )
             continue
-        actualizado = False
-        if existente.seccion != item.seccion:
-            existente.seccion = item.seccion
-            actualizado = True
-        if existente.titulo != item.titulo:
-            existente.titulo = item.titulo
-            actualizado = True
-        if existente.hint != item.hint:
-            existente.hint = item.hint
-            actualizado = True
-        if actualizado:
-            items_to_update.append(existente)
+        if existente.plantilla_item_id is None:
+            existente.plantilla_item = item
+            existente.save(update_fields=["plantilla_item"])
     if items_to_create:
         ItemChecklistCAIMUS.objects.bulk_create(items_to_create)
-    if items_to_update:
-        ItemChecklistCAIMUS.objects.bulk_update(items_to_update, ["seccion", "titulo", "hint"])
-    extra_items = expediente.items.exclude(numero__in=numeros_validos)
-    if extra_items.exists():
-        extra_items.delete()
+    # No eliminar items existentes: se conserva histórico del expediente
 
 
 MESES_CHOICES = [
@@ -347,6 +381,18 @@ class InformeMensual(models.Model):
 
     asociacion = models.ForeignKey(Asociacion, on_delete=models.CASCADE, related_name="informes_mensuales")
     mes = models.PositiveSmallIntegerField(choices=MESES_CHOICES)
+    archivo_narrativo = models.FileField(
+        upload_to="informes/narrativos/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size],
+    )
+    archivo_presupuestario = models.FileField(
+        upload_to="informes/presupuestarios/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size],
+    )
     pdf = models.FileField(
         upload_to="informes/%Y/%m/",
         blank=True,
@@ -392,8 +438,11 @@ class InformeMensual(models.Model):
     def __str__(self) -> str:
         return f"{self.asociacion} - {self.get_mes_display()}"
 
+    def tiene_archivos_completos(self) -> bool:
+        return bool(self.archivo_narrativo and self.archivo_presupuestario)
+
     def save(self, *args, **kwargs) -> None:
-        if self.pdf and self.estado == self.ESTADO_BORRADOR:
+        if self.tiene_archivos_completos() and self.estado in [self.ESTADO_BORRADOR, self.ESTADO_RECHAZADO]:
             self.estado = self.ESTADO_EN_REVISION
         super().save(*args, **kwargs)
 
@@ -413,6 +462,23 @@ class InformeEstadoHistorial(models.Model):
 
     def __str__(self) -> str:
         return f"{self.informe} {self.estado_anterior} -> {self.estado_nuevo}"
+
+
+class ResolucionInformeMensual(models.Model):
+    informe = models.OneToOneField(InformeMensual, on_delete=models.CASCADE, related_name="resolucion")
+    correlativo = models.CharField(max_length=50, unique=True)
+    fecha_emision = models.DateField()
+    generado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    generado_en = models.DateTimeField(auto_now_add=True)
+    archivo_pdf = models.FileField(upload_to="resoluciones_informes/%Y/", null=True, blank=True)
+    contenido_snapshot = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Resolución de informe mensual"
+        verbose_name_plural = "Resoluciones de informes mensuales"
+
+    def __str__(self) -> str:
+        return self.correlativo
 
 
 def crear_informes_mensuales(asociacion: Asociacion, usuario: Optional[models.Model] = None) -> None:
@@ -448,3 +514,20 @@ def generar_correlativo(anio: int) -> str:
             except (ValueError, IndexError):
                 secuencia = 1
         return f"UPCV-CAIMUS-{anio}-{secuencia:04d}"
+
+
+def generar_correlativo_informe(anio: int, mes: int) -> str:
+    with transaction.atomic():
+        ultimo = (
+            ResolucionInformeMensual.objects.select_for_update()
+            .filter(informe__asociacion__anio__anio=anio, informe__mes=mes)
+            .order_by("-correlativo")
+            .first()
+        )
+        secuencia = 1
+        if ultimo:
+            try:
+                secuencia = int(ultimo.correlativo.split("-")[-1]) + 1
+            except (ValueError, IndexError):
+                secuencia = 1
+        return f"UPCV-INF-{anio}-{mes:02d}-{secuencia:04d}"
