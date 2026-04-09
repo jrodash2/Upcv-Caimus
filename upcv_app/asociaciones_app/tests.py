@@ -11,9 +11,11 @@ from .models import (
     Anio,
     Asociacion,
     AsociacionUsuario,
+    ChecklistAnioItem,
     ExpedienteCAIMUS,
     InformeMensual,
     ResolucionExpediente,
+    crear_items_expediente,
 )
 
 
@@ -213,6 +215,60 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         informe.refresh_from_db()
         self.assertEqual(informe.estado, InformeMensual.ESTADO_APROBADO)
+
+    def test_admin_puede_ver_y_guardar_checklist_anio(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:anio_checklist", args=[self.anio.pk]))
+        self.assertEqual(response.status_code, 200)
+
+        payload = {
+            "checklist-TOTAL_FORMS": "1",
+            "checklist-INITIAL_FORMS": "0",
+            "checklist-MIN_NUM_FORMS": "0",
+            "checklist-MAX_NUM_FORMS": "1000",
+            "checklist-0-id": "",
+            "checklist-0-numero": "1",
+            "checklist-0-titulo": "Documento nuevo",
+            "checklist-0-descripcion": "Descripción de prueba",
+            "checklist-0-activo": "on",
+            "checklist-0-DELETE": "",
+        }
+        response = client.post(reverse("asociaciones:anio_checklist_guardar", args=[self.anio.pk]), payload)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(ChecklistAnioItem.objects.filter(anio=self.anio, numero=1, titulo="Documento nuevo").exists())
+
+    def test_usuario_asociacion_recibe_403_en_checklist_anio(self):
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:anio_checklist", args=[self.anio.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_crear_expediente_copia_items_del_anio(self):
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", descripcion="Desc", activo=True)
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=2, titulo="Doc 2", descripcion="", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        crear_items_expediente(expediente)
+        self.assertEqual(expediente.items.count(), 2)
+        self.assertTrue(expediente.items.filter(numero=1, titulo="Doc 1", plantilla_item__isnull=False).exists())
+
+    def test_expediente_no_falla_si_anio_sin_checklist(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(ChecklistAnioItem.objects.filter(anio=self.anio).count(), 1)
+
+    def test_expediente_muestra_items_del_anio_correcto(self):
+        anio_otro = Anio.objects.create(anio=2027)
+        asociacion_otra = Asociacion.objects.create(anio=anio_otro, nombre="Asoc Z", codigo="AZ")
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc Año 2026", activo=True)
+        ChecklistAnioItem.objects.create(anio=anio_otro, numero=1, titulo="Doc Año 2027", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=asociacion_otra, creado_por=self.admin_user)
+        crear_items_expediente(expediente)
+        self.assertTrue(expediente.items.filter(titulo="Doc Año 2027").exists())
+        self.assertFalse(expediente.items.filter(titulo="Doc Año 2026").exists())
 
     def test_subir_informe_pdf_marca_revision_y_conserva_observaciones(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")

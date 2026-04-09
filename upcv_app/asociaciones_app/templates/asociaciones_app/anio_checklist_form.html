@@ -1,0 +1,136 @@
+{% extends 'almacen/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-8">
+          <h4>Checklist del Año {{ anio.anio }}</h4>
+          <p class="text-muted mb-0">Estado: {% if anio.activo %}Activo{% else %}Inactivo{% endif %}</p>
+        </div>
+        <div class="col-md-4 text-md-end d-flex gap-2 flex-wrap justify-content-md-end">
+          <a class="btn btn-outline-primary" href="{% url 'asociaciones:anios_list' %}">Volver</a>
+          <button type="button" class="btn btn-primary" id="add-item-btn">Agregar ítem</button>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'asociaciones:anio_checklist_guardar' anio.pk %}" id="checklist-form">
+      {% csrf_token %}
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Plantilla de checklist</h5>
+          <button class="btn btn-primary" type="submit">Guardar checklist</button>
+        </div>
+        <div class="card-body">
+          {{ formset.management_form }}
+          {{ formset.non_form_errors }}
+          <div class="table-responsive">
+            <table class="table" id="checklist-table">
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Documento / título</th>
+                  <th>Descripción / ayuda</th>
+                  <th>Activo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="checklist-rows">
+                {% for form in formset %}
+                  <tr class="checklist-row" data-form-index="{{ forloop.counter0 }}">
+                    <td>
+                      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                      {{ form.numero }}
+                      {{ form.numero.errors }}
+                    </td>
+                    <td>
+                      {{ form.titulo }}
+                      {{ form.titulo.errors }}
+                    </td>
+                    <td>
+                      {{ form.descripcion }}
+                      {{ form.descripcion.errors }}
+                    </td>
+                    <td>
+                      <div class="form-check mt-2">{{ form.activo }}</div>
+                    </td>
+                    <td>
+                      {% if formset.can_delete %}
+                        <div class="d-none">{{ form.DELETE }}</div>
+                        <button type="button" class="btn btn-outline-danger btn-sm delete-row-btn">Quitar</button>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr class="empty-state-row"><td colspan="5" class="text-center text-muted">No hay ítems configurados para este año.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <template id="empty-form-template">
+        <tr class="checklist-row" data-form-index="__prefix__">
+          <td>
+            {{ formset.empty_form.id }}
+            {{ formset.empty_form.numero }}
+          </td>
+          <td>{{ formset.empty_form.titulo }}</td>
+          <td>{{ formset.empty_form.descripcion }}</td>
+          <td><div class="form-check mt-2">{{ formset.empty_form.activo }}</div></td>
+          <td>
+            <div class="d-none">{{ formset.empty_form.DELETE }}</div>
+            <button type="button" class="btn btn-outline-danger btn-sm delete-row-btn">Quitar</button>
+          </td>
+        </tr>
+      </template>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const formPrefix = '{{ formset.prefix }}';
+  const totalFormsInput = document.getElementById(`id_${formPrefix}-TOTAL_FORMS`);
+  const rowsContainer = document.getElementById('checklist-rows');
+  const addBtn = document.getElementById('add-item-btn');
+  const template = document.getElementById('empty-form-template').innerHTML;
+
+  const bindDeleteAction = (row) => {
+    const deleteBtn = row.querySelector('.delete-row-btn');
+    if (!deleteBtn) return;
+    deleteBtn.addEventListener('click', () => {
+      const deleteInput = row.querySelector(`input[name$='-DELETE']`);
+      if (deleteInput) {
+        deleteInput.checked = true;
+        row.classList.add('d-none');
+      } else {
+        row.remove();
+        totalFormsInput.value = Math.max(0, parseInt(totalFormsInput.value, 10) - 1);
+      }
+    });
+  };
+
+  rowsContainer.querySelectorAll('.checklist-row').forEach(bindDeleteAction);
+
+  addBtn.addEventListener('click', () => {
+    const index = parseInt(totalFormsInput.value, 10);
+    const html = template.replaceAll('__prefix__', String(index));
+    const wrapper = document.createElement('tbody');
+    wrapper.innerHTML = html.trim();
+    const row = wrapper.firstElementChild;
+    const emptyRow = rowsContainer.querySelector('.empty-state-row');
+    if (emptyRow) {
+      emptyRow.remove();
+    }
+    rowsContainer.appendChild(row);
+    totalFormsInput.value = index + 1;
+    bindDeleteAction(row);
+  });
+})();
+</script>
+{% endblock %}
