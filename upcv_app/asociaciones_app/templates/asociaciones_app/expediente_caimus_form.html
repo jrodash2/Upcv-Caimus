@@ -45,7 +45,15 @@
                 <h5>Checklist</h5>
                 <p class="text-muted mb-0">Completa los documentos requeridos para el expediente CAIMUS.</p>
               </div>
-              <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
+              <div class="d-flex gap-2 flex-wrap align-items-center">
+                <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
+                {% if es_admin %}
+                <form method="post" action="{% url 'asociaciones:expediente_sync_checklist' asociacion.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-primary btn-sm" type="submit">Sincronizar checklist del año</button>
+                </form>
+                {% endif %}
+              </div>
             </div>
             <div class="card-body">
               <div class="table-responsive">
@@ -110,11 +118,6 @@
 
           <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
             <button class="btn btn-primary" type="submit" name="save_all" value="1">Guardar todo</button>
-            {% if expediente.is_print_enabled %}
-              <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir expediente</button>
-            {% else %}
-              <span class="text-muted ms-2">Disponible cuando el administrador apruebe.</span>
-            {% endif %}
           </div>
         </form>
       </div>
@@ -133,12 +136,18 @@
         <div class="card">
           <div class="card-header"><h5>Resolución</h5></div>
           <div class="card-body">
-            {% if expediente.is_print_enabled %}
+            {% if puede_descargar_resolucion %}
               <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:resolucion_pdf' expediente.pk %}" target="_blank">
-                {% if es_admin %}Generar Resolución PDF{% else %}Descargar Resolución PDF{% endif %}
+                Descargar Resolución PDF
               </a>
+            {% elif es_asociacion %}
+              <div class="alert alert-light">
+                La resolución estará disponible cuando el expediente esté aprobado y todos los documentos estén completos.
+              </div>
             {% else %}
-              <div class="alert alert-light">Disponible cuando el administrador apruebe.</div>
+              <div class="alert alert-light">
+                La descarga de resolución está disponible únicamente para usuarios de asociación.
+              </div>
             {% endif %}
           </div>
         </div>

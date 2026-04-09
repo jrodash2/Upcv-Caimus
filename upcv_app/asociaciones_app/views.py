@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
@@ -16,6 +17,7 @@ from .forms import (
     AnioForm,
     AsociacionForm,
     AsociacionUsuarioForm,
+    ChecklistAnioItemFormSet,
     ExpedienteCAIMUSForm,
     ItemChecklistFormSet,
     RevisionExpedienteForm,
@@ -28,13 +30,16 @@ from .models import (
     ExpedienteEstadoHistorial,
     InformeEstadoHistorial,
     InformeMensual,
+    ResolucionInformeMensual,
     ResolucionExpediente,
     crear_items_expediente,
     crear_informes_mensuales,
     generar_correlativo,
+    generar_correlativo_informe,
 )
 from .mixins import admin_required, asociacion_required
 from .permissions import (
+    expediente_esta_completo,
     get_asociaciones_usuario,
     is_admin,
     is_asociacion,
@@ -79,6 +84,43 @@ def anio_edit(request, pk):
     else:
         form = AnioForm(instance=anio)
     return render(request, "asociaciones_app/anio_form.html", {"form": form, "titulo": "Editar año"})
+
+
+@login_required
+@admin_required
+def anio_checklist(request, pk):
+    anio = get_object_or_404(Anio, pk=pk)
+    formset = ChecklistAnioItemFormSet(instance=anio, prefix="checklist")
+    return render(
+        request,
+        "asociaciones_app/anio_checklist_form.html",
+        {
+            "anio": anio,
+            "formset": formset,
+        },
+    )
+
+
+@login_required
+@admin_required
+@require_POST
+def anio_checklist_guardar(request, pk):
+    anio = get_object_or_404(Anio, pk=pk)
+    formset = ChecklistAnioItemFormSet(request.POST, instance=anio, prefix="checklist")
+    if formset.is_valid():
+        formset.save()
+        messages.success(request, "Checklist del año guardado correctamente.")
+        return redirect("asociaciones:anio_checklist", pk=anio.pk)
+    messages.error(request, "Revise los datos del checklist antes de guardar.")
+    return render(
+        request,
+        "asociaciones_app/anio_checklist_form.html",
+        {
+            "anio": anio,
+            "formset": formset,
+        },
+        status=400,
+    )
 
 
 @login_required
@@ -177,6 +219,11 @@ def expediente_caimus(request, pk):
         defaults={"creado_por": request.user, "actualizado_por": request.user},
     )
     crear_items_expediente(expediente)
+    if not asociacion.anio.checklist_items.filter(activo=True).exists():
+        messages.warning(
+            request,
+            "El año no tenía checklist configurado. Se aplicó una plantilla base para continuar.",
+        )
 
     if request.method == "POST":
         form = ExpedienteCAIMUSForm(request.POST, instance=expediente)
@@ -201,6 +248,13 @@ def expediente_caimus(request, pk):
         formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.order_by("numero"))
 
     progress = expediente.progress_stats()
+    expediente_completo = expediente_esta_completo(expediente)
+    puede_descargar_resolucion = (
+        is_asociacion(request.user)
+        and user_has_expediente_access(request.user, expediente)
+        and expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO
+        and expediente_completo
+    )
 
     return render(
         request,
@@ -212,8 +266,23 @@ def expediente_caimus(request, pk):
             "formset": formset,
             "progress": progress,
             "es_admin": is_admin(request.user),
+            "es_asociacion": is_asociacion(request.user),
+            "expediente_completo": expediente_completo,
+            "puede_descargar_resolucion": puede_descargar_resolucion,
         },
     )
+
+
+@asociacion_required
+@require_POST
+def expediente_sync_checklist(request, pk):
+    if not is_admin(request.user):
+        raise PermissionDenied
+    asociacion = get_object_or_404(Asociacion, pk=pk)
+    expediente = get_object_or_404(ExpedienteCAIMUS, asociacion=asociacion)
+    crear_items_expediente(expediente)
+    messages.success(request, "Checklist del expediente sincronizado con el año.")
+    return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
 
 
 @asociacion_required
@@ -271,6 +340,7 @@ def informes_mensuales(request, pk):
             "asociacion": asociacion,
             "informes": informes,
             "es_admin": is_admin(request.user),
+            "es_asociacion": is_asociacion(request.user),
             "puede_subir": puede_subir,
         },
     )
@@ -278,7 +348,24 @@ def informes_mensuales(request, pk):
 
 @asociacion_required
 @require_POST
+def informe_upload_narrativo(request, asociacion_id, mes):
+    return _informe_upload_por_tipo(request, asociacion_id, mes, "narrativo")
+
+
+@asociacion_required
+@require_POST
+def informe_upload_presupuestario(request, asociacion_id, mes):
+    return _informe_upload_por_tipo(request, asociacion_id, mes, "presupuestario")
+
+
+@asociacion_required
+@require_POST
 def informe_upload(request, asociacion_id, mes):
+    # Compatibilidad con endpoint previo: el archivo legado se guarda como narrativo.
+    return _informe_upload_por_tipo(request, asociacion_id, mes, "narrativo")
+
+
+def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
     asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
     if not user_has_asociacion_access(request.user, asociacion):
         raise PermissionDenied
@@ -290,6 +377,9 @@ def informe_upload(request, asociacion_id, mes):
         mes=mes,
         defaults={"creado_por": request.user, "actualizado_por": request.user},
     )
+    if tipo_archivo not in ["narrativo", "presupuestario"]:
+        messages.error(request, "Tipo de archivo inválido.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     archivo = request.FILES.get("pdf")
     if not archivo:
         messages.error(request, "Debe seleccionar un archivo PDF.")
@@ -298,8 +388,14 @@ def informe_upload(request, asociacion_id, mes):
         messages.error(request, "El archivo debe ser un PDF válido.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 
-    informe.pdf = archivo
-    informe.estado = InformeMensual.ESTADO_EN_REVISION
+    if tipo_archivo == "narrativo":
+        informe.archivo_narrativo = archivo
+        mensaje_ok = f"Informe narrativo de {informe.get_mes_display()} cargado correctamente."
+    else:
+        informe.archivo_presupuestario = archivo
+        mensaje_ok = f"Informe presupuestario de {informe.get_mes_display()} cargado correctamente."
+    if informe.tiene_archivos_completos():
+        informe.estado = InformeMensual.ESTADO_EN_REVISION
     informe.observacion_admin = ""
     informe.aprobado_por = None
     informe.aprobado_en = None
@@ -310,7 +406,7 @@ def informe_upload(request, asociacion_id, mes):
         messages.error(request, "; ".join(exc.messages))
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe.save()
-    messages.success(request, f"Informe de {informe.get_mes_display()} cargado correctamente.")
+    messages.success(request, mensaje_ok)
     return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 
 
@@ -351,6 +447,12 @@ def informe_estado(request, asociacion_id, mes):
     if estado_nuevo == InformeMensual.ESTADO_RECHAZADO and not observacion_admin:
         messages.error(request, "Debe indicar la observación del rechazo.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if estado_nuevo == InformeMensual.ESTADO_APROBADO and not informe.tiene_archivos_completos():
+        messages.error(
+            request,
+            "Para aprobar el informe mensual deben cargarse tanto el informe narrativo como el presupuestario.",
+        )
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 
     informe.estado = estado_nuevo
     if estado_nuevo == InformeMensual.ESTADO_APROBADO:
@@ -371,8 +473,75 @@ def informe_estado(request, asociacion_id, mes):
         observacion=observacion_admin,
         cambiado_por=request.user,
     )
+    if estado_nuevo == InformeMensual.ESTADO_APROBADO and not hasattr(informe, "resolucion"):
+        correlativo = generar_correlativo_informe(asociacion.anio.anio, informe.mes)
+        ResolucionInformeMensual.objects.create(
+            informe=informe,
+            correlativo=correlativo,
+            fecha_emision=timezone.now().date(),
+            generado_por=request.user,
+            contenido_snapshot={
+                "asociacion": asociacion.nombre,
+                "anio": asociacion.anio.anio,
+                "mes": informe.get_mes_display(),
+                "estado": informe.estado,
+            },
+        )
     messages.success(request, "Estado actualizado correctamente.")
     return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+
+@asociacion_required
+def informe_resolucion_pdf(request, asociacion_id, mes):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    if mes not in range(1, 13):
+        raise PermissionDenied
+    informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
+    if informe.estado != InformeMensual.ESTADO_APROBADO:
+        messages.error(request, "La constancia estará disponible cuando el informe sea aprobado.")
+        raise PermissionDenied
+
+    resolucion = getattr(informe, "resolucion", None)
+    if resolucion is None:
+        correlativo = generar_correlativo_informe(asociacion.anio.anio, informe.mes)
+        resolucion = ResolucionInformeMensual.objects.create(
+            informe=informe,
+            correlativo=correlativo,
+            fecha_emision=timezone.now().date(),
+            generado_por=request.user,
+            contenido_snapshot={
+                "asociacion": asociacion.nombre,
+                "anio": asociacion.anio.anio,
+                "mes": informe.get_mes_display(),
+                "estado": informe.estado,
+            },
+        )
+
+    nombre_archivo = (
+        f"constancia_informe_{informe.mes:02d}_{asociacion.codigo or asociacion.pk}_{asociacion.anio.anio}.pdf"
+    )
+    if resolucion.archivo_pdf and resolucion.archivo_pdf.storage.exists(resolucion.archivo_pdf.name):
+        archivo = resolucion.archivo_pdf.open("rb")
+        response = HttpResponse(archivo.read(), content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
+        return response
+
+    html = render_to_string(
+        "asociaciones_app/informe_resolucion_pdf.html",
+        {
+            "asociacion": asociacion,
+            "informe": informe,
+            "resolucion": resolucion,
+        },
+        request=request,
+    )
+    pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    resolucion.archivo_pdf.save(nombre_archivo, ContentFile(pdf), save=True)
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
+    return response
 
 
 @login_required

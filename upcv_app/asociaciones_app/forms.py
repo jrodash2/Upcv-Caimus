@@ -8,6 +8,7 @@ from .models import (
     Anio,
     Asociacion,
     AsociacionUsuario,
+    ChecklistAnioItem,
     ExpedienteCAIMUS,
     ItemChecklistCAIMUS,
 )
@@ -71,6 +72,44 @@ class ItemChecklistForm(forms.ModelForm):
 class BaseItemChecklistFormSet(forms.BaseInlineFormSet):
     def clean(self):
         super().clean()
+
+
+class ChecklistAnioItemForm(forms.ModelForm):
+    class Meta:
+        model = ChecklistAnioItem
+        fields = ["numero", "titulo", "descripcion", "activo"]
+        widgets = {
+            "numero": forms.NumberInput(attrs={"class": "form-control"}),
+            "titulo": forms.TextInput(attrs={"class": "form-control"}),
+            "descripcion": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class BaseChecklistAnioItemFormSet(forms.BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        numeros = set()
+        for form in self.forms:
+            if not hasattr(form, "cleaned_data") or not form.cleaned_data:
+                continue
+            if form.cleaned_data.get("DELETE"):
+                continue
+            numero = form.cleaned_data.get("numero")
+            if numero in numeros:
+                form.add_error("numero", "No puede repetir el número del item.")
+            elif numero is not None:
+                numeros.add(numero)
+
+
+ChecklistAnioItemFormSet = inlineformset_factory(
+    Anio,
+    ChecklistAnioItem,
+    form=ChecklistAnioItemForm,
+    formset=BaseChecklistAnioItemFormSet,
+    extra=0,
+    can_delete=True,
+)
 
 
 ItemChecklistFormSet = inlineformset_factory(
