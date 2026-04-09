@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .section { margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Constancia de aprobación de informe mensual</h2>
+    <div>Correlativo: <strong>{{ resolucion.correlativo }}</strong></div>
+    <div>Fecha de emisión: {{ resolucion.fecha_emision }}</div>
+  </div>
+
+  <div class="section">
+    <p><strong>Asociación:</strong> {{ asociacion.nombre }}</p>
+    <p><strong>Año:</strong> {{ asociacion.anio.anio }}</p>
+    <p><strong>Mes:</strong> {{ informe.get_mes_display }}</p>
+    <p><strong>Estado:</strong> {{ informe.get_estado_display }}</p>
+  </div>
+
+  <div class="section">
+    <p>
+      Se hace constar que el informe mensual correspondiente al mes de <strong>{{ informe.get_mes_display }}</strong>,
+      presentado por la asociación <strong>{{ asociacion.nombre }}</strong>, ha sido revisado y aprobado.
+    </p>
+  </div>
+
+  <div class="section">
+    <p><strong>Aprobado por:</strong> {{ informe.aprobado_por|default:"-" }}</p>
+    <p><strong>Emitido por:</strong> {{ resolucion.generado_por|default:"-" }}</p>
+  </div>
+</body>
+</html>

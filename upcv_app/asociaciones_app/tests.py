@@ -14,6 +14,7 @@ from .models import (
     ChecklistAnioItem,
     ExpedienteCAIMUS,
     InformeMensual,
+    ResolucionInformeMensual,
     ResolucionExpediente,
     crear_items_expediente,
 )
@@ -278,7 +279,13 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_admin_puede_aprobar_informe(self):
-        informe = InformeMensual.objects.create(asociacion=self.asociacion, mes=1)
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=1,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_EN_REVISION,
+        )
         client = Client()
         client.login(username="admin", password="pass123")
         response = client.post(
@@ -288,6 +295,61 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         informe.refresh_from_db()
         self.assertEqual(informe.estado, InformeMensual.ESTADO_APROBADO)
+        self.assertTrue(ResolucionInformeMensual.objects.filter(informe=informe).exists())
+
+    def test_admin_puede_ver_y_guardar_checklist_anio(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:anio_checklist", args=[self.anio.pk]))
+        self.assertEqual(response.status_code, 200)
+
+        payload = {
+            "checklist-TOTAL_FORMS": "1",
+            "checklist-INITIAL_FORMS": "0",
+            "checklist-MIN_NUM_FORMS": "0",
+            "checklist-MAX_NUM_FORMS": "1000",
+            "checklist-0-id": "",
+            "checklist-0-numero": "1",
+            "checklist-0-titulo": "Documento nuevo",
+            "checklist-0-descripcion": "Descripción de prueba",
+            "checklist-0-activo": "on",
+            "checklist-0-DELETE": "",
+        }
+        response = client.post(reverse("asociaciones:anio_checklist_guardar", args=[self.anio.pk]), payload)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(ChecklistAnioItem.objects.filter(anio=self.anio, numero=1, titulo="Documento nuevo").exists())
+
+    def test_usuario_asociacion_recibe_403_en_checklist_anio(self):
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:anio_checklist", args=[self.anio.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_crear_expediente_copia_items_del_anio(self):
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", descripcion="Desc", activo=True)
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=2, titulo="Doc 2", descripcion="", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        crear_items_expediente(expediente)
+        self.assertEqual(expediente.items.count(), 2)
+        self.assertTrue(expediente.items.filter(numero=1, titulo="Doc 1", plantilla_item__isnull=False).exists())
+
+    def test_expediente_no_falla_si_anio_sin_checklist(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(ChecklistAnioItem.objects.filter(anio=self.anio).count(), 1)
+
+    def test_expediente_muestra_items_del_anio_correcto(self):
+        anio_otro = Anio.objects.create(anio=2027)
+        asociacion_otra = Asociacion.objects.create(anio=anio_otro, nombre="Asoc Z", codigo="AZ")
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc Año 2026", activo=True)
+        ChecklistAnioItem.objects.create(anio=anio_otro, numero=1, titulo="Doc Año 2027", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=asociacion_otra, creado_por=self.admin_user)
+        crear_items_expediente(expediente)
+        self.assertTrue(expediente.items.filter(titulo="Doc Año 2027").exists())
+        self.assertFalse(expediente.items.filter(titulo="Doc Año 2026").exists())
 
     def test_admin_puede_ver_y_guardar_checklist_anio(self):
         client = Client()
@@ -354,10 +416,89 @@ class AsociacionesTests(TestCase):
         client.login(username="user1", password="pass123")
         archivo = SimpleUploadedFile("informe.pdf", b"%PDF-1.4 test", content_type="application/pdf")
         client.post(
-            reverse("asociaciones:informe_upload", args=[self.asociacion.pk, informe.mes]),
+            reverse("asociaciones:informe_upload_narrativo", args=[self.asociacion.pk, informe.mes]),
             {"pdf": archivo},
         )
         informe.refresh_from_db()
-        self.assertTrue(informe.pdf)
-        self.assertEqual(informe.estado, InformeMensual.ESTADO_EN_REVISION)
+        self.assertTrue(informe.archivo_narrativo)
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
         self.assertEqual(informe.observaciones_usuario, "Obs")
+
+    def test_usuario_asociacion_puede_subir_presupuestario(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=2,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        archivo = SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf")
+        response = client.post(
+            reverse("asociaciones:informe_upload_presupuestario", args=[self.asociacion.pk, informe.mes]),
+            {"pdf": archivo},
+        )
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertTrue(informe.archivo_presupuestario)
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_EN_REVISION)
+
+    def test_no_se_puede_aprobar_informe_si_falta_un_archivo(self):
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=3,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_EN_REVISION,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(
+            reverse("asociaciones:informe_estado", args=[self.asociacion.pk, informe.mes]),
+            {"estado": InformeMensual.ESTADO_APROBADO},
+        )
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertNotEqual(informe.estado, InformeMensual.ESTADO_APROBADO)
+        self.assertFalse(ResolucionInformeMensual.objects.filter(informe=informe).exists())
+
+    def test_usuario_asociacion_puede_descargar_constancia_informe_aprobado(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=4,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_APROBADO,
+        )
+        ResolucionInformeMensual.objects.create(
+            informe=informe,
+            correlativo="UPCV-INF-2026-04-0001",
+            fecha_emision=date.today(),
+            generado_por=self.admin_user,
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:informe_resolucion_pdf", args=[self.asociacion.pk, informe.mes]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_usuario_otra_asociacion_recibe_403_en_constancia(self):
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=5,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_APROBADO,
+        )
+        ResolucionInformeMensual.objects.create(
+            informe=informe,
+            correlativo="UPCV-INF-2026-05-0001",
+            fecha_emision=date.today(),
+            generado_por=self.admin_user,
+        )
+        user_otro = User.objects.create_user(username="otro", password="pass123")
+        user_otro.groups.add(self.asociacion_group)
+        AsociacionUsuario.objects.create(asociacion=self.asociacion_otra, usuario=user_otro, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="otro", password="pass123")
+        response = client.get(reverse("asociaciones:informe_resolucion_pdf", args=[self.asociacion.pk, informe.mes]))
+        self.assertEqual(response.status_code, 403)

@@ -381,6 +381,18 @@ class InformeMensual(models.Model):
 
     asociacion = models.ForeignKey(Asociacion, on_delete=models.CASCADE, related_name="informes_mensuales")
     mes = models.PositiveSmallIntegerField(choices=MESES_CHOICES)
+    archivo_narrativo = models.FileField(
+        upload_to="informes/narrativos/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size],
+    )
+    archivo_presupuestario = models.FileField(
+        upload_to="informes/presupuestarios/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size],
+    )
     pdf = models.FileField(
         upload_to="informes/%Y/%m/",
         blank=True,
@@ -426,8 +438,11 @@ class InformeMensual(models.Model):
     def __str__(self) -> str:
         return f"{self.asociacion} - {self.get_mes_display()}"
 
+    def tiene_archivos_completos(self) -> bool:
+        return bool(self.archivo_narrativo and self.archivo_presupuestario)
+
     def save(self, *args, **kwargs) -> None:
-        if self.pdf and self.estado == self.ESTADO_BORRADOR:
+        if self.tiene_archivos_completos() and self.estado in [self.ESTADO_BORRADOR, self.ESTADO_RECHAZADO]:
             self.estado = self.ESTADO_EN_REVISION
         super().save(*args, **kwargs)
 
@@ -447,6 +462,23 @@ class InformeEstadoHistorial(models.Model):
 
     def __str__(self) -> str:
         return f"{self.informe} {self.estado_anterior} -> {self.estado_nuevo}"
+
+
+class ResolucionInformeMensual(models.Model):
+    informe = models.OneToOneField(InformeMensual, on_delete=models.CASCADE, related_name="resolucion")
+    correlativo = models.CharField(max_length=50, unique=True)
+    fecha_emision = models.DateField()
+    generado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    generado_en = models.DateTimeField(auto_now_add=True)
+    archivo_pdf = models.FileField(upload_to="resoluciones_informes/%Y/", null=True, blank=True)
+    contenido_snapshot = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Resolución de informe mensual"
+        verbose_name_plural = "Resoluciones de informes mensuales"
+
+    def __str__(self) -> str:
+        return self.correlativo
 
 
 def crear_informes_mensuales(asociacion: Asociacion, usuario: Optional[models.Model] = None) -> None:
@@ -482,3 +514,20 @@ def generar_correlativo(anio: int) -> str:
             except (ValueError, IndexError):
                 secuencia = 1
         return f"UPCV-CAIMUS-{anio}-{secuencia:04d}"
+
+
+def generar_correlativo_informe(anio: int, mes: int) -> str:
+    with transaction.atomic():
+        ultimo = (
+            ResolucionInformeMensual.objects.select_for_update()
+            .filter(informe__asociacion__anio__anio=anio, informe__mes=mes)
+            .order_by("-correlativo")
+            .first()
+        )
+        secuencia = 1
+        if ultimo:
+            try:
+                secuencia = int(ultimo.correlativo.split("-")[-1]) + 1
+            except (ValueError, IndexError):
+                secuencia = 1
+        return f"UPCV-INF-{anio}-{mes:02d}-{secuencia:04d}"

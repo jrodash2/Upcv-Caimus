@@ -36,6 +36,16 @@ urlpatterns = [
         name="informe_upload",
     ),
     path(
+        "<int:asociacion_id>/informes/<int:mes>/upload/narrativo/",
+        views.informe_upload_narrativo,
+        name="informe_upload_narrativo",
+    ),
+    path(
+        "<int:asociacion_id>/informes/<int:mes>/upload/presupuestario/",
+        views.informe_upload_presupuestario,
+        name="informe_upload_presupuestario",
+    ),
+    path(
         "<int:asociacion_id>/informes/<int:mes>/observacion/",
         views.informe_observacion,
         name="informe_observacion",
@@ -44,6 +54,11 @@ urlpatterns = [
         "<int:asociacion_id>/informes/<int:mes>/estado/",
         views.informe_estado,
         name="informe_estado",
+    ),
+    path(
+        "<int:asociacion_id>/informes/<int:mes>/resolucion/pdf/",
+        views.informe_resolucion_pdf,
+        name="informe_resolucion_pdf",
     ),
     path("bandeja-revision/", views.bandeja_revision, name="bandeja_revision"),
     path("asignaciones/", views.asignaciones_list, name="asignaciones_list"),

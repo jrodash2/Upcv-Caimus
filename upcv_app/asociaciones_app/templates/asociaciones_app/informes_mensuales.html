@@ -26,7 +26,8 @@
               <tr>
                 <th>Mes</th>
                 <th>Estado</th>
-                <th>PDF</th>
+                <th>Informe Narrativo</th>
+                <th>Informe Presupuestario</th>
                 <th>Observaciones</th>
                 <th>Observación admin</th>
                 <th>Acciones</th>
@@ -42,24 +43,37 @@
                   </span>
                 </td>
                 <td>
-                  {% if informe.pdf %}
+                  {% if informe.archivo_narrativo %}
                     <span class="badge bg-success">Subido</span>
-                    <div class="mt-1">
-                      <a href="{{ informe.pdf.url }}" target="_blank">Ver PDF</a>
-                    </div>
+                    <div class="mt-1"><a href="{{ informe.archivo_narrativo.url }}" target="_blank">Ver PDF</a></div>
                   {% else %}
                     <span class="badge bg-secondary">Pendiente</span>
                   {% endif %}
                   {% if puede_subir %}
-                    <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload' asociacion.pk informe.mes %}">
+                    <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_narrativo' asociacion.pk informe.mes %}">
                       {% csrf_token %}
                       <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
                       <button class="btn btn-primary btn-sm mt-2" type="submit">
-                        {% if informe.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
+                        {% if informe.archivo_narrativo %}Re-subir narrativo{% else %}Subir narrativo{% endif %}
                       </button>
                     </form>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if informe.archivo_presupuestario %}
+                    <span class="badge bg-success">Subido</span>
+                    <div class="mt-1"><a href="{{ informe.archivo_presupuestario.url }}" target="_blank">Ver PDF</a></div>
                   {% else %}
-                    <div class="text-muted small mt-2">Sin permisos</div>
+                    <span class="badge bg-secondary">Pendiente</span>
+                  {% endif %}
+                  {% if puede_subir %}
+                    <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_presupuestario' asociacion.pk informe.mes %}">
+                      {% csrf_token %}
+                      <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
+                      <button class="btn btn-primary btn-sm mt-2" type="submit">
+                        {% if informe.archivo_presupuestario %}Re-subir presupuestario{% else %}Subir presupuestario{% endif %}
+                      </button>
+                    </form>
                   {% endif %}
                 </td>
                 <td>
@@ -73,24 +87,31 @@
                   {% endif %}
                 </td>
                 <td>
-                  {% if not es_admin %}
-                    <div class="d-flex gap-2 flex-wrap">
+                  <div class="d-flex gap-2 flex-wrap">
+                    {% if not es_admin %}
                       <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:informe_observacion' asociacion.pk informe.mes %}">
                         Guardar
                       </button>
-                    </div>
-                  {% else %}
-                    <form method="post" id="estado-form-{{ informe.mes }}" class="d-flex gap-2 flex-wrap" action="{% url 'asociaciones:informe_estado' asociacion.pk informe.mes %}">
-                      {% csrf_token %}
-                      <button class="btn btn-primary btn-sm" name="estado" value="APROBADO" type="submit">Aprobar</button>
-                      <button class="btn btn-primary btn-sm" name="estado" value="RECHAZADO" type="submit">Rechazar</button>
-                    </form>
-                  {% endif %}
+                    {% else %}
+                      <form method="post" id="estado-form-{{ informe.mes }}" class="d-flex gap-2 flex-wrap" action="{% url 'asociaciones:informe_estado' asociacion.pk informe.mes %}">
+                        {% csrf_token %}
+                        <button class="btn btn-primary btn-sm" name="estado" value="APROBADO" type="submit">Aprobar</button>
+                        <button class="btn btn-primary btn-sm" name="estado" value="RECHAZADO" type="submit">Rechazar</button>
+                      </form>
+                    {% endif %}
+                    {% if informe.estado == 'APROBADO' %}
+                      <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:informe_resolucion_pdf' asociacion.pk informe.mes %}" target="_blank">
+                        {% if es_admin %}Generar / Descargar constancia{% else %}Descargar constancia{% endif %}
+                      </a>
+                    {% else %}
+                      <span class="text-muted small">Disponible al aprobarse el informe</span>
+                    {% endif %}
+                  </div>
                 </td>
               </tr>
               {% empty %}
               <tr>
-                <td colspan="6">No hay informes registrados.</td>
+                <td colspan="7">No hay informes registrados.</td>
               </tr>
               {% endfor %}
             </tbody>
