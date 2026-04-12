@@ -109,7 +109,9 @@ def anio_checklist_guardar(request, pk):
     formset = ChecklistAnioItemFormSet(request.POST, instance=anio, prefix="checklist")
     if formset.is_valid():
         formset.save()
-        messages.success(request, "Checklist del año guardado correctamente.")
+        for expediente in ExpedienteCAIMUS.objects.filter(asociacion__anio=anio).select_related("asociacion", "asociacion__anio"):
+            crear_items_expediente(expediente)
+        messages.success(request, "Checklist del año guardado y sincronizado correctamente.")
         return redirect("asociaciones:anio_checklist", pk=anio.pk)
     messages.error(request, "Revise los datos del checklist antes de guardar.")
     return render(
@@ -231,7 +233,7 @@ def expediente_caimus(request, pk):
             request.POST,
             request.FILES,
             instance=expediente,
-            queryset=expediente.items.order_by("numero"),
+            queryset=expediente.items.filter(activo=True).order_by("numero"),
         )
         if form.is_valid() and formset.is_valid():
             expediente = form.save(commit=False)
@@ -245,7 +247,7 @@ def expediente_caimus(request, pk):
             return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
     else:
         form = ExpedienteCAIMUSForm(instance=expediente)
-        formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.order_by("numero"))
+        formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.filter(activo=True).order_by("numero"))
 
     progress = expediente.progress_stats()
     expediente_completo = expediente_esta_completo(expediente)

@@ -46,7 +46,7 @@ def user_has_expediente_access(user, expediente: ExpedienteCAIMUS) -> bool:
 
 
 def expediente_esta_completo(expediente: ExpedienteCAIMUS) -> bool:
-    items = expediente.items.all()
+    items = expediente.items.filter(activo=True)
     if not items.exists():
         return False
     return not items.filter(models.Q(pdf="") | models.Q(pdf__isnull=True)).exists()
