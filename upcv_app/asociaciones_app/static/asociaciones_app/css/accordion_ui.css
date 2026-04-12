@@ -10,7 +10,6 @@
 .checklist-accordion .accordion-button,
 .informes-accordion .accordion-button {
   align-items: center;
-  gap: 0.75rem;
   background-color: #f8f9fa;
   box-shadow: none;
   font-weight: 600;
@@ -22,9 +21,38 @@
   display: none;
 }
 
+.accordion-header-layout {
+  min-width: 0;
+}
+
+.accordion-title-group {
+  min-width: 0;
+  flex: 1 1 22rem;
+}
+
+.accordion-title {
+  line-height: 1.25;
+  color: var(--bs-dark);
+}
+
+.accordion-subtitle {
+  margin-top: 0.2rem;
+}
+
+.accordion-meta {
+  align-items: center;
+}
+
+.accordion-meta .badge {
+  font-size: 0.72rem;
+}
+
+.accordion-state {
+  flex: 0 0 auto;
+}
+
 .checklist-accordion .accordion-button .toggle-icon,
 .informes-accordion .accordion-button .toggle-icon {
-  margin-left: auto;
   transition: transform 0.25s ease;
 }
 
@@ -38,7 +66,13 @@
   padding-top: 0.25rem;
 }
 
-.informe-quick-status {
-  font-size: 0.78rem;
-  color: var(--bs-secondary-color);
+@media (max-width: 767.98px) {
+  .accordion-title-group {
+    flex-basis: 100%;
+  }
+
+  .accordion-state {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

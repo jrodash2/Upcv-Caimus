@@ -412,7 +412,7 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="accordionInformes"')
         self.assertContains(response, "accordion-item")
-        self.assertContains(response, "Narrativo:")
+        self.assertContains(response, "accordion-meta-item")
 
     def test_expediente_no_falla_si_anio_sin_checklist(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
