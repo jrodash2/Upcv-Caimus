@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'asociaciones_app/css/accordion_ui.css' %}">
 <div class="page-body">
   <div class="container-fluid">
     <div class="page-title">
@@ -48,70 +49,66 @@
               <div class="d-flex gap-2 flex-wrap align-items-center">
                 <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
                 {% if es_admin %}
-                <form method="post" action="{% url 'asociaciones:expediente_sync_checklist' asociacion.pk %}">
-                  {% csrf_token %}
-                  <button class="btn btn-primary btn-sm" type="submit">Sincronizar checklist del año</button>
-                </form>
+                  <button class="btn btn-primary btn-sm" type="submit" formaction="{% url 'asociaciones:expediente_sync_checklist' asociacion.pk %}" formmethod="post">Sincronizar checklist del año</button>
                 {% endif %}
               </div>
             </div>
             <div class="card-body">
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Documento</th>
-                      <th>Estado</th>
-                      <th>PDF</th>
-                      <th>Observaciones</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for item_form in formset %}
-                    <tr data-item="{{ item_form.instance.numero }}">
-                      <td>
-                        {{ item_form.instance.numero }}
+              <div class="accordion checklist-accordion" id="accordionChecklist">
+                {% for item_form in formset %}
+                  <div class="accordion-item checklist-item-card" data-item="{{ item_form.instance.numero }}">
+                    <h2 class="accordion-header" id="headingChecklist{{ item_form.instance.id }}">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChecklist{{ item_form.instance.id }}" aria-expanded="false" aria-controls="collapseChecklist{{ item_form.instance.id }}">
+                        <div class="accordion-header-layout w-100 d-flex justify-content-between align-items-start flex-wrap gap-2">
+                          <div class="accordion-title-group pe-2">
+                            <div class="accordion-title fw-bold"><span>{{ item_form.instance.numero }}.</span> {{ item_form.instance.titulo }}</div>
+                            {% if item_form.instance.hint %}
+                              <div class="accordion-subtitle text-muted small text-truncate">{{ item_form.instance.hint }}</div>
+                            {% endif %}
+                          </div>
+                          <div class="accordion-state d-flex align-items-center gap-2 ms-auto">
+                            {% if item_form.instance.pdf %}
+                              <span class="badge bg-success rounded-pill">Subido</span>
+                            {% else %}
+                              <span class="badge bg-warning text-dark rounded-pill">Pendiente</span>
+                            {% endif %}
+                            <span class="text-muted small d-none d-md-inline">Ver detalles</span>
+                            <span class="toggle-icon" aria-hidden="true">▾</span>
+                          </div>
+                        </div>
+                      </button>
+                    </h2>
+                    <div id="collapseChecklist{{ item_form.instance.id }}" class="accordion-collapse collapse" aria-labelledby="headingChecklist{{ item_form.instance.id }}" data-bs-parent="#accordionChecklist">
+                      <div class="accordion-body checklist-item-body">
                         {% for hidden in item_form.hidden_fields %}
                           {{ hidden }}
                         {% endfor %}
-                      </td>
-                      <td>
-                        <strong>{{ item_form.instance.titulo }}</strong>
                         {% if item_form.instance.hint %}
-                          <div class="text-muted small">{{ item_form.instance.hint }}</div>
+                          <p class="text-muted small mb-3">{{ item_form.instance.hint }}</p>
                         {% endif %}
-                      </td>
-                      <td>
-                        {% if item_form.instance.pdf %}
-                          <span class="badge bg-success">Subido</span>
-                        {% else %}
-                          <span class="badge bg-secondary">Pendiente</span>
-                        {% endif %}
-                      </td>
-                      <td>
-                        {% if item_form.instance.pdf %}
-                          <a href="{{ item_form.instance.pdf.url }}" target="_blank">Ver PDF</a>
-                        {% endif %}
-                        <input type="file" class="form-control mt-2 file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf">
-                        <button type="button" class="btn btn-primary btn-sm mt-2 upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}">
-                          {% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
-                        </button>
-                      </td>
-                      <td>
-                        {{ item_form.observaciones }}
-                        {{ item_form.observaciones.errors }}
-                      </td>
-                      <td>
+                        <div class="d-flex gap-2 flex-wrap align-items-center mb-3">
+                          {% if item_form.instance.pdf %}
+                            <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-primary btn-sm" target="_blank">Ver PDF</a>
+                          {% endif %}
+                          <input type="file" class="form-control file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf">
+                          <button type="button" class="btn btn-primary btn-sm upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}">
+                            {% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
+                          </button>
+                        </div>
+                        <div class="mb-2">
+                          {{ item_form.observaciones.label_tag }}
+                          {{ item_form.observaciones }}
+                          {{ item_form.observaciones.errors }}
+                        </div>
                         <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
                           Guardar observación
                         </button>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
+                      </div>
+                    </div>
+                  </div>
+                {% empty %}
+                  <div class="alert alert-light mb-0">No hay ítems activos en el checklist para este expediente.</div>
+                {% endfor %}
               </div>
             </div>
           </div>
@@ -221,8 +218,8 @@
 
   document.querySelectorAll('.upload-btn').forEach((button) => {
     button.addEventListener('click', async () => {
-      const row = button.closest('tr');
-      const input = row.querySelector('.file-input');
+      const card = button.closest('.checklist-item-card');
+      const input = card.querySelector('.file-input');
       if (!input.files.length) {
         notify('Debe seleccionar un archivo PDF.', 'warning');
         return;
@@ -247,8 +244,8 @@
 
   document.querySelectorAll('.save-obs-btn').forEach((button) => {
     button.addEventListener('click', async () => {
-      const row = button.closest('tr');
-      const textarea = row.querySelector('textarea');
+      const card = button.closest('.checklist-item-card');
+      const textarea = card.querySelector('textarea');
       const formData = new FormData();
       formData.append('observaciones', textarea.value);
       const response = await fetch(button.dataset.obsUrl, {

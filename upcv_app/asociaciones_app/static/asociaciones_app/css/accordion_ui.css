@@ -1,0 +1,78 @@
+.checklist-accordion .accordion-item,
+.informes-accordion .accordion-item {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.125rem 0.35rem rgba(44, 52, 68, 0.08);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.checklist-accordion .accordion-button,
+.informes-accordion .accordion-button {
+  align-items: center;
+  background-color: #f8f9fa;
+  box-shadow: none;
+  font-weight: 600;
+  padding: 0.9rem 1rem;
+}
+
+.checklist-accordion .accordion-button::after,
+.informes-accordion .accordion-button::after {
+  display: none;
+}
+
+.accordion-header-layout {
+  min-width: 0;
+}
+
+.accordion-title-group {
+  min-width: 0;
+  flex: 1 1 22rem;
+}
+
+.accordion-title {
+  line-height: 1.25;
+  color: var(--bs-dark);
+}
+
+.accordion-subtitle {
+  margin-top: 0.2rem;
+}
+
+.accordion-meta {
+  align-items: center;
+}
+
+.accordion-meta .badge {
+  font-size: 0.72rem;
+}
+
+.accordion-state {
+  flex: 0 0 auto;
+}
+
+.checklist-accordion .accordion-button .toggle-icon,
+.informes-accordion .accordion-button .toggle-icon {
+  transition: transform 0.25s ease;
+}
+
+.checklist-accordion .accordion-button:not(.collapsed) .toggle-icon,
+.informes-accordion .accordion-button:not(.collapsed) .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.checklist-item-body,
+.informe-item-body {
+  padding-top: 0.25rem;
+}
+
+@media (max-width: 767.98px) {
+  .accordion-title-group {
+    flex-basis: 100%;
+  }
+
+  .accordion-state {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
