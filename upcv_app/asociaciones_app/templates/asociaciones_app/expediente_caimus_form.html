@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'asociaciones_app/css/accordion_ui.css' %}">
 <div class="page-body">
   <div class="container-fluid">
     <div class="page-title">
@@ -48,29 +49,28 @@
               <div class="d-flex gap-2 flex-wrap align-items-center">
                 <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
                 {% if es_admin %}
-                <form method="post" action="{% url 'asociaciones:expediente_sync_checklist' asociacion.pk %}">
-                  {% csrf_token %}
-                  <button class="btn btn-primary btn-sm" type="submit">Sincronizar checklist del año</button>
-                </form>
+                  <button class="btn btn-primary btn-sm" type="submit" formaction="{% url 'asociaciones:expediente_sync_checklist' asociacion.pk %}" formmethod="post">Sincronizar checklist del año</button>
                 {% endif %}
               </div>
             </div>
             <div class="card-body">
-              <div class="accordion" id="accordionChecklist">
+              <div class="accordion checklist-accordion" id="accordionChecklist">
                 {% for item_form in formset %}
                   <div class="accordion-item checklist-item-card" data-item="{{ item_form.instance.numero }}">
                     <h2 class="accordion-header" id="headingChecklist{{ item_form.instance.id }}">
-                      <button class="accordion-button collapsed d-flex flex-wrap gap-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChecklist{{ item_form.instance.id }}" aria-expanded="false" aria-controls="collapseChecklist{{ item_form.instance.id }}">
-                        <span><strong>{{ item_form.instance.numero }}.</strong> {{ item_form.instance.titulo }}</span>
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChecklist{{ item_form.instance.id }}" aria-expanded="false" aria-controls="collapseChecklist{{ item_form.instance.id }}">
+                        <span class="text-truncate"><strong>{{ item_form.instance.numero }}.</strong> {{ item_form.instance.titulo }}</span>
                         {% if item_form.instance.pdf %}
                           <span class="badge bg-success">Subido</span>
                         {% else %}
                           <span class="badge bg-warning text-dark">Pendiente</span>
                         {% endif %}
+                        <span class="text-muted small">Ver detalles</span>
+                        <span class="toggle-icon" aria-hidden="true">▾</span>
                       </button>
                     </h2>
                     <div id="collapseChecklist{{ item_form.instance.id }}" class="accordion-collapse collapse" aria-labelledby="headingChecklist{{ item_form.instance.id }}" data-bs-parent="#accordionChecklist">
-                      <div class="accordion-body">
+                      <div class="accordion-body checklist-item-body">
                         {% for hidden in item_form.hidden_fields %}
                           {{ hidden }}
                         {% endfor %}
