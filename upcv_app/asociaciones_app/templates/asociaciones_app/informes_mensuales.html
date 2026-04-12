@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card card-soft section-panel">
       <div class="card-header">
         <h5>Checklist de informes mensuales</h5>
       </div>
@@ -31,12 +31,13 @@
                   <div class="summary-main pe-2">
                     <div class="summary-title">{{ informe.get_mes_display }}</div>
                     <div class="summary-meta d-flex flex-wrap gap-2 mt-1">
-                      <span class="summary-chip accordion-meta-item">Narrativo <span class="badge rounded-pill {% if informe.archivo_narrativo %}bg-success{% else %}bg-secondary{% endif %}">{% if informe.archivo_narrativo %}Subido{% else %}Pendiente{% endif %}</span></span>
-                      <span class="summary-chip accordion-meta-item">Presupuestario <span class="badge rounded-pill {% if informe.archivo_presupuestario %}bg-success{% else %}bg-secondary{% endif %}">{% if informe.archivo_presupuestario %}Subido{% else %}Pendiente{% endif %}</span></span>
+                      <span class="summary-chip accordion-meta-item"><i data-feather="file-text" aria-hidden="true"></i>Narrativo <span class="badge accessible-badge rounded-pill {% if informe.archivo_narrativo %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_narrativo %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_narrativo %}Subido{% else %}Pendiente{% endif %}</span></span>
+                      <span class="summary-chip accordion-meta-item"><i data-feather="bar-chart-2" aria-hidden="true"></i>Presupuestario <span class="badge accessible-badge rounded-pill {% if informe.archivo_presupuestario %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_presupuestario %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_presupuestario %}Subido{% else %}Pendiente{% endif %}</span></span>
                     </div>
                   </div>
                   <div class="summary-side d-flex align-items-center gap-2 ms-auto">
-                    <span class="summary-status badge rounded-pill bg-{% if informe.estado == 'APROBADO' %}success{% elif informe.estado == 'RECHAZADO' %}danger{% elif informe.estado == 'EN_REVISION' %}warning{% else %}secondary{% endif %}">
+                    <span class="summary-status badge accessible-badge rounded-pill bg-{% if informe.estado == 'APROBADO' %}success{% elif informe.estado == 'RECHAZADO' %}danger{% elif informe.estado == 'EN_REVISION' %}info{% else %}secondary{% endif %}">
+                      <i data-feather="{% if informe.estado == 'APROBADO' %}check-circle{% elif informe.estado == 'RECHAZADO' %}x-circle{% elif informe.estado == 'EN_REVISION' %}clock{% else %}edit-3{% endif %}" aria-hidden="true"></i>
                       {{ informe.get_estado_display }}
                     </span>
                     <span class="toggle-icon" aria-hidden="true">▾</span>
@@ -50,17 +51,17 @@
                   <div class="col-lg-6">
                     <h6>Informe narrativo</h6>
                     {% if informe.archivo_narrativo %}
-                      <span class="badge bg-success">Subido</span>
-                      <div class="mt-1"><a href="{{ informe.archivo_narrativo.url }}" target="_blank">Ver PDF</a></div>
+                      <span class="badge accessible-badge bg-success"><i data-feather="check-circle" aria-hidden="true"></i>Subido</span>
+                      <div class="mt-1"><a href="{{ informe.archivo_narrativo.url }}" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver PDF</a></div>
                     {% else %}
-                      <span class="badge bg-warning text-dark">Pendiente</span>
+                      <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                     {% endif %}
                     {% if puede_subir %}
                       <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_narrativo' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
                         <button class="btn btn-primary btn-sm mt-2" type="submit">
-                          {% if informe.archivo_narrativo %}Re-subir narrativo{% else %}Subir narrativo{% endif %}
+                          <i data-feather="upload" aria-hidden="true"></i>{% if informe.archivo_narrativo %}Re-subir narrativo{% else %}Subir narrativo{% endif %}
                         </button>
                       </form>
                     {% endif %}
@@ -68,17 +69,17 @@
                   <div class="col-lg-6">
                     <h6>Informe presupuestario</h6>
                     {% if informe.archivo_presupuestario %}
-                      <span class="badge bg-success">Subido</span>
-                      <div class="mt-1"><a href="{{ informe.archivo_presupuestario.url }}" target="_blank">Ver PDF</a></div>
+                      <span class="badge accessible-badge bg-success"><i data-feather="check-circle" aria-hidden="true"></i>Subido</span>
+                      <div class="mt-1"><a href="{{ informe.archivo_presupuestario.url }}" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver PDF</a></div>
                     {% else %}
-                      <span class="badge bg-warning text-dark">Pendiente</span>
+                      <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                     {% endif %}
                     {% if puede_subir %}
                       <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_presupuestario' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
                         <button class="btn btn-primary btn-sm mt-2" type="submit">
-                          {% if informe.archivo_presupuestario %}Re-subir presupuestario{% else %}Subir presupuestario{% endif %}
+                          <i data-feather="upload" aria-hidden="true"></i>{% if informe.archivo_presupuestario %}Re-subir presupuestario{% else %}Subir presupuestario{% endif %}
                         </button>
                       </form>
                     {% endif %}
@@ -97,21 +98,20 @@
                   </div>
                 </div>
 
-                <div class="d-flex gap-2 flex-wrap mt-3">
+                <div class="d-flex gap-2 flex-wrap mt-3 action-group">
                   {% if not es_admin %}
-                    <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:informe_observacion' asociacion.pk informe.mes %}">
-                      Guardar
+                    <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:informe_observacion' asociacion.pk informe.mes %}"><i data-feather="save" aria-hidden="true"></i>Guardar
                     </button>
                   {% else %}
                     <form method="post" id="estado-form-{{ informe.mes }}" class="d-flex gap-2 flex-wrap" action="{% url 'asociaciones:informe_estado' asociacion.pk informe.mes %}">
                       {% csrf_token %}
-                      <button class="btn btn-primary btn-sm" name="estado" value="APROBADO" type="submit">Aprobar</button>
-                      <button class="btn btn-primary btn-sm" name="estado" value="RECHAZADO" type="submit">Rechazar</button>
+                      <button class="btn btn-primary btn-sm" name="estado" value="APROBADO" type="submit"><i data-feather="check-circle" aria-hidden="true"></i>Aprobar</button>
+                      <button class="btn btn-primary btn-sm" name="estado" value="RECHAZADO" type="submit"><i data-feather="x-circle" aria-hidden="true"></i>Rechazar</button>
                     </form>
                   {% endif %}
                   {% if informe.estado == 'APROBADO' %}
                     <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:informe_resolucion_pdf' asociacion.pk informe.mes %}" target="_blank">
-                      {% if es_admin %}Generar / Descargar constancia{% else %}Descargar constancia{% endif %}
+                      <i data-feather="download" aria-hidden="true"></i>{% if es_admin %}Generar / Descargar constancia{% else %}Descargar constancia{% endif %}
                     </a>
                   {% else %}
                     <span class="text-muted small">Disponible al aprobarse el informe</span>

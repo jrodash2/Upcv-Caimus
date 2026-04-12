@@ -12,7 +12,8 @@
           <p class="text-muted">Año {{ asociacion.anio.anio }} · Código {{ asociacion.codigo }}</p>
         </div>
         <div class="col-4 text-end">
-          <span class="badge bg-{% if expediente.estado == 'APROBADO' %}success{% elif expediente.estado == 'RECHAZADO' %}danger{% elif expediente.estado == 'EN_REVISION' %}warning{% else %}secondary{% endif %}">
+          <span class="badge accessible-badge bg-{% if expediente.estado == 'APROBADO' %}success{% elif expediente.estado == 'RECHAZADO' %}danger{% elif expediente.estado == 'EN_REVISION' %}info{% else %}secondary{% endif %}">
+            <i data-feather="{% if expediente.estado == 'APROBADO' %}check-circle{% elif expediente.estado == 'RECHAZADO' %}x-circle{% elif expediente.estado == 'EN_REVISION' %}clock{% else %}edit-3{% endif %}" aria-hidden="true"></i>
             {{ expediente.get_estado_display }}
           </span>
         </div>
@@ -25,7 +26,7 @@
           {% csrf_token %}
           {{ form.non_field_errors }}
           {{ formset.management_form }}
-          <div class="card">
+          <div class="card card-soft section-panel">
             <div class="card-header"><h5>Datos generales</h5></div>
             <div class="card-body">
               <div class="row">
@@ -40,7 +41,7 @@
             </div>
           </div>
 
-          <div class="card mt-4">
+          <div class="card card-soft section-panel mt-4">
             <div class="card-header d-flex justify-content-between align-items-center">
               <div>
                 <h5>Checklist</h5>
@@ -69,9 +70,9 @@
                           </div>
                           <div class="summary-side d-flex align-items-center gap-2 ms-auto">
                             {% if item_form.instance.pdf %}
-                              <span class="summary-status badge bg-success rounded-pill">Subido</span>
+                              <span class="summary-status badge accessible-badge bg-success rounded-pill"><i data-feather="check-circle" aria-hidden="true"></i>Subido</span>
                             {% else %}
-                              <span class="summary-status badge bg-warning text-dark rounded-pill">Pendiente</span>
+                              <span class="summary-status badge accessible-badge bg-warning text-dark rounded-pill"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                             {% endif %}
                             <span class="text-muted small d-none d-md-inline">Ver detalles</span>
                             <span class="toggle-icon" aria-hidden="true">▾</span>
@@ -89,11 +90,11 @@
                         {% endif %}
                         <div class="d-flex gap-2 flex-wrap align-items-center mb-3">
                           {% if item_form.instance.pdf %}
-                            <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-primary btn-sm" target="_blank">Ver PDF</a>
+                            <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-primary btn-sm" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver PDF</a>
                           {% endif %}
                           <input type="file" class="form-control file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf">
                           <button type="button" class="btn btn-primary btn-sm upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}">
-                            {% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
+                            <i data-feather="upload" aria-hidden="true"></i>{% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
                           </button>
                         </div>
                         <div class="mb-2">
@@ -102,7 +103,7 @@
                           {{ item_form.observaciones.errors }}
                         </div>
                         <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
-                          Guardar observación
+                          <i data-feather="save" aria-hidden="true"></i>Guardar observación
                         </button>
                       </div>
                     </div>
@@ -121,22 +122,22 @@
       </div>
 
       <div class="col-md-4">
-        <div class="card">
+        <div class="card card-soft section-panel">
           <div class="card-header"><h5>Progreso</h5></div>
           <div class="card-body">
-            <p><strong>General:</strong> {{ progress.done }} / {{ progress.total }} ({{ progress.percent }}%)</p>
+            <p class="mb-2"><strong>General:</strong> {{ progress.done }} / {{ progress.total }} documentos completados.</p>
+            <p class="text-muted small mb-2">Avance actual: <strong>{{ progress.percent }}%</strong></p>
             <div class="progress mb-2">
               <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress.percent }}%"></div>
             </div>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card card-soft section-panel">
           <div class="card-header"><h5>Resolución</h5></div>
           <div class="card-body">
             {% if puede_descargar_resolucion %}
-              <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:resolucion_pdf' expediente.pk %}" target="_blank">
-                Descargar Resolución PDF
+              <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:resolucion_pdf' expediente.pk %}" target="_blank"><i data-feather="download" aria-hidden="true"></i>Descargar Resolución PDF
               </a>
             {% elif es_asociacion %}
               <div class="alert alert-light">
@@ -151,7 +152,7 @@
         </div>
 
         {% if es_admin %}
-        <div class="card">
+        <div class="card card-soft section-panel">
           <div class="card-header"><h5>Panel de revisión</h5></div>
           <div class="card-body">
             <form method="post" action="{% url 'asociaciones:expediente_revision' expediente.pk %}">
@@ -161,16 +162,16 @@
                 <textarea name="observacion_admin" class="form-control" rows="3"></textarea>
               </div>
               <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-primary" name="estado" value="EN_REVISION" type="submit">Marcar En revisión</button>
-                <button class="btn btn-primary" name="estado" value="APROBADO" type="submit">Aprobar</button>
-                <button class="btn btn-primary" name="estado" value="RECHAZADO" type="submit">Rechazar</button>
+                <button class="btn btn-primary" name="estado" value="EN_REVISION" type="submit"><i data-feather="clock" aria-hidden="true"></i>Marcar En revisión</button>
+                <button class="btn btn-primary" name="estado" value="APROBADO" type="submit"><i data-feather="check-circle" aria-hidden="true"></i>Aprobar</button>
+                <button class="btn btn-primary" name="estado" value="RECHAZADO" type="submit"><i data-feather="x-circle" aria-hidden="true"></i>Rechazar</button>
               </div>
             </form>
           </div>
         </div>
         {% endif %}
 
-        <div class="card">
+        <div class="card card-soft section-panel">
           <div class="card-header"><h5>Historial de estados</h5></div>
           <div class="card-body">
             <ul class="list-group">
