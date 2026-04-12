@@ -210,7 +210,7 @@ class ExpedienteCAIMUS(models.Model):
         return self.estado == self.ESTADO_APROBADO
 
     def progress_stats(self) -> Dict[str, object]:
-        items = self.items.all()
+        items = self.items.filter(activo=True)
         total = items.count()
         completados = items.exclude(pdf="").exclude(pdf__isnull=True).count()
         return {
@@ -250,6 +250,7 @@ class ItemChecklistCAIMUS(models.Model):
         validators=[PDF_VALIDATOR, validate_pdf_size],
     )
     observaciones = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "Item checklist CAIMUS"
@@ -305,7 +306,7 @@ class ResolucionExpediente(models.Model):
         return self.correlativo
 
 
-def crear_items_expediente(expediente: ExpedienteCAIMUS) -> None:
+def sincronizar_checklist_expediente(expediente: ExpedienteCAIMUS) -> None:
     plantilla_qs = expediente.asociacion.anio.checklist_items.filter(activo=True).order_by("numero")
     if not plantilla_qs.exists():
         ChecklistAnioItem.objects.bulk_create(
@@ -322,32 +323,67 @@ def crear_items_expediente(expediente: ExpedienteCAIMUS) -> None:
         )
         plantilla_qs = expediente.asociacion.anio.checklist_items.filter(activo=True).order_by("numero")
 
+    plantilla_ids = set(plantilla_qs.values_list("id", flat=True))
     existentes = {
         item.plantilla_item_id: item
         for item in expediente.items.exclude(plantilla_item_id__isnull=True)
     }
     existentes_por_numero = {item.numero: item for item in expediente.items.all()}
     items_to_create = []
-    for item in plantilla_qs:
-        existente = existentes.get(item.id) or existentes_por_numero.get(item.numero)
+    items_to_update = []
+
+    for plantilla_item in plantilla_qs:
+        existente = existentes.get(plantilla_item.id) or existentes_por_numero.get(plantilla_item.numero)
         if existente is None:
             items_to_create.append(
                 ItemChecklistCAIMUS(
                     expediente=expediente,
-                    plantilla_item=item,
-                    numero=item.numero,
+                    plantilla_item=plantilla_item,
+                    numero=plantilla_item.numero,
                     seccion=ItemChecklistCAIMUS.SECCION_1,
-                    titulo=item.titulo,
-                    hint=item.descripcion,
+                    titulo=plantilla_item.titulo,
+                    hint=plantilla_item.descripcion,
+                    activo=True,
                 )
             )
             continue
-        if existente.plantilla_item_id is None:
-            existente.plantilla_item = item
-            existente.save(update_fields=["plantilla_item"])
+
+        changed = False
+        if existente.plantilla_item_id != plantilla_item.id:
+            existente.plantilla_item = plantilla_item
+            changed = True
+        if existente.numero != plantilla_item.numero:
+            existente.numero = plantilla_item.numero
+            changed = True
+        if existente.titulo != plantilla_item.titulo:
+            existente.titulo = plantilla_item.titulo
+            changed = True
+        if existente.hint != plantilla_item.descripcion:
+            existente.hint = plantilla_item.descripcion
+            changed = True
+        if not existente.activo:
+            existente.activo = True
+            changed = True
+        if changed:
+            items_to_update.append(existente)
+
+    for item in expediente.items.all():
+        debe_estar_activo = item.plantilla_item_id in plantilla_ids if item.plantilla_item_id else False
+        if item.activo != debe_estar_activo:
+            item.activo = debe_estar_activo
+            items_to_update.append(item)
+
     if items_to_create:
         ItemChecklistCAIMUS.objects.bulk_create(items_to_create)
-    # No eliminar items existentes: se conserva histórico del expediente
+    if items_to_update:
+        ItemChecklistCAIMUS.objects.bulk_update(
+            items_to_update,
+            ["plantilla_item", "numero", "titulo", "hint", "activo"],
+        )
+
+
+def crear_items_expediente(expediente: ExpedienteCAIMUS) -> None:
+    sincronizar_checklist_expediente(expediente)
 
 
 MESES_CHOICES = [
