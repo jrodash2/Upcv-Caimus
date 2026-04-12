@@ -27,18 +27,16 @@
           <div class="accordion-item informe-item-card">
             <h2 class="accordion-header" id="headingInforme{{ informe.mes }}">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInforme{{ informe.mes }}" aria-expanded="false" aria-controls="collapseInforme{{ informe.mes }}">
-                <div class="accordion-header-layout w-100 d-flex justify-content-between align-items-start flex-wrap gap-2">
-                  <div class="accordion-title-group pe-2">
-                    <div class="accordion-title fw-bold">{{ informe.get_mes_display }}</div>
-                    <div class="accordion-meta d-flex flex-wrap gap-2 mt-1">
-                      <span class="accordion-meta-item badge rounded-pill text-bg-light">Narrativo</span>
-                      <span class="badge rounded-pill {% if informe.archivo_narrativo %}bg-success{% else %}bg-secondary{% endif %}">{% if informe.archivo_narrativo %}Subido{% else %}Pendiente{% endif %}</span>
-                      <span class="accordion-meta-item badge rounded-pill text-bg-light">Presupuestario</span>
-                      <span class="badge rounded-pill {% if informe.archivo_presupuestario %}bg-success{% else %}bg-secondary{% endif %}">{% if informe.archivo_presupuestario %}Subido{% else %}Pendiente{% endif %}</span>
+                <div class="accordion-summary-header w-100 d-flex justify-content-between align-items-start flex-wrap gap-2">
+                  <div class="summary-main pe-2">
+                    <div class="summary-title">{{ informe.get_mes_display }}</div>
+                    <div class="summary-meta d-flex flex-wrap gap-2 mt-1">
+                      <span class="summary-chip accordion-meta-item">Narrativo <span class="badge rounded-pill {% if informe.archivo_narrativo %}bg-success{% else %}bg-secondary{% endif %}">{% if informe.archivo_narrativo %}Subido{% else %}Pendiente{% endif %}</span></span>
+                      <span class="summary-chip accordion-meta-item">Presupuestario <span class="badge rounded-pill {% if informe.archivo_presupuestario %}bg-success{% else %}bg-secondary{% endif %}">{% if informe.archivo_presupuestario %}Subido{% else %}Pendiente{% endif %}</span></span>
                     </div>
                   </div>
-                  <div class="accordion-state d-flex align-items-center gap-2 ms-auto">
-                    <span class="badge rounded-pill bg-{% if informe.estado == 'APROBADO' %}success{% elif informe.estado == 'RECHAZADO' %}danger{% elif informe.estado == 'EN_REVISION' %}warning{% else %}secondary{% endif %}">
+                  <div class="summary-side d-flex align-items-center gap-2 ms-auto">
+                    <span class="summary-status badge rounded-pill bg-{% if informe.estado == 'APROBADO' %}success{% elif informe.estado == 'RECHAZADO' %}danger{% elif informe.estado == 'EN_REVISION' %}warning{% else %}secondary{% endif %}">
                       {{ informe.get_estado_display }}
                     </span>
                     <span class="toggle-icon" aria-hidden="true">▾</span>
