@@ -741,6 +741,15 @@ class AsociacionesTests(TestCase):
         self.assertContains(response, self.asociacion.nombre)
         self.assertNotContains(response, "Asociacion 2027")
 
+    def test_dashboard_admin_select_anios_muestra_solo_activos(self):
+        anio_inactivo = Anio.objects.create(anio=2025, activo=False)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, str(self.anio.anio))
+        self.assertNotContains(response, str(anio_inactivo.anio))
+
     def test_dashboard_asociacion_filtra_por_anio_sin_exponer_otros(self):
         asociacion_2027 = Asociacion.objects.create(anio=self.anio_otro, nombre="Asociacion U 2027", codigo="U27")
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")

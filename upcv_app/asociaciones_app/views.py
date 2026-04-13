@@ -74,70 +74,9 @@ def asociaciones_inicio(request):
         return _dashboard_asociacion(request)
     raise PermissionDenied
 
-    anios_disponibles = Anio.objects.filter(asociaciones__in=asociaciones_usuario).distinct().order_by("-anio")
-    anio_param = request.GET.get("anio")
-    anio_seleccionado = anios_disponibles.filter(anio=anio_param).first() if anio_param else None
-    if anio_seleccionado is None:
-        anio_seleccionado = anios_disponibles.first()
-
-    asociaciones = asociaciones_usuario
-    if anio_seleccionado:
-        asociaciones = asociaciones.filter(anio=anio_seleccionado)
-    if not asociaciones.exists():
-        raise PermissionDenied
-
-    expedientes = ExpedienteCAIMUS.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
-    informes = InformeMensual.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
-    notificaciones = NotificacionAsociacion.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
-
-    total_items = 0
-    items_completos = 0
-    for expediente in expedientes.prefetch_related("items"):
-        stats = expediente.progress_stats()
-        total_items += stats["total"]
-        items_completos += stats["done"]
-    items_pendientes = max(total_items - items_completos, 0)
-    cumplimiento = int((items_completos / total_items) * 100) if total_items else 0
-
-    asociacion_principal = asociaciones.first()
-    expediente_principal = expedientes.filter(asociacion=asociacion_principal).first() if asociacion_principal else None
-    informes_principal = informes.filter(asociacion=asociacion_principal).order_by("mes") if asociacion_principal else InformeMensual.objects.none()
-
-    chart_payload = {
-        "expedienteProgreso": [items_completos, items_pendientes],
-        "informesResumen": [
-            informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
-            informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
-        ],
-        "cumplimiento": cumplimiento,
-    }
-
-    context = {
-        "es_admin_dashboard": False,
-        "mis_asociaciones": asociaciones,
-        "asociacion_principal": asociacion_principal,
-        "expediente_principal": expediente_principal,
-        "informes_principal": informes_principal,
-        "kpis": {
-            "total_mis_asociaciones": asociaciones.count(),
-            "expediente_estado": expediente_principal.estado if expediente_principal else "SIN_EXPEDIENTE",
-            "expediente_total_items": total_items,
-            "expediente_items_completos": items_completos,
-            "expediente_items_pendientes": items_pendientes,
-            "informes_aprobados": informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
-            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
-            "alertas_no_leidas": notificaciones.filter(leida=False).count(),
-            "cumplimiento": cumplimiento,
-        },
-        "notificaciones_recientes": notificaciones.order_by("-creada_en")[:8],
-        "anios_disponibles": anios_disponibles,
-        "anio_seleccionado": anio_seleccionado,
-        "chart_payload": chart_payload,
-    }
-    return render(request, "asociaciones_app/dashboard.html", context)
 
 def _dashboard_admin(request):
-    anios_disponibles = Anio.objects.order_by("-anio")
+    anios_disponibles = Anio.objects.filter(activo=True).order_by("-anio")
     anio_param = request.GET.get("anio")
     anio_seleccionado = anios_disponibles.filter(anio=anio_param).first() if anio_param else None
     if anio_seleccionado is None:
