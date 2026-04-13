@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from calendar import month_name
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
+from django.db.models import Count
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
@@ -49,7 +52,186 @@ from .permissions import (
     user_has_asociacion_access,
     user_has_expediente_access,
 )
+@asociacion_required
+def dashboard(request):
+    if is_admin(request.user):
+        return _dashboard_admin(request)
+    if is_asociacion(request.user):
+        return _dashboard_asociacion(request)
+    raise PermissionDenied
 
+
+def _dashboard_admin(request):
+    asociaciones = Asociacion.objects.select_related("anio").all()
+    expedientes = ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio")
+    informes = InformeMensual.objects.select_related("asociacion", "asociacion__anio")
+
+    expedientes_por_estado = {
+        estado: expedientes.filter(estado=estado).count() for estado, _label in ExpedienteCAIMUS.ESTADOS
+    }
+    informes_por_estado = {estado: informes.filter(estado=estado).count() for estado, _label in InformeMensual.ESTADOS}
+
+    progresos = []
+    for expediente in expedientes.prefetch_related("items"):
+        stats = expediente.progress_stats()
+        if stats["total"] > 0:
+            progresos.append(stats["percent"])
+    promedio_cumplimiento = int(sum(progresos) / len(progresos)) if progresos else 0
+
+    actividad = []
+    for hist in ExpedienteEstadoHistorial.objects.select_related("expediente", "expediente__asociacion").order_by("-cambiado_en")[:4]:
+        actividad.append(
+            {
+                "titulo": f"Expediente: {hist.expediente.asociacion.nombre}",
+                "detalle": f"{hist.estado_anterior} → {hist.estado_nuevo}",
+                "fecha": hist.cambiado_en,
+                "tipo": "info",
+            }
+        )
+    for hist in InformeEstadoHistorial.objects.select_related("informe", "informe__asociacion").order_by("-cambiado_en")[:4]:
+        actividad.append(
+            {
+                "titulo": f"Informe {hist.informe.get_mes_display()} - {hist.informe.asociacion.nombre}",
+                "detalle": f"{hist.estado_anterior} → {hist.estado_nuevo}",
+                "fecha": hist.cambiado_en,
+                "tipo": "warning",
+            }
+        )
+    for asignacion in AsociacionUsuario.objects.select_related("asociacion", "usuario").order_by("-creado_en")[:4]:
+        actividad.append(
+            {
+                "titulo": f"Asignación de usuario en {asignacion.asociacion.nombre}",
+                "detalle": asignacion.usuario.get_full_name() or asignacion.usuario.username,
+                "fecha": asignacion.creado_en,
+                "tipo": "success",
+            }
+        )
+    actividad_reciente = sorted(actividad, key=lambda x: x["fecha"], reverse=True)[:8]
+
+    aprobaciones_mes = [0] * 12
+    for registro in (
+        ExpedienteEstadoHistorial.objects.filter(estado_nuevo=ExpedienteCAIMUS.ESTADO_APROBADO)
+        .values("cambiado_en__month")
+        .annotate(total=Count("id"))
+    ):
+        if registro["cambiado_en__month"]:
+            aprobaciones_mes[registro["cambiado_en__month"] - 1] += registro["total"]
+    for registro in (
+        InformeEstadoHistorial.objects.filter(estado_nuevo=InformeMensual.ESTADO_APROBADO)
+        .values("cambiado_en__month")
+        .annotate(total=Count("id"))
+    ):
+        if registro["cambiado_en__month"]:
+            aprobaciones_mes[registro["cambiado_en__month"] - 1] += registro["total"]
+
+    asociaciones_resumen = []
+    for asociacion in asociaciones[:12]:
+        expediente = getattr(asociacion, "expediente_caimus", None)
+        informes_asoc = asociacion.informes_mensuales.all()
+        asociaciones_resumen.append(
+            {
+                "asociacion": asociacion,
+                "estado_expediente": expediente.estado if expediente else "SIN_EXPEDIENTE",
+                "informes_aprobados": informes_asoc.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+                "informes_pendientes": informes_asoc.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            }
+        )
+
+    chart_payload = {
+        "expedientesEstado": [
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_APROBADO],
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_EN_REVISION],
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_RECHAZADO],
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_BORRADOR],
+        ],
+        "informesEstado": [
+            informes_por_estado[InformeMensual.ESTADO_APROBADO],
+            informes_por_estado[InformeMensual.ESTADO_EN_REVISION],
+            informes_por_estado[InformeMensual.ESTADO_RECHAZADO],
+            informes_por_estado[InformeMensual.ESTADO_BORRADOR],
+        ],
+        "aprobacionesMes": aprobaciones_mes,
+        "cumplimientoPromedio": promedio_cumplimiento,
+    }
+
+    context = {
+        "es_admin_dashboard": True,
+        "kpis": {
+            "total_anios": Anio.objects.filter(activo=True).count(),
+            "total_asociaciones": asociaciones.count(),
+            "total_usuarios_asignados": AsociacionUsuario.objects.filter(activo=True).count(),
+            "total_expedientes": expedientes.count(),
+            "expedientes_aprobados": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_APROBADO],
+            "expedientes_en_revision": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_EN_REVISION],
+            "expedientes_rechazados": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_RECHAZADO],
+            "expedientes_borrador": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_BORRADOR],
+            "total_informes": informes.count(),
+            "informes_aprobados": informes_por_estado[InformeMensual.ESTADO_APROBADO],
+            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "resoluciones_emitidas": ResolucionExpediente.objects.count() + ResolucionInformeMensual.objects.count(),
+            "promedio_cumplimiento": promedio_cumplimiento,
+        },
+        "notificaciones_recientes": NotificacionAsociacion.objects.select_related("asociacion").all()[:8],
+        "actividad_reciente": actividad_reciente,
+        "asociaciones_resumen": asociaciones_resumen,
+        "chart_payload": chart_payload,
+        "meses_labels": [month_name[i] for i in range(1, 13)],
+    }
+    return render(request, "asociaciones_app/dashboard.html", context)
+
+
+def _dashboard_asociacion(request):
+    asociaciones = get_asociaciones_usuario(request.user).select_related("anio")
+    if not asociaciones.exists():
+        raise PermissionDenied
+
+    expedientes = ExpedienteCAIMUS.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    informes = InformeMensual.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    notificaciones = NotificacionAsociacion.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+
+    total_items = 0
+    items_completos = 0
+    for expediente in expedientes.prefetch_related("items"):
+        stats = expediente.progress_stats()
+        total_items += stats["total"]
+        items_completos += stats["done"]
+    items_pendientes = max(total_items - items_completos, 0)
+    cumplimiento = int((items_completos / total_items) * 100) if total_items else 0
+
+    asociacion_principal = asociaciones.first()
+    expediente_principal = expedientes.filter(asociacion=asociacion_principal).first() if asociacion_principal else None
+    informes_principal = informes.filter(asociacion=asociacion_principal).order_by("mes") if asociacion_principal else InformeMensual.objects.none()
+
+    chart_payload = {
+        "expedienteProgreso": [items_completos, items_pendientes],
+        "informesResumen": [
+            informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+        ],
+        "cumplimiento": cumplimiento,
+    }
+
+    context = {
+        "es_admin_dashboard": False,
+        "mis_asociaciones": asociaciones,
+        "asociacion_principal": asociacion_principal,
+        "expediente_principal": expediente_principal,
+        "informes_principal": informes_principal,
+        "kpis": {
+            "total_mis_asociaciones": asociaciones.count(),
+            "expediente_estado": expediente_principal.estado if expediente_principal else "SIN_EXPEDIENTE",
+            "expediente_total_items": total_items,
+            "expediente_items_completos": items_completos,
+            "expediente_items_pendientes": items_pendientes,
+            "informes_aprobados": informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "alertas_no_leidas": notificaciones.filter(leida=False).count(),
+            "cumplimiento": cumplimiento,
+        },
+        "notificaciones_recientes": notificaciones.order_by("-creada_en")[:8],
+        "chart_payload": chart_payload,
+    }
+    return render(request, "asociaciones_app/dashboard.html", context)
 
 
 @login_required

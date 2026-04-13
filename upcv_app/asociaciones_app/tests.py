@@ -236,6 +236,40 @@ class AsociacionesTests(TestCase):
         response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion_otra.pk]))
         self.assertEqual(response.status_code, 403)
 
+    def test_admin_puede_ver_dashboard_global(self):
+        ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        ExpedienteCAIMUS.objects.create(asociacion=self.asociacion_otra, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Dashboard de asociaciones")
+        self.assertContains(response, self.asociacion.nombre)
+        self.assertContains(response, self.asociacion_otra.nombre)
+
+    def test_usuario_asociacion_dashboard_solo_datos_propios(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        ExpedienteCAIMUS.objects.create(asociacion=self.asociacion_otra, creado_por=self.admin_user)
+        NotificacionAsociacion.objects.create(asociacion=self.asociacion, titulo="Visible", mensaje="ok")
+        NotificacionAsociacion.objects.create(asociacion=self.asociacion_otra, titulo="Oculta", mensaje="no")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mi dashboard de asociaciones")
+        self.assertContains(response, "Visible")
+        self.assertNotContains(response, "Oculta")
+
+    def test_dashboard_metricas_cargan_sin_error(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mis asociaciones")
+        self.assertContains(response, "Alertas nuevas")
+
     def test_asociacion_no_puede_descargar_resolucion_sin_aprobacion(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)

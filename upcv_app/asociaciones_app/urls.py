@@ -5,6 +5,7 @@ from . import views
 app_name = "asociaciones"
 
 urlpatterns = [
+    path("dashboard/", views.dashboard, name="dashboard"),
     path("anios/", views.anio_list, name="anios_list"),
     path("anios/nuevo/", views.anio_create, name="anio_create"),
     path("anios/<int:pk>/editar/", views.anio_edit, name="anio_edit"),
