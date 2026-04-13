@@ -23,6 +23,7 @@ urlpatterns = [
         name="notificaciones_marcar_leidas",
     ),
     path("<int:pk>/caimus/", views.expediente_caimus, name="expediente_caimus"),
+    path("<int:pk>/caimus/enviar-revision/", views.expediente_enviar_revision, name="expediente_enviar_revision"),
     path("<int:pk>/caimus/sincronizar-checklist/", views.expediente_sync_checklist, name="expediente_sync_checklist"),
     path("<int:pk>/informes/", views.informes_mensuales, name="informes_mensuales"),
     path("expedientes/<int:pk>/revision/", views.expediente_revision, name="expediente_revision"),
@@ -56,6 +57,11 @@ urlpatterns = [
         "<int:asociacion_id>/informes/<int:mes>/observacion/",
         views.informe_observacion,
         name="informe_observacion",
+    ),
+    path(
+        "<int:asociacion_id>/informes/<int:mes>/enviar-revision/",
+        views.informe_enviar_revision,
+        name="informe_enviar_revision",
     ),
     path(
         "<int:asociacion_id>/informes/<int:mes>/estado/",

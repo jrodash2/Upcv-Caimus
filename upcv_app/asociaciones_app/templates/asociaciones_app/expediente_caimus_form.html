@@ -117,6 +117,15 @@
 
           <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
             <button class="btn btn-primary" type="submit" name="save_all" value="1">Guardar todo</button>
+            {% if es_asociacion and expediente.estado == 'BORRADOR' or es_asociacion and expediente.estado == 'RECHAZADO' %}
+              {% if expediente_completo %}
+                <button class="btn btn-success" type="submit" formaction="{% url 'asociaciones:expediente_enviar_revision' asociacion.pk %}" formmethod="post">
+                  <i data-feather="send" aria-hidden="true"></i>Enviar a revisión
+                </button>
+              {% else %}
+                <span class="alert alert-light-warning py-2 px-3 mb-0">Completa todos los documentos para poder enviar el expediente a revisión.</span>
+              {% endif %}
+            {% endif %}
           </div>
         </form>
       </div>

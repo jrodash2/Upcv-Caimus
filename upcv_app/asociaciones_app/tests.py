@@ -15,6 +15,7 @@ from .models import (
     ChecklistAnioItem,
     ExpedienteCAIMUS,
     InformeMensual,
+    NotificacionAdmin,
     NotificacionAsociacion,
     ResolucionInformeMensual,
     ResolucionExpediente,
@@ -401,6 +402,121 @@ class AsociacionesTests(TestCase):
         client.login(username="user1", password="pass123")
         response = client.get(reverse("almacen:dahsboard"))
         self.assertEqual(response.status_code, 403)
+
+    def test_usuario_asociacion_puede_enviar_expediente_completo_a_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.user)
+        crear_items_expediente(expediente)
+        item = expediente.items.first()
+        item.pdf = SimpleUploadedFile("doc.pdf", b"%PDF-1.4 test", content_type="application/pdf")
+        item.save()
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(reverse("asociaciones:expediente_enviar_revision", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 302)
+        expediente.refresh_from_db()
+        self.assertEqual(expediente.estado, ExpedienteCAIMUS.ESTADO_EN_REVISION)
+
+    def test_usuario_asociacion_no_puede_enviar_expediente_incompleto_a_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.user)
+        crear_items_expediente(expediente)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(reverse("asociaciones:expediente_enviar_revision", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 302)
+        expediente.refresh_from_db()
+        self.assertEqual(expediente.estado, ExpedienteCAIMUS.ESTADO_BORRADOR)
+
+    def test_usuario_asociacion_puede_enviar_informe_completo_a_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=8,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_BORRADOR,
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(reverse("asociaciones:informe_enviar_revision", args=[self.asociacion.pk, informe.mes]))
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_EN_REVISION)
+
+    def test_usuario_asociacion_no_puede_enviar_informe_incompleto_a_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=9,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_BORRADOR,
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(reverse("asociaciones:informe_enviar_revision", args=[self.asociacion.pk, informe.mes]))
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertNotEqual(informe.estado, InformeMensual.ESTADO_EN_REVISION)
+
+    def test_enviar_informe_a_revision_crea_alerta_admin(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=10,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        client.post(reverse("asociaciones:informe_enviar_revision", args=[self.asociacion.pk, informe.mes]))
+        self.assertTrue(
+            NotificacionAdmin.objects.filter(
+                titulo="Informe enviado a revisión",
+                asociacion=self.asociacion,
+                informe=informe,
+            ).exists()
+        )
+
+    def test_enviar_expediente_a_revision_crea_alerta_admin(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.user)
+        crear_items_expediente(expediente)
+        item = expediente.items.first()
+        item.pdf = SimpleUploadedFile("doc.pdf", b"%PDF-1.4 test", content_type="application/pdf")
+        item.save()
+        client = Client()
+        client.login(username="user1", password="pass123")
+        client.post(reverse("asociaciones:expediente_enviar_revision", args=[self.asociacion.pk]))
+        self.assertTrue(
+            NotificacionAdmin.objects.filter(
+                titulo="Expediente enviado a revisión",
+                asociacion=self.asociacion,
+            ).exists()
+        )
+
+    def test_dashboard_admin_filtra_por_anio(self):
+        Asociacion.objects.create(anio=self.anio_otro, nombre="Asociacion 2027", codigo="A27")
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"), {"anio": 2026})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.asociacion.nombre)
+        self.assertNotContains(response, "Asociacion 2027")
+
+    def test_dashboard_asociacion_filtra_por_anio_sin_exponer_otros(self):
+        asociacion_2027 = Asociacion.objects.create(anio=self.anio_otro, nombre="Asociacion U 2027", codigo="U27")
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        AsociacionUsuario.objects.create(asociacion=asociacion_2027, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"), {"anio": 2026})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.asociacion.nombre)
+        self.assertNotContains(response, "Asociacion U 2027")
 
     def test_usuario_otra_asociacion_no_ve_observaciones_ajenas(self):
         expediente = ExpedienteCAIMUS.objects.create(

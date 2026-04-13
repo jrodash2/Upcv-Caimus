@@ -104,6 +104,12 @@
                   {% if not es_admin %}
                     <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:informe_observacion' asociacion.pk informe.mes %}"><i data-feather="save" aria-hidden="true"></i>Guardar
                     </button>
+                    {% if informe.estado == 'BORRADOR' or informe.estado == 'RECHAZADO' %}
+                      <form method="post" action="{% url 'asociaciones:informe_enviar_revision' asociacion.pk informe.mes %}">
+                        {% csrf_token %}
+                        <button class="btn btn-success btn-sm" type="submit"><i data-feather="send" aria-hidden="true"></i>Enviar a revisión</button>
+                      </form>
+                    {% endif %}
                   {% else %}
                     <form method="post" id="estado-form-{{ informe.mes }}" class="d-flex gap-2 flex-wrap" action="{% url 'asociaciones:informe_estado' asociacion.pk informe.mes %}">
                       {% csrf_token %}

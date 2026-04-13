@@ -553,6 +553,43 @@ class NotificacionAsociacion(models.Model):
         return f"{self.asociacion} - {self.titulo}"
 
 
+class NotificacionAdmin(models.Model):
+    TIPO_INFO = "info"
+    TIPO_WARNING = "warning"
+    TIPO_SUCCESS = "success"
+    TIPO_ERROR = "error"
+    TIPOS = [
+        (TIPO_INFO, "Info"),
+        (TIPO_WARNING, "Warning"),
+        (TIPO_SUCCESS, "Success"),
+        (TIPO_ERROR, "Error"),
+    ]
+
+    titulo = models.CharField(max_length=255)
+    mensaje = models.TextField()
+    tipo = models.CharField(max_length=30, choices=TIPOS, default=TIPO_INFO)
+    leida = models.BooleanField(default=False)
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notificaciones_admin_creadas",
+    )
+    creada_en = models.DateTimeField(auto_now_add=True)
+    enlace = models.CharField(max_length=255, blank=True)
+    asociacion = models.ForeignKey(Asociacion, null=True, blank=True, on_delete=models.CASCADE, related_name="notificaciones_admin")
+    informe = models.ForeignKey("InformeMensual", null=True, blank=True, on_delete=models.CASCADE, related_name="notificaciones_admin")
+
+    class Meta:
+        verbose_name = "Notificación para administrador"
+        verbose_name_plural = "Notificaciones para administrador"
+        ordering = ["-creada_en"]
+
+    def __str__(self) -> str:
+        return self.titulo
+
+
 def crear_informes_mensuales(asociacion: Asociacion, usuario: Optional[models.Model] = None) -> None:
     existentes = set(asociacion.informes_mensuales.values_list("mes", flat=True))
     informes = []
@@ -622,4 +659,26 @@ def crear_notificacion_asociacion(
         tipo=tipo,
         creada_por=creada_por,
         enlace=enlace,
+    )
+
+
+def crear_notificacion_admin(
+    titulo: str,
+    mensaje: str,
+    tipo: str = NotificacionAdmin.TIPO_INFO,
+    creada_por=None,
+    enlace: str = "",
+    asociacion: Optional[Asociacion] = None,
+    informe: Optional[InformeMensual] = None,
+) -> NotificacionAdmin:
+    if tipo not in dict(NotificacionAdmin.TIPOS):
+        tipo = NotificacionAdmin.TIPO_INFO
+    return NotificacionAdmin.objects.create(
+        titulo=titulo,
+        mensaje=mensaje,
+        tipo=tipo,
+        creada_por=creada_por,
+        enlace=enlace,
+        asociacion=asociacion,
+        informe=informe,
     )
