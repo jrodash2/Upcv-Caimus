@@ -532,10 +532,8 @@ class AsociacionesTests(TestCase):
         client.login(username="admin", password="pass123")
         response = client.get(reverse("asociaciones:dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Bandeja de entrada")
-        self.assertContains(response, "Ver bandeja completa")
-        self.assertContains(response, "1 pendientes")
-        self.assertContains(response, "Informe enviado a revisión")
+        self.assertContains(response, "Alertas nuevas")
+        self.assertContains(response, "No hay alertas nuevas.")
 
     def test_dashboard_admin_muestra_total_alertas_no_leidas(self):
         NotificacionAdmin.objects.create(
@@ -548,8 +546,8 @@ class AsociacionesTests(TestCase):
         client.login(username="admin", password="pass123")
         response = client.get(reverse("asociaciones:dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Alertas pendientes")
-        self.assertContains(response, "1 sin leer")
+        self.assertContains(response, "Alertas nuevas")
+        self.assertContains(response, "1 nuevas")
         self.assertContains(response, "Alerta nueva")
 
     def test_dashboard_admin_no_renderiza_card_requieren_revision(self):
@@ -571,7 +569,7 @@ class AsociacionesTests(TestCase):
         client.login(username="admin", password="pass123")
         dashboard = client.get(reverse("asociaciones:dashboard"), {"anio": self.anio.anio})
         bandeja = client.get(reverse("asociaciones:bandeja_revision"), {"anio": self.anio.pk, "estado": "pendiente"})
-        self.assertContains(dashboard, "1 pendientes")
+        self.assertContains(dashboard, "Alertas nuevas")
         self.assertContains(bandeja, "1 pendientes")
 
     def test_bandeja_muestra_estado_vacio(self):
@@ -1083,8 +1081,14 @@ class AsociacionesTests(TestCase):
         client.login(username="admin", password="pass123")
         response = client.get(reverse("asociaciones:dashboard"), {"anio": self.anio.anio})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Bandeja de entrada")
-        self.assertContains(response, self.asociacion.nombre)
+        self.assertContains(response, "Alertas nuevas")
+        self.assertTrue(
+            EntradaRevisionAdmin.objects.filter(
+                informe__asociacion=self.asociacion,
+                informe__mes=4,
+                estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            ).exists()
+        )
 
     def test_no_se_puede_aprobar_informe_si_falta_un_archivo(self):
         informe = InformeMensual.objects.create(

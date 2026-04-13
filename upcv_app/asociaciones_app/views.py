@@ -74,6 +74,18 @@ def asociaciones_inicio(request):
         return _dashboard_asociacion(request)
     raise PermissionDenied
 
+    anios_disponibles = Anio.objects.filter(asociaciones__in=asociaciones_usuario).distinct().order_by("-anio")
+    anio_param = request.GET.get("anio")
+    anio_seleccionado = anios_disponibles.filter(anio=anio_param).first() if anio_param else None
+    if anio_seleccionado is None:
+        anio_seleccionado = anios_disponibles.first()
+
+    asociaciones = asociaciones_usuario
+    if anio_seleccionado:
+        asociaciones = asociaciones.filter(anio=anio_seleccionado)
+    if not asociaciones.exists():
+        raise PermissionDenied
+
     expedientes = ExpedienteCAIMUS.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
     informes = InformeMensual.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
     notificaciones = NotificacionAsociacion.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
@@ -263,10 +275,8 @@ def _dashboard_admin(request):
         "notificaciones_recientes": NotificacionAsociacion.objects.select_related("asociacion").filter(
             asociacion__anio=anio_seleccionado
         )[:8] if anio_seleccionado else NotificacionAsociacion.objects.select_related("asociacion").all()[:8],
-        "alertas_admin_no_leidas": resumen_inbox["alertas_no_leidas_recientes"],
-        "total_alertas_admin_no_leidas": resumen_inbox["total_alertas_no_leidas"],
-        "bandeja_pendientes_total": resumen_inbox["total_bandeja_pendiente"],
-        "bandeja_pendientes_recientes": resumen_inbox["entradas_bandeja_recientes"],
+        "alertas_nuevas_recientes": resumen_inbox["alertas_no_leidas_recientes"],
+        "total_alertas_nuevas": resumen_inbox["total_alertas_no_leidas"],
         "anios_disponibles": anios_disponibles,
         "anio_seleccionado": anio_seleccionado,
         "asociaciones_resumen": asociaciones_resumen,
