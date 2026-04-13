@@ -9,10 +9,10 @@
       <h4>Bandeja de revisión</h4>
       <span class="badge accessible-badge bg-primary">{{ pendientes_total }} pendientes</span>
     </div>
-    <div class="card mb-3">
+    <div class="card mb-3 review-filters-card">
       <div class="card-body">
-        <form method="get" class="row g-2">
-          <div class="col-md-3">
+        <form method="get" class="row g-2 g-lg-3 align-items-end">
+          <div class="col-md-3 col-sm-6">
             <label class="form-label">Tipo</label>
             <select class="form-select" name="tipo">
               <option value="">Todos</option>
@@ -21,7 +21,7 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3 col-sm-6">
             <label class="form-label">Año</label>
             <select class="form-select" name="anio">
               <option value="">Todos</option>
@@ -30,7 +30,7 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-3 col-sm-6">
             <label class="form-label">Estado</label>
             <select class="form-select" name="estado">
               <option value="">Todos</option>
@@ -39,36 +39,38 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-2 align-self-end">
+          <div class="col-md-2 col-sm-6">
             <button class="btn btn-primary" type="submit">Filtrar</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div class="d-grid gap-3">
+    <div class="review-inbox d-grid gap-2">
       {% for entrada in entradas %}
-      <div class="card inbox-card">
-        <div class="card-body">
-          <div class="inbox-item">
-            <div class="inbox-item__left">
-              <span class="inbox-item__icon">
+      <div class="card inbox-card review-item review-item--compact">
+        <div class="card-body py-2 px-3">
+          <div class="inbox-item review-item__row">
+            <div class="inbox-item__left review-item__content">
+              <span class="inbox-item__icon review-item__icon">
                 <i data-feather="{% if entrada.tipo == 'informe' %}file-text{% else %}folder{% endif %}" aria-hidden="true"></i>
               </span>
               <div class="min-w-0">
-                <h6 class="inbox-item__title">{{ entrada.titulo }}</h6>
-                <p class="mb-1 text-muted">{{ entrada.mensaje|truncatechars:120 }}</p>
-                <div class="inbox-item__meta">
+                <h6 class="inbox-item__title mb-0">{{ entrada.titulo|truncatechars:70 }}</h6>
+                <p class="mb-1 text-muted small" title="{{ entrada.mensaje }}">{{ entrada.mensaje|truncatechars:95 }}</p>
+                <div class="inbox-item__meta review-item__meta">
                   {{ entrada.asociacion.nombre|default:"Sin asociación" }}
                   {% if entrada.asociacion %} · Año {{ entrada.asociacion.anio.anio }}{% endif %}
                   · {{ entrada.creada_en|date:"d/m/Y H:i" }}
                 </div>
               </div>
             </div>
-            <div class="inbox-item__right">
-              <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">{{ entrada.get_tipo_display }}</span>
-              <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">{{ entrada.get_estado_display }}</span>
-              <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <div class="inbox-item__right review-item__actions">
+              <div class="review-item__badges d-flex gap-1 flex-wrap justify-content-end">
+                <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">{{ entrada.get_tipo_display }}</span>
+                <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">{{ entrada.get_estado_display }}</span>
+              </div>
+              <div class="d-flex gap-1 flex-wrap justify-content-end">
                 {% if entrada.enlace %}
                   <a class="btn btn-primary btn-xs" href="{{ entrada.enlace }}">{% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}</a>
                 {% endif %}
