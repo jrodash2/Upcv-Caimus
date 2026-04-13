@@ -11,6 +11,28 @@
           <div class="card-body">
             <h5>{{ asociacion.nombre }}</h5>
             <p class="text-muted">{{ asociacion.anio.anio }} - {{ asociacion.codigo }}</p>
+            {% if asociacion.notificaciones_pendientes %}
+            <div class="alert alert-light-warning d-flex justify-content-between align-items-center py-2 px-3 mb-3">
+              <span class="fw-semibold">
+                {{ asociacion.notificaciones_pendientes }} alerta{{ asociacion.notificaciones_pendientes|pluralize }} pendiente{{ asociacion.notificaciones_pendientes|pluralize }}
+              </span>
+              <form method="post" action="{% url 'asociaciones:notificaciones_marcar_leidas' asociacion.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-outline-warning btn-xs" type="submit">Marcar alertas como leídas</button>
+              </form>
+            </div>
+            {% endif %}
+            {% if asociacion.notificaciones_recientes %}
+            <div class="mb-3">
+              {% for notificacion in asociacion.notificaciones_recientes %}
+              <div class="alert alert-light-{% if notificacion.tipo == 'error' %}danger{% elif notificacion.tipo == 'warning' %}warning{% elif notificacion.tipo == 'success' %}success{% else %}info{% endif %} py-2 px-3 mb-2">
+                <div class="fw-semibold">{{ notificacion.titulo }}</div>
+                <div class="small">{{ notificacion.mensaje }}</div>
+                <div class="text-muted mt-1" style="font-size: 11px;">{{ notificacion.creada_en|date:"d/m/Y H:i" }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
             <div class="btn-group">
   <a class="btn btn-primary btn-sm me-2" href="{% url 'asociaciones:expediente_caimus' asociacion.pk %}">Expediente</a>
   <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:informes_mensuales' asociacion.pk %}">Informes</a>
