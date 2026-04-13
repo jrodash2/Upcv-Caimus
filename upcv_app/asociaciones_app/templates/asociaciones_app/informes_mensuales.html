@@ -93,7 +93,9 @@
                     {% if es_admin %}
                       <textarea class="form-control" rows="2" name="observacion_admin" form="estado-form-{{ informe.mes }}">{{ informe.observacion_admin }}</textarea>
                     {% else %}
-                      <div class="form-control bg-light">{{ informe.observacion_admin|default:"-" }}</div>
+                      {% if informe.observacion_admin %}
+                        <div class="alert alert-light-warning mb-0">{{ informe.observacion_admin }}</div>
+                      {% endif %}
                     {% endif %}
                   </div>
                 </div>

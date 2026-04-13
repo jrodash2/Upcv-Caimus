@@ -247,6 +247,13 @@ class AsociacionesTests(TestCase):
         self.assertContains(response, self.asociacion.nombre)
         self.assertContains(response, self.asociacion_otra.nombre)
 
+    def test_admin_inicio_modulo_muestra_dashboard(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:inicio"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Dashboard de asociaciones")
+
     def test_usuario_asociacion_dashboard_solo_datos_propios(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
@@ -261,6 +268,14 @@ class AsociacionesTests(TestCase):
         self.assertContains(response, "Visible")
         self.assertNotContains(response, "Oculta")
 
+    def test_usuario_asociacion_inicio_modulo_muestra_dashboard_propio(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:inicio"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mi dashboard de asociaciones")
+
     def test_dashboard_metricas_cargan_sin_error(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         client = Client()
@@ -269,6 +284,83 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Mis asociaciones")
         self.assertContains(response, "Alertas nuevas")
+
+    def test_observacion_admin_expediente_se_guarda_y_usuario_asociacion_la_ve(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client_admin = Client()
+        client_admin.login(username="admin", password="pass123")
+        response = client_admin.post(
+            reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+            {"estado": ExpedienteCAIMUS.ESTADO_RECHAZADO, "observacion_admin": "Falta firma del representante."},
+        )
+        self.assertEqual(response.status_code, 302)
+        expediente.refresh_from_db()
+        self.assertEqual(expediente.observacion_admin, "Falta firma del representante.")
+
+        client_asoc = Client()
+        client_asoc.login(username="user1", password="pass123")
+        response = client_asoc.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertContains(response, "Observación del administrador")
+        self.assertContains(response, "Falta firma del representante.")
+
+    def test_observacion_admin_informe_se_guarda_y_usuario_asociacion_la_ve(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=3,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_EN_REVISION,
+        )
+        client_admin = Client()
+        client_admin.login(username="admin", password="pass123")
+        response = client_admin.post(
+            reverse("asociaciones:informe_estado", args=[self.asociacion.pk, informe.mes]),
+            {"estado": InformeMensual.ESTADO_RECHAZADO, "observacion_admin": "Actualizar cuadro presupuestario."},
+        )
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertEqual(informe.observacion_admin, "Actualizar cuadro presupuestario.")
+
+        client_asoc = Client()
+        client_asoc.login(username="user1", password="pass123")
+        response = client_asoc.get(reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]))
+        self.assertContains(response, "Actualizar cuadro presupuestario.")
+
+    def test_notificacion_observacion_expediente_solo_si_hay_cambio_real(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        client.post(
+            reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+            {"estado": ExpedienteCAIMUS.ESTADO_RECHAZADO, "observacion_admin": "Corregir documento 4."},
+        )
+        client.post(
+            reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+            {"estado": ExpedienteCAIMUS.ESTADO_RECHAZADO, "observacion_admin": "Corregir documento 4."},
+        )
+        self.assertEqual(
+            NotificacionAsociacion.objects.filter(
+                asociacion=self.asociacion,
+                titulo="Observación del administrador en expediente",
+            ).count(),
+            1,
+        )
+
+    def test_usuario_otra_asociacion_no_ve_observaciones_ajenas(self):
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            observacion_admin="Observación privada",
+        )
+        user_otro = User.objects.create_user(username="otro_obs", password="pass123")
+        user_otro.groups.add(self.asociacion_group)
+        AsociacionUsuario.objects.create(asociacion=self.asociacion_otra, usuario=user_otro, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="otro_obs", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]))
+        self.assertEqual(response.status_code, 403)
 
     def test_asociacion_no_puede_descargar_resolucion_sin_aprobacion(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
