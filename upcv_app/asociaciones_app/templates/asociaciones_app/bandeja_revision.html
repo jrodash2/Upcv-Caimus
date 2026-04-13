@@ -46,49 +46,53 @@
       </div>
     </div>
 
-    <div class="review-inbox d-grid gap-2">
+    <div class="review-grid row g-2">
       {% for entrada in entradas %}
-      <div class="card inbox-card review-item review-item--compact">
-        <div class="card-body py-2 px-3">
-          <div class="inbox-item review-item__row">
-            <div class="inbox-item__left review-item__content">
-              <span class="inbox-item__icon review-item__icon">
-                <i data-feather="{% if entrada.tipo == 'informe' %}file-text{% else %}folder{% endif %}" aria-hidden="true"></i>
-              </span>
-              <div class="min-w-0">
-                <h6 class="inbox-item__title mb-0">{{ entrada.titulo|truncatechars:70 }}</h6>
-                <p class="mb-1 text-muted small" title="{{ entrada.mensaje }}">{{ entrada.mensaje|truncatechars:95 }}</p>
-                <div class="inbox-item__meta review-item__meta">
-                  {{ entrada.asociacion.nombre|default:"Sin asociación" }}
-                  {% if entrada.asociacion %} · Año {{ entrada.asociacion.anio.anio }}{% endif %}
-                  · {{ entrada.creada_en|date:"d/m/Y H:i" }}
+      <div class="col-xl-4 col-lg-6 col-12">
+        <div class="card inbox-card review-item review-item--compact h-100">
+          <div class="card-body py-2 px-3">
+            <div class="inbox-item review-item__row">
+              <div class="inbox-item__left review-item__content">
+                <span class="inbox-item__icon review-item__icon">
+                  <i data-feather="{% if entrada.tipo == 'informe' %}file-text{% else %}folder{% endif %}" aria-hidden="true"></i>
+                </span>
+                <div class="min-w-0">
+                  <h6 class="inbox-item__title mb-0">{{ entrada.titulo|truncatechars:60 }}</h6>
+                  <p class="mb-1 text-muted small review-card__message" title="{{ entrada.mensaje }}">{{ entrada.mensaje|truncatechars:78 }}</p>
+                  <div class="inbox-item__meta review-item__meta">
+                    {{ entrada.asociacion.nombre|default:"Sin asociación" }}
+                    {% if entrada.asociacion %} · Año {{ entrada.asociacion.anio.anio }}{% endif %}
+                    · {{ entrada.creada_en|date:"d/m/Y H:i" }}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="inbox-item__right review-item__actions">
-              <div class="review-item__badges d-flex gap-1 flex-wrap justify-content-end">
-                <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">{{ entrada.get_tipo_display }}</span>
-                <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">{{ entrada.get_estado_display }}</span>
-              </div>
-              <div class="d-flex gap-1 flex-wrap justify-content-end">
-                {% if entrada.enlace %}
-                  <a class="btn btn-primary btn-xs" href="{{ entrada.enlace }}">{% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}</a>
-                {% endif %}
-                {% if entrada.estado == 'pendiente' %}
-                  <form method="post" action="{% url 'asociaciones:bandeja_marcar_atendida' entrada.pk %}">
-                    {% csrf_token %}
-                    <button class="btn btn-outline-success btn-xs" type="submit">Marcar atendida</button>
-                  </form>
-                {% endif %}
+              <div class="inbox-item__right review-item__actions">
+                <div class="review-item__badges d-flex gap-1 flex-wrap justify-content-end">
+                  <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">{{ entrada.get_tipo_display }}</span>
+                  <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">{{ entrada.get_estado_display }}</span>
+                </div>
+                <div class="d-flex gap-1 flex-wrap justify-content-end">
+                  {% if entrada.enlace %}
+                    <a class="btn btn-primary btn-xs" href="{{ entrada.enlace }}">{% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}</a>
+                  {% endif %}
+                  {% if entrada.estado == 'pendiente' %}
+                    <form method="post" action="{% url 'asociaciones:bandeja_marcar_atendida' entrada.pk %}">
+                      {% csrf_token %}
+                      <button class="btn btn-outline-success btn-xs" type="submit">Marcar atendida</button>
+                    </form>
+                  {% endif %}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
       {% empty %}
+      <div class="col-12">
       <div class="inbox-empty-state">
         <i data-feather="inbox" class="mb-2" aria-hidden="true"></i>
         <div>No hay pendientes de revisión.</div>
+      </div>
       </div>
       {% endfor %}
     </div>
