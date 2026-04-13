@@ -14,6 +14,7 @@ from .models import (
     ChecklistAnioItem,
     ExpedienteCAIMUS,
     InformeMensual,
+    NotificacionAsociacion,
     ResolucionInformeMensual,
     ResolucionExpediente,
     crear_items_expediente,
@@ -31,8 +32,10 @@ class AsociacionesTests(TestCase):
         self.user.groups.add(self.asociacion_group)
 
         self.anio = Anio.objects.create(anio=2026)
+        self.anio_otro = Anio.objects.create(anio=2027)
         self.asociacion = Asociacion.objects.create(anio=self.anio, nombre="Asociacion X", codigo="AX")
         self.asociacion_otra = Asociacion.objects.create(anio=self.anio, nombre="Asociacion Y", codigo="AY")
+        self.asociacion_otro_anio = Asociacion.objects.create(anio=self.anio_otro, nombre="Asociacion Z", codigo="AZ")
 
     def _crear_expediente_aprobado_completo(self):
         ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
@@ -171,6 +174,32 @@ class AsociacionesTests(TestCase):
         response = client.get(reverse("asociaciones:mis_asociaciones"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.asociacion.nombre)
+        self.assertNotContains(response, self.asociacion_otra.nombre)
+
+    def test_vista_asignaciones_no_muestra_select_de_asociacion(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:asociacion_usuarios", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"{self.asociacion.nombre} ({self.asociacion.anio.anio})")
+        self.assertNotContains(response, 'name="asociacion"')
+        self.assertNotContains(response, self.asociacion_otro_anio.nombre)
+
+    def test_asignacion_usuario_se_guarda_siempre_en_asociacion_actual(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(
+            reverse("asociaciones:asociacion_usuarios", args=[self.asociacion.pk]),
+            {
+                "usuario": self.user.pk,
+                "rol_en_asociacion": "Técnico",
+                "activo": "on",
+                "asociacion": self.asociacion_otro_anio.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        asignacion = AsociacionUsuario.objects.get(usuario=self.user)
+        self.assertEqual(asignacion.asociacion, self.asociacion)
 
     def test_asociacion_no_puede_ver_otra_asociacion(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
@@ -296,6 +325,12 @@ class AsociacionesTests(TestCase):
         informe.refresh_from_db()
         self.assertEqual(informe.estado, InformeMensual.ESTADO_APROBADO)
         self.assertTrue(ResolucionInformeMensual.objects.filter(informe=informe).exists())
+        self.assertTrue(
+            NotificacionAsociacion.objects.filter(
+                asociacion=self.asociacion,
+                titulo="Informe mensual aprobado",
+            ).exists()
+        )
 
     def test_admin_puede_ver_y_guardar_checklist_anio(self):
         client = Client()
@@ -487,6 +522,53 @@ class AsociacionesTests(TestCase):
         informe.refresh_from_db()
         self.assertNotEqual(informe.estado, InformeMensual.ESTADO_APROBADO)
         self.assertFalse(ResolucionInformeMensual.objects.filter(informe=informe).exists())
+
+    def test_admin_aprueba_expediente_crea_notificacion(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        client.post(
+            reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+            {"estado": ExpedienteCAIMUS.ESTADO_APROBADO, "observacion_admin": ""},
+        )
+        self.assertTrue(
+            NotificacionAsociacion.objects.filter(
+                asociacion=self.asociacion,
+                titulo="Expediente aprobado",
+            ).exists()
+        )
+
+    def test_usuario_asociacion_solo_ve_notificaciones_de_su_asociacion(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        NotificacionAsociacion.objects.create(asociacion=self.asociacion, titulo="Notif 1", mensaje="Visible")
+        NotificacionAsociacion.objects.create(asociacion=self.asociacion_otra, titulo="Notif 2", mensaje="No visible")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:mis_asociaciones"))
+        self.assertContains(response, "Notif 1")
+        self.assertNotContains(response, "Notif 2")
+
+    def test_usuario_de_otra_asociacion_no_puede_marcar_alertas_ajenas(self):
+        user_otro = User.objects.create_user(username="otro", password="pass123")
+        user_otro.groups.add(self.asociacion_group)
+        AsociacionUsuario.objects.create(asociacion=self.asociacion_otra, usuario=user_otro, rol_en_asociacion="Miembro")
+        notificacion = NotificacionAsociacion.objects.create(asociacion=self.asociacion, titulo="Notif", mensaje="Msg")
+        client = Client()
+        client.login(username="otro", password="pass123")
+        response = client.post(reverse("asociaciones:notificaciones_marcar_leidas", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 403)
+        notificacion.refresh_from_db()
+        self.assertFalse(notificacion.leida)
+
+    def test_marcar_alertas_como_leidas_funciona(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        notificacion = NotificacionAsociacion.objects.create(asociacion=self.asociacion, titulo="Notif", mensaje="Msg")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(reverse("asociaciones:notificaciones_marcar_leidas", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 302)
+        notificacion.refresh_from_db()
+        self.assertTrue(notificacion.leida)
 
     def test_usuario_asociacion_puede_descargar_constancia_informe_aprobado(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")

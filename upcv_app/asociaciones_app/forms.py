@@ -37,11 +37,14 @@ class AsociacionForm(forms.ModelForm):
 
 
 class AsociacionUsuarioForm(forms.ModelForm):
+    def __init__(self, *args, asociacion_actual=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.asociacion_actual = asociacion_actual
+
     class Meta:
         model = AsociacionUsuario
-        fields = ["asociacion", "usuario", "rol_en_asociacion", "activo"]
+        fields = ["usuario", "rol_en_asociacion", "activo"]
         widgets = {
-            "asociacion": forms.Select(attrs={"class": "form-select"}),
             "usuario": forms.Select(attrs={"class": "form-select"}),
             "rol_en_asociacion": forms.TextInput(attrs={"class": "form-control"}),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
