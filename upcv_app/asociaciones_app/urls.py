@@ -74,5 +74,6 @@ urlpatterns = [
         name="informe_resolucion_pdf",
     ),
     path("bandeja-revision/", views.bandeja_revision, name="bandeja_revision"),
+    path("alertas-admin/<int:pk>/revisar/", views.alerta_admin_revisar, name="alerta_admin_revisar"),
     path("asignaciones/", views.asignaciones_list, name="asignaciones_list"),
 ]

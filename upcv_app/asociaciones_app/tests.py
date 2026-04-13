@@ -479,6 +479,12 @@ class AsociacionesTests(TestCase):
                 informe=informe,
             ).exists()
         )
+        alerta = NotificacionAdmin.objects.get(
+            titulo="Informe enviado a revisión",
+            asociacion=self.asociacion,
+            informe=informe,
+        )
+        self.assertIn(f"#informe-mes-{informe.mes}", alerta.enlace)
 
     def test_enviar_expediente_a_revision_crea_alerta_admin(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
@@ -497,6 +503,93 @@ class AsociacionesTests(TestCase):
                 asociacion=self.asociacion,
             ).exists()
         )
+
+    def test_dashboard_admin_muestra_alertas_pendientes(self):
+        NotificacionAdmin.objects.create(
+            titulo="Informe enviado a revisión",
+            mensaje="Pendiente revisar informe.",
+            asociacion=self.asociacion,
+            enlace=reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]),
+            leida=False,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Alertas pendientes")
+        self.assertContains(response, "Revisar")
+
+    def test_alerta_admin_revisar_marca_leida_y_redirige(self):
+        alerta = NotificacionAdmin.objects.create(
+            titulo="Expediente enviado a revisión",
+            mensaje="Pendiente revisar expediente.",
+            asociacion=self.asociacion,
+            enlace=reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]),
+            leida=False,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:alerta_admin_revisar", args=[alerta.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        alerta.refresh_from_db()
+        self.assertTrue(alerta.leida)
+
+    def test_upload_narrativo_no_cambia_a_en_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=6,
+            estado=InformeMensual.ESTADO_BORRADOR,
+            creado_por=self.user,
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        archivo = SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf")
+        response = client.post(
+            reverse("asociaciones:informe_upload_narrativo", args=[self.asociacion.pk, informe.mes]),
+            {"pdf": archivo},
+        )
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
+
+    def test_upload_presupuestario_no_cambia_a_en_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=7,
+            estado=InformeMensual.ESTADO_RECHAZADO,
+            creado_por=self.user,
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        archivo = SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf")
+        response = client.post(
+            reverse("asociaciones:informe_upload_presupuestario", args=[self.asociacion.pk, informe.mes]),
+            {"pdf": archivo},
+        )
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
+
+    def test_guardar_observaciones_no_cambia_a_en_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=11,
+            estado=InformeMensual.ESTADO_BORRADOR,
+            creado_por=self.user,
+        )
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(
+            reverse("asociaciones:informe_observacion", args=[self.asociacion.pk, informe.mes]),
+            {"observaciones": "Revisión previa"},
+        )
+        self.assertEqual(response.status_code, 302)
+        informe.refresh_from_db()
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
 
     def test_dashboard_admin_filtra_por_anio(self):
         Asociacion.objects.create(anio=self.anio_otro, nombre="Asociacion 2027", codigo="A27")
