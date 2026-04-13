@@ -1,13 +1,27 @@
 {% extends 'almacen/base.html' %}
+{% load static %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'asociaciones_app/css/inbox.css' %}">
 <div class="page-body">
   <div class="container-fluid">
-    <div class="page-title"><h4>Bandeja de revisión</h4></div>
-    <div class="card mb-3">
+    <div class="page-title d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h4>Bandeja de revisión</h4>
+      <span class="badge accessible-badge bg-primary">{{ pendientes_total }} pendientes</span>
+    </div>
+    <div class="card mb-3 review-filters-card">
       <div class="card-body">
-        <form method="get" class="row g-2">
-          <div class="col-md-4">
+        <form method="get" class="row g-2 g-lg-3 align-items-end">
+          <div class="col-md-3 col-sm-6">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" name="tipo">
+              <option value="">Todos</option>
+              {% for valor, etiqueta in tipos %}
+                <option value="{{ valor }}" {% if tipo == valor %}selected{% endif %}>{{ etiqueta }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 col-sm-6">
             <label class="form-label">Año</label>
             <select class="form-select" name="anio">
               <option value="">Todos</option>
@@ -16,7 +30,7 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3 col-sm-6">
             <label class="form-label">Estado</label>
             <select class="form-select" name="estado">
               <option value="">Todos</option>
@@ -25,45 +39,62 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4 align-self-end">
+          <div class="col-md-2 col-sm-6">
             <button class="btn btn-primary" type="submit">Filtrar</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Asociación</th>
-                <th>Año</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for expediente in expedientes %}
-              <tr>
-                <td>{{ expediente.asociacion.nombre }}</td>
-                <td>{{ expediente.asociacion.anio.anio }}</td>
-                <td>{{ expediente.get_estado_display }}</td>
-                <td>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:expediente_caimus' expediente.asociacion.pk %}">Abrir</a>
-                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:expediente_revision' expediente.pk %}">Revisar</a>
+    <div class="review-grid row g-2">
+      {% for entrada in entradas %}
+      <div class="col-xl-4 col-lg-6 col-12">
+        <div class="card inbox-card review-item review-item--compact h-100">
+          <div class="card-body py-2 px-3">
+            <div class="inbox-item review-item__row">
+              <div class="inbox-item__left review-item__content">
+                <span class="inbox-item__icon review-item__icon">
+                  <i data-feather="{% if entrada.tipo == 'informe' %}file-text{% else %}folder{% endif %}" aria-hidden="true"></i>
+                </span>
+                <div class="min-w-0">
+                  <h6 class="inbox-item__title mb-0">{{ entrada.titulo|truncatechars:60 }}</h6>
+                  <p class="mb-1 text-muted small review-card__message" title="{{ entrada.mensaje }}">{{ entrada.mensaje|truncatechars:78 }}</p>
+                  <div class="inbox-item__meta review-item__meta">
+                    {{ entrada.asociacion.nombre|default:"Sin asociación" }}
+                    {% if entrada.asociacion %} · Año {{ entrada.asociacion.anio.anio }}{% endif %}
+                    · {{ entrada.creada_en|date:"d/m/Y H:i" }}
                   </div>
-                </td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="4">No hay expedientes.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                </div>
+              </div>
+              <div class="inbox-item__right review-item__actions">
+                <div class="review-item__badges d-flex gap-1 flex-wrap justify-content-end">
+                  <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">{{ entrada.get_tipo_display }}</span>
+                  <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">{{ entrada.get_estado_display }}</span>
+                </div>
+                <div class="d-flex gap-1 flex-wrap justify-content-end">
+                  {% if entrada.enlace %}
+                    <a class="btn btn-primary btn-xs" href="{{ entrada.enlace }}">{% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}</a>
+                  {% endif %}
+                  {% if entrada.estado == 'pendiente' %}
+                    <form method="post" action="{% url 'asociaciones:bandeja_marcar_atendida' entrada.pk %}">
+                      {% csrf_token %}
+                      <button class="btn btn-outline-success btn-xs" type="submit">Marcar atendida</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+      {% empty %}
+      <div class="col-12">
+      <div class="inbox-empty-state">
+        <i data-feather="inbox" class="mb-2" aria-hidden="true"></i>
+        <div>No hay pendientes de revisión.</div>
+      </div>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>
