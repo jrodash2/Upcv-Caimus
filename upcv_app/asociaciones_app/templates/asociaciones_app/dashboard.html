@@ -21,6 +21,21 @@
           </select>
         </form>
       </div>
+      {% if not es_admin_dashboard and asociaciones_disponibles|length > 1 %}
+      <div class="col-md-5">
+        <label class="form-label">Ver información de la asociación</label>
+        <form method="get">
+          {% if anio_seleccionado %}
+          <input type="hidden" name="anio" value="{{ anio_seleccionado.anio }}">
+          {% endif %}
+          <select class="form-select" name="asociacion" onchange="this.form.submit()">
+            {% for asoc in asociaciones_disponibles %}
+              <option value="{{ asoc.pk }}" {% if asociacion_seleccionada and asoc.pk == asociacion_seleccionada.pk %}selected{% endif %}>{{ asoc.nombre }} ({{ asoc.anio.anio }})</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      {% endif %}
     </div>
 
     <div class="row">

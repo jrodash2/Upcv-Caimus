@@ -737,6 +737,12 @@ def crear_entrada_revision_admin(
 ) -> EntradaRevisionAdmin:
     if tipo not in dict(EntradaRevisionAdmin.TIPOS):
         raise ValidationError("Tipo de entrada inválido.")
+    from django.urls import reverse
+
+    if tipo == EntradaRevisionAdmin.TIPO_EXPEDIENTE and expediente is not None:
+        enlace = enlace or reverse("asociaciones:expediente_revision", args=[expediente.pk])
+    if tipo == EntradaRevisionAdmin.TIPO_INFORME and informe is not None and asociacion is not None:
+        enlace = enlace or f"{reverse('asociaciones:informes_mensuales', args=[asociacion.pk])}#informe-mes-{informe.mes}"
     filtros = {
         "tipo": tipo,
         "estado": EntradaRevisionAdmin.ESTADO_PENDIENTE,

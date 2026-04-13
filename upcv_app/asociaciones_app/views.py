@@ -242,9 +242,18 @@ def _dashboard_asociacion(request):
     if not asociaciones.exists():
         raise PermissionDenied
 
-    expedientes = ExpedienteCAIMUS.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
-    informes = InformeMensual.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
-    notificaciones = NotificacionAsociacion.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    asociacion_param = request.GET.get("asociacion")
+    asociacion_seleccionada = None
+    if asociacion_param:
+        asociacion_seleccionada = asociaciones.filter(pk=asociacion_param).first()
+        if asociacion_seleccionada is None:
+            raise PermissionDenied
+    else:
+        asociacion_seleccionada = asociaciones.first()
+
+    expedientes = ExpedienteCAIMUS.objects.filter(asociacion=asociacion_seleccionada).select_related("asociacion")
+    informes = InformeMensual.objects.filter(asociacion=asociacion_seleccionada).select_related("asociacion")
+    notificaciones = NotificacionAsociacion.objects.filter(asociacion=asociacion_seleccionada).select_related("asociacion")
 
     total_items = 0
     items_completos = 0
@@ -255,9 +264,9 @@ def _dashboard_asociacion(request):
     items_pendientes = max(total_items - items_completos, 0)
     cumplimiento = int((items_completos / total_items) * 100) if total_items else 0
 
-    asociacion_principal = asociaciones.first()
-    expediente_principal = expedientes.filter(asociacion=asociacion_principal).first() if asociacion_principal else None
-    informes_principal = informes.filter(asociacion=asociacion_principal).order_by("mes") if asociacion_principal else InformeMensual.objects.none()
+    asociacion_principal = asociacion_seleccionada
+    expediente_principal = expedientes.first() if asociacion_principal else None
+    informes_principal = informes.order_by("mes") if asociacion_principal else InformeMensual.objects.none()
 
     chart_payload = {
         "expedienteProgreso": [items_completos, items_pendientes],
@@ -271,11 +280,13 @@ def _dashboard_asociacion(request):
     context = {
         "es_admin_dashboard": False,
         "mis_asociaciones": asociaciones,
+        "asociaciones_disponibles": asociaciones,
+        "asociacion_seleccionada": asociacion_seleccionada,
         "asociacion_principal": asociacion_principal,
         "expediente_principal": expediente_principal,
         "informes_principal": informes_principal,
         "kpis": {
-            "total_mis_asociaciones": asociaciones.count(),
+            "total_mis_asociaciones": asociaciones_usuario.count(),
             "expediente_estado": expediente_principal.estado if expediente_principal else "SIN_EXPEDIENTE",
             "expediente_total_items": total_items,
             "expediente_items_completos": items_completos,

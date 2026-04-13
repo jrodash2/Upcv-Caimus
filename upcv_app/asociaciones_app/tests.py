@@ -594,6 +594,32 @@ class AsociacionesTests(TestCase):
         self.assertContains(response, "Bandeja de revisión")
         self.assertContains(response, "Expediente enviado a revisión")
 
+    def test_bandeja_revisar_expediente_apunta_a_revision_real(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
+            titulo="Expediente enviado a revisión",
+            mensaje="Pendiente revisar expediente.",
+            asociacion=self.asociacion,
+            expediente=expediente,
+            enlace=reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]),
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:bandeja_revision"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("asociaciones:expediente_revision", args=[expediente.pk]))
+        self.assertNotContains(response, reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+
+    def test_admin_puede_abrir_revision_expediente_desde_url_real(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_revision", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Revisión del expediente")
+
     def test_usuario_asociacion_no_ve_bandeja_revision(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         client = Client()
@@ -760,6 +786,46 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.asociacion.nombre)
         self.assertNotContains(response, "Asociacion U 2027")
+
+    def test_dashboard_asociacion_permite_seleccionar_asociacion_por_get(self):
+        asociacion_extra = Asociacion.objects.create(anio=self.anio, nombre="Asociacion Extra", codigo="AEX")
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        AsociacionUsuario.objects.create(asociacion=asociacion_extra, usuario=self.user, rol_en_asociacion="Miembro")
+        InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=1,
+            estado=InformeMensual.ESTADO_APROBADO,
+            creado_por=self.user,
+        )
+        InformeMensual.objects.create(
+            asociacion=asociacion_extra,
+            mes=2,
+            estado=InformeMensual.ESTADO_BORRADOR,
+            creado_por=self.user,
+        )
+        NotificacionAsociacion.objects.create(asociacion=self.asociacion, titulo="Notif A", mensaje="A")
+        NotificacionAsociacion.objects.create(asociacion=asociacion_extra, titulo="Notif B", mensaje="B")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(
+            reverse("asociaciones:dashboard"),
+            {"anio": self.anio.anio, "asociacion": asociacion_extra.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ver información de la asociación")
+        self.assertContains(response, "Asociacion Extra")
+        self.assertContains(response, "Notif B")
+        self.assertNotContains(response, "Notif A")
+
+    def test_dashboard_asociacion_rechaza_seleccion_de_asociacion_ajena(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(
+            reverse("asociaciones:dashboard"),
+            {"anio": self.anio.anio, "asociacion": self.asociacion_otra.pk},
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_usuario_otra_asociacion_no_ve_observaciones_ajenas(self):
         expediente = ExpedienteCAIMUS.objects.create(
