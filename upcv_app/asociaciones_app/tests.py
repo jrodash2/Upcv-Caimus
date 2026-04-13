@@ -7,6 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from .forms import AsociacionUsuarioForm
 from .models import (
     Anio,
     Asociacion,
@@ -200,6 +201,33 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         asignacion = AsociacionUsuario.objects.get(usuario=self.user)
         self.assertEqual(asignacion.asociacion, self.asociacion)
+
+    def test_select_usuario_muestra_nombre_username_y_grupos(self):
+        grupo_compras, _ = Group.objects.get_or_create(name="Compras")
+        usuario_grupos = User.objects.create_user(
+            username="mgarcia",
+            password="pass123",
+            first_name="María",
+            last_name="García",
+        )
+        usuario_grupos.groups.add(grupo_compras, self.asociacion_group)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:asociacion_usuarios", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "María García — mgarcia — Asociacion, Compras")
+
+    def test_select_usuario_sin_nombre_muestra_username_y_sin_grupo(self):
+        usuario_sin_grupo = User.objects.create_user(username="sin_grupo", password="pass123")
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:asociacion_usuarios", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"{usuario_sin_grupo.username} — Sin grupo")
+
+    def test_queryset_usuario_prefetch_groups(self):
+        form = AsociacionUsuarioForm(asociacion_actual=self.asociacion)
+        self.assertIn("groups", getattr(form.fields["usuario"].queryset, "_prefetch_related_lookups", ()))
 
     def test_asociacion_no_puede_ver_otra_asociacion(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")

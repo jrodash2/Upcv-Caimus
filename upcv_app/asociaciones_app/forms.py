@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django import forms
+from django.contrib.auth import get_user_model
 from django.forms import inlineformset_factory
 from django.core.exceptions import ValidationError
 
@@ -37,9 +38,25 @@ class AsociacionForm(forms.ModelForm):
 
 
 class AsociacionUsuarioForm(forms.ModelForm):
+    class UsuarioModelChoiceField(forms.ModelChoiceField):
+        def label_from_instance(self, obj):
+            nombre_completo = " ".join(filter(None, [obj.first_name, obj.last_name])).strip()
+            grupos = ", ".join(obj.groups.values_list("name", flat=True)) or "Sin grupo"
+            if nombre_completo:
+                return f"{nombre_completo} — {obj.username} — {grupos}"
+            return f"{obj.username} — {grupos}"
+
     def __init__(self, *args, asociacion_actual=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.asociacion_actual = asociacion_actual
+        user_model = get_user_model()
+        self.fields["usuario"] = self.UsuarioModelChoiceField(
+            queryset=user_model.objects.filter(is_active=True)
+            .prefetch_related("groups")
+            .order_by("first_name", "last_name", "username"),
+            widget=forms.Select(attrs={"class": "form-select"}),
+            label=self.fields["usuario"].label,
+        )
 
     class Meta:
         model = AsociacionUsuario
