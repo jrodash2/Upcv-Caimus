@@ -478,8 +478,6 @@ class InformeMensual(models.Model):
         return bool(self.archivo_narrativo and self.archivo_presupuestario)
 
     def save(self, *args, **kwargs) -> None:
-        if self.tiene_archivos_completos() and self.estado in [self.ESTADO_BORRADOR, self.ESTADO_RECHAZADO]:
-            self.estado = self.ESTADO_EN_REVISION
         super().save(*args, **kwargs)
 
 
@@ -515,6 +513,121 @@ class ResolucionInformeMensual(models.Model):
 
     def __str__(self) -> str:
         return self.correlativo
+
+
+class NotificacionAsociacion(models.Model):
+    TIPO_INFO = "info"
+    TIPO_WARNING = "warning"
+    TIPO_SUCCESS = "success"
+    TIPO_ERROR = "error"
+    TIPOS = [
+        (TIPO_INFO, "Info"),
+        (TIPO_WARNING, "Warning"),
+        (TIPO_SUCCESS, "Success"),
+        (TIPO_ERROR, "Error"),
+    ]
+
+    asociacion = models.ForeignKey(Asociacion, on_delete=models.CASCADE, related_name="notificaciones")
+    titulo = models.CharField(max_length=255)
+    mensaje = models.TextField()
+    tipo = models.CharField(max_length=30, choices=TIPOS, default=TIPO_INFO)
+    leida = models.BooleanField(default=False)
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notificaciones_asociacion_creadas",
+    )
+    creada_en = models.DateTimeField(auto_now_add=True)
+    enlace = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Notificación de asociación"
+        verbose_name_plural = "Notificaciones de asociación"
+        ordering = ["-creada_en"]
+
+    def __str__(self) -> str:
+        return f"{self.asociacion} - {self.titulo}"
+
+
+class NotificacionAdmin(models.Model):
+    TIPO_INFO = "info"
+    TIPO_WARNING = "warning"
+    TIPO_SUCCESS = "success"
+    TIPO_ERROR = "error"
+    TIPOS = [
+        (TIPO_INFO, "Info"),
+        (TIPO_WARNING, "Warning"),
+        (TIPO_SUCCESS, "Success"),
+        (TIPO_ERROR, "Error"),
+    ]
+
+    titulo = models.CharField(max_length=255)
+    mensaje = models.TextField()
+    tipo = models.CharField(max_length=30, choices=TIPOS, default=TIPO_INFO)
+    leida = models.BooleanField(default=False)
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notificaciones_admin_creadas",
+    )
+    creada_en = models.DateTimeField(auto_now_add=True)
+    enlace = models.CharField(max_length=255, blank=True)
+    asociacion = models.ForeignKey(Asociacion, null=True, blank=True, on_delete=models.CASCADE, related_name="notificaciones_admin")
+    informe = models.ForeignKey("InformeMensual", null=True, blank=True, on_delete=models.CASCADE, related_name="notificaciones_admin")
+
+    class Meta:
+        verbose_name = "Notificación para administrador"
+        verbose_name_plural = "Notificaciones para administrador"
+        ordering = ["-creada_en"]
+
+    def __str__(self) -> str:
+        return self.titulo
+
+
+class EntradaRevisionAdmin(models.Model):
+    TIPO_EXPEDIENTE = "expediente"
+    TIPO_INFORME = "informe"
+    TIPOS = [
+        (TIPO_EXPEDIENTE, "Expediente"),
+        (TIPO_INFORME, "Informe"),
+    ]
+
+    ESTADO_PENDIENTE = "pendiente"
+    ESTADO_ATENDIDA = "atendida"
+    ESTADOS = [
+        (ESTADO_PENDIENTE, "Pendiente"),
+        (ESTADO_ATENDIDA, "Atendida"),
+    ]
+
+    tipo = models.CharField(max_length=20, choices=TIPOS)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=ESTADO_PENDIENTE)
+    titulo = models.CharField(max_length=255)
+    mensaje = models.TextField()
+    asociacion = models.ForeignKey(Asociacion, null=True, blank=True, on_delete=models.CASCADE, related_name="entradas_revision")
+    expediente = models.ForeignKey("ExpedienteCAIMUS", null=True, blank=True, on_delete=models.CASCADE, related_name="entradas_revision")
+    informe = models.ForeignKey("InformeMensual", null=True, blank=True, on_delete=models.CASCADE, related_name="entradas_revision")
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="entradas_revision_admin_creadas",
+    )
+    creada_en = models.DateTimeField(auto_now_add=True)
+    atendida_en = models.DateTimeField(null=True, blank=True)
+    enlace = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Entrada de revisión admin"
+        verbose_name_plural = "Entradas de revisión admin"
+        ordering = ["-creada_en"]
+
+    def __str__(self) -> str:
+        return self.titulo
 
 
 def crear_informes_mensuales(asociacion: Asociacion, usuario: Optional[models.Model] = None) -> None:
@@ -567,3 +680,85 @@ def generar_correlativo_informe(anio: int, mes: int) -> str:
             except (ValueError, IndexError):
                 secuencia = 1
         return f"UPCV-INF-{anio}-{mes:02d}-{secuencia:04d}"
+
+
+def crear_notificacion_asociacion(
+    asociacion: Asociacion,
+    titulo: str,
+    mensaje: str,
+    tipo: str = NotificacionAsociacion.TIPO_INFO,
+    creada_por=None,
+    enlace: str = "",
+) -> NotificacionAsociacion:
+    if tipo not in dict(NotificacionAsociacion.TIPOS):
+        tipo = NotificacionAsociacion.TIPO_INFO
+    return NotificacionAsociacion.objects.create(
+        asociacion=asociacion,
+        titulo=titulo,
+        mensaje=mensaje,
+        tipo=tipo,
+        creada_por=creada_por,
+        enlace=enlace,
+    )
+
+
+def crear_notificacion_admin(
+    titulo: str,
+    mensaje: str,
+    tipo: str = NotificacionAdmin.TIPO_INFO,
+    creada_por=None,
+    enlace: str = "",
+    asociacion: Optional[Asociacion] = None,
+    informe: Optional[InformeMensual] = None,
+) -> NotificacionAdmin:
+    if tipo not in dict(NotificacionAdmin.TIPOS):
+        tipo = NotificacionAdmin.TIPO_INFO
+    return NotificacionAdmin.objects.create(
+        titulo=titulo,
+        mensaje=mensaje,
+        tipo=tipo,
+        creada_por=creada_por,
+        enlace=enlace,
+        asociacion=asociacion,
+        informe=informe,
+    )
+
+
+def crear_entrada_revision_admin(
+    *,
+    tipo: str,
+    titulo: str,
+    mensaje: str,
+    enlace: str = "",
+    asociacion: Optional[Asociacion] = None,
+    expediente: Optional[ExpedienteCAIMUS] = None,
+    informe: Optional[InformeMensual] = None,
+    creada_por=None,
+) -> EntradaRevisionAdmin:
+    if tipo not in dict(EntradaRevisionAdmin.TIPOS):
+        raise ValidationError("Tipo de entrada inválido.")
+    from django.urls import reverse
+
+    if tipo == EntradaRevisionAdmin.TIPO_EXPEDIENTE and expediente is not None:
+        enlace = enlace or reverse("asociaciones:expediente_caimus", args=[expediente.asociacion_id])
+    if tipo == EntradaRevisionAdmin.TIPO_INFORME and informe is not None and asociacion is not None:
+        enlace = enlace or f"{reverse('asociaciones:informes_mensuales', args=[asociacion.pk])}#informe-mes-{informe.mes}"
+    filtros = {
+        "tipo": tipo,
+        "estado": EntradaRevisionAdmin.ESTADO_PENDIENTE,
+        "asociacion": asociacion,
+        "expediente": expediente,
+        "informe": informe,
+    }
+    if EntradaRevisionAdmin.objects.filter(**filtros).exists():
+        return EntradaRevisionAdmin.objects.filter(**filtros).order_by("-creada_en").first()
+    return EntradaRevisionAdmin.objects.create(
+        tipo=tipo,
+        titulo=titulo,
+        mensaje=mensaje,
+        enlace=enlace,
+        asociacion=asociacion,
+        expediente=expediente,
+        informe=informe,
+        creada_por=creada_por,
+    )
