@@ -19,6 +19,9 @@ class AnioForm(forms.ModelForm):
     class Meta:
         model = Anio
         fields = ["anio", "activo"]
+        labels = {
+            "anio": "Año"
+        }
         widgets = {
             "anio": forms.NumberInput(attrs={"class": "form-control"}),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -29,6 +32,9 @@ class AsociacionForm(forms.ModelForm):
     class Meta:
         model = Asociacion
         fields = ["anio", "nombre", "codigo", "activo"]
+        labels = {
+            "anio": "Año"
+        }
         widgets = {
             "anio": forms.Select(attrs={"class": "form-select"}),
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
