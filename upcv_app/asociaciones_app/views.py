@@ -60,6 +60,53 @@ def dashboard(request):
         return _dashboard_asociacion(request)
     raise PermissionDenied
 
+    expedientes = ExpedienteCAIMUS.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    informes = InformeMensual.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    notificaciones = NotificacionAsociacion.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+
+    total_items = 0
+    items_completos = 0
+    for expediente in expedientes.prefetch_related("items"):
+        stats = expediente.progress_stats()
+        total_items += stats["total"]
+        items_completos += stats["done"]
+    items_pendientes = max(total_items - items_completos, 0)
+    cumplimiento = int((items_completos / total_items) * 100) if total_items else 0
+
+    asociacion_principal = asociaciones.first()
+    expediente_principal = expedientes.filter(asociacion=asociacion_principal).first() if asociacion_principal else None
+    informes_principal = informes.filter(asociacion=asociacion_principal).order_by("mes") if asociacion_principal else InformeMensual.objects.none()
+
+    chart_payload = {
+        "expedienteProgreso": [items_completos, items_pendientes],
+        "informesResumen": [
+            informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+        ],
+        "cumplimiento": cumplimiento,
+    }
+
+    context = {
+        "es_admin_dashboard": False,
+        "mis_asociaciones": asociaciones,
+        "asociacion_principal": asociacion_principal,
+        "expediente_principal": expediente_principal,
+        "informes_principal": informes_principal,
+        "kpis": {
+            "total_mis_asociaciones": asociaciones.count(),
+            "expediente_estado": expediente_principal.estado if expediente_principal else "SIN_EXPEDIENTE",
+            "expediente_total_items": total_items,
+            "expediente_items_completos": items_completos,
+            "expediente_items_pendientes": items_pendientes,
+            "informes_aprobados": informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "alertas_no_leidas": notificaciones.filter(leida=False).count(),
+            "cumplimiento": cumplimiento,
+        },
+        "notificaciones_recientes": notificaciones.order_by("-creada_en")[:8],
+        "chart_payload": chart_payload,
+    }
+    return render(request, "asociaciones_app/dashboard.html", context)
 
 @asociacion_required
 def asociaciones_inicio(request):
