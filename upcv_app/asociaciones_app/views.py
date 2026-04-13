@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from calendar import month_name
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
@@ -30,8 +33,12 @@ from .models import (
     ExpedienteEstadoHistorial,
     InformeEstadoHistorial,
     InformeMensual,
+    NotificacionAdmin,
+    NotificacionAsociacion,
     ResolucionInformeMensual,
     ResolucionExpediente,
+    crear_notificacion_asociacion,
+    crear_notificacion_admin,
     crear_items_expediente,
     crear_informes_mensuales,
     generar_correlativo,
@@ -47,7 +54,245 @@ from .permissions import (
     user_has_asociacion_access,
     user_has_expediente_access,
 )
+@asociacion_required
+def dashboard(request):
+    if is_admin(request.user):
+        return _dashboard_admin(request)
+    if is_asociacion(request.user):
+        return _dashboard_asociacion(request)
+    raise PermissionDenied
 
+
+@asociacion_required
+def asociaciones_inicio(request):
+    if is_admin(request.user):
+        return _dashboard_admin(request)
+    if is_asociacion(request.user):
+        return _dashboard_asociacion(request)
+    raise PermissionDenied
+
+
+def _dashboard_admin(request):
+    anios_disponibles = Anio.objects.order_by("-anio")
+    anio_param = request.GET.get("anio")
+    anio_seleccionado = anios_disponibles.filter(anio=anio_param).first() if anio_param else None
+    if anio_seleccionado is None:
+        anio_seleccionado = Anio.objects.filter(activo=True).order_by("-anio").first() or anios_disponibles.first()
+
+    asociaciones = Asociacion.objects.select_related("anio")
+    expedientes = ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio")
+    informes = InformeMensual.objects.select_related("asociacion", "asociacion__anio")
+    if anio_seleccionado:
+        asociaciones = asociaciones.filter(anio=anio_seleccionado)
+        expedientes = expedientes.filter(asociacion__anio=anio_seleccionado)
+        informes = informes.filter(asociacion__anio=anio_seleccionado)
+
+    expedientes_por_estado = {
+        estado: expedientes.filter(estado=estado).count() for estado, _label in ExpedienteCAIMUS.ESTADOS
+    }
+    informes_por_estado = {estado: informes.filter(estado=estado).count() for estado, _label in InformeMensual.ESTADOS}
+
+    progresos = []
+    for expediente in expedientes.prefetch_related("items"):
+        stats = expediente.progress_stats()
+        if stats["total"] > 0:
+            progresos.append(stats["percent"])
+    promedio_cumplimiento = int(sum(progresos) / len(progresos)) if progresos else 0
+
+    actividad = []
+    expediente_historial = ExpedienteEstadoHistorial.objects.select_related("expediente", "expediente__asociacion")
+    informe_historial = InformeEstadoHistorial.objects.select_related("informe", "informe__asociacion")
+    asignaciones_historial = AsociacionUsuario.objects.select_related("asociacion", "usuario")
+    if anio_seleccionado:
+        expediente_historial = expediente_historial.filter(expediente__asociacion__anio=anio_seleccionado)
+        informe_historial = informe_historial.filter(informe__asociacion__anio=anio_seleccionado)
+        asignaciones_historial = asignaciones_historial.filter(asociacion__anio=anio_seleccionado)
+
+    for hist in expediente_historial.order_by("-cambiado_en")[:4]:
+        actividad.append(
+            {
+                "titulo": f"Expediente: {hist.expediente.asociacion.nombre}",
+                "detalle": f"{hist.estado_anterior} → {hist.estado_nuevo}",
+                "fecha": hist.cambiado_en,
+                "tipo": "info",
+            }
+        )
+    for hist in informe_historial.order_by("-cambiado_en")[:4]:
+        actividad.append(
+            {
+                "titulo": f"Informe {hist.informe.get_mes_display()} - {hist.informe.asociacion.nombre}",
+                "detalle": f"{hist.estado_anterior} → {hist.estado_nuevo}",
+                "fecha": hist.cambiado_en,
+                "tipo": "warning",
+            }
+        )
+    for asignacion in asignaciones_historial.order_by("-creado_en")[:4]:
+        actividad.append(
+            {
+                "titulo": f"Asignación de usuario en {asignacion.asociacion.nombre}",
+                "detalle": asignacion.usuario.get_full_name() or asignacion.usuario.username,
+                "fecha": asignacion.creado_en,
+                "tipo": "success",
+            }
+        )
+    actividad_reciente = sorted(actividad, key=lambda x: x["fecha"], reverse=True)[:8]
+
+    aprobaciones_mes = [0] * 12
+    expediente_aprobaciones_qs = ExpedienteEstadoHistorial.objects.filter(estado_nuevo=ExpedienteCAIMUS.ESTADO_APROBADO)
+    informe_aprobaciones_qs = InformeEstadoHistorial.objects.filter(estado_nuevo=InformeMensual.ESTADO_APROBADO)
+    if anio_seleccionado:
+        expediente_aprobaciones_qs = expediente_aprobaciones_qs.filter(expediente__asociacion__anio=anio_seleccionado)
+        informe_aprobaciones_qs = informe_aprobaciones_qs.filter(informe__asociacion__anio=anio_seleccionado)
+
+    for registro in (
+        expediente_aprobaciones_qs
+        .values("cambiado_en__month")
+        .annotate(total=Count("id"))
+    ):
+        if registro["cambiado_en__month"]:
+            aprobaciones_mes[registro["cambiado_en__month"] - 1] += registro["total"]
+    for registro in (
+        informe_aprobaciones_qs
+        .values("cambiado_en__month")
+        .annotate(total=Count("id"))
+    ):
+        if registro["cambiado_en__month"]:
+            aprobaciones_mes[registro["cambiado_en__month"] - 1] += registro["total"]
+
+    asociaciones_resumen = []
+    for asociacion in asociaciones[:12]:
+        expediente = getattr(asociacion, "expediente_caimus", None)
+        informes_asoc = asociacion.informes_mensuales.all()
+        asociaciones_resumen.append(
+            {
+                "asociacion": asociacion,
+                "estado_expediente": expediente.estado if expediente else "SIN_EXPEDIENTE",
+                "informes_aprobados": informes_asoc.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+                "informes_pendientes": informes_asoc.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            }
+        )
+
+    chart_payload = {
+        "expedientesEstado": [
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_APROBADO],
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_EN_REVISION],
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_RECHAZADO],
+            expedientes_por_estado[ExpedienteCAIMUS.ESTADO_BORRADOR],
+        ],
+        "informesEstado": [
+            informes_por_estado[InformeMensual.ESTADO_APROBADO],
+            informes_por_estado[InformeMensual.ESTADO_EN_REVISION],
+            informes_por_estado[InformeMensual.ESTADO_RECHAZADO],
+            informes_por_estado[InformeMensual.ESTADO_BORRADOR],
+        ],
+        "aprobacionesMes": aprobaciones_mes,
+        "cumplimientoPromedio": promedio_cumplimiento,
+    }
+
+    alertas_admin_qs = NotificacionAdmin.objects.select_related("asociacion", "informe")
+    if anio_seleccionado:
+        alertas_admin_qs = alertas_admin_qs.filter(Q(asociacion__anio=anio_seleccionado) | Q(asociacion__isnull=True))
+    alertas_admin_qs = alertas_admin_qs.order_by("-creada_en")
+
+    context = {
+        "es_admin_dashboard": True,
+        "kpis": {
+            "total_anios": Anio.objects.filter(activo=True).count(),
+            "total_asociaciones": asociaciones.count(),
+            "total_usuarios_asignados": AsociacionUsuario.objects.filter(activo=True).count(),
+            "total_expedientes": expedientes.count(),
+            "expedientes_aprobados": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_APROBADO],
+            "expedientes_en_revision": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_EN_REVISION],
+            "expedientes_rechazados": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_RECHAZADO],
+            "expedientes_borrador": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_BORRADOR],
+            "total_informes": informes.count(),
+            "informes_aprobados": informes_por_estado[InformeMensual.ESTADO_APROBADO],
+            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "resoluciones_emitidas": ResolucionExpediente.objects.count() + ResolucionInformeMensual.objects.count(),
+            "promedio_cumplimiento": promedio_cumplimiento,
+        },
+        "notificaciones_recientes": NotificacionAsociacion.objects.select_related("asociacion").filter(
+            asociacion__anio=anio_seleccionado
+        )[:8] if anio_seleccionado else NotificacionAsociacion.objects.select_related("asociacion").all()[:8],
+        "alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False)[:8],
+        "alertas_admin_recientes": alertas_admin_qs[:8],
+        "total_alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False).count(),
+        "anios_disponibles": anios_disponibles,
+        "anio_seleccionado": anio_seleccionado,
+        "actividad_reciente": actividad_reciente,
+        "asociaciones_resumen": asociaciones_resumen,
+        "chart_payload": chart_payload,
+        "meses_labels": [month_name[i] for i in range(1, 13)],
+    }
+    return render(request, "asociaciones_app/dashboard.html", context)
+
+
+def _dashboard_asociacion(request):
+    asociaciones_usuario = get_asociaciones_usuario(request.user).select_related("anio")
+    if not asociaciones_usuario.exists():
+        raise PermissionDenied
+
+    anios_disponibles = Anio.objects.filter(asociaciones__in=asociaciones_usuario).distinct().order_by("-anio")
+    anio_param = request.GET.get("anio")
+    anio_seleccionado = anios_disponibles.filter(anio=anio_param).first() if anio_param else None
+    if anio_seleccionado is None:
+        anio_seleccionado = anios_disponibles.first()
+
+    asociaciones = asociaciones_usuario
+    if anio_seleccionado:
+        asociaciones = asociaciones.filter(anio=anio_seleccionado)
+    if not asociaciones.exists():
+        raise PermissionDenied
+
+    expedientes = ExpedienteCAIMUS.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    informes = InformeMensual.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    notificaciones = NotificacionAsociacion.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+
+    total_items = 0
+    items_completos = 0
+    for expediente in expedientes.prefetch_related("items"):
+        stats = expediente.progress_stats()
+        total_items += stats["total"]
+        items_completos += stats["done"]
+    items_pendientes = max(total_items - items_completos, 0)
+    cumplimiento = int((items_completos / total_items) * 100) if total_items else 0
+
+    asociacion_principal = asociaciones.first()
+    expediente_principal = expedientes.filter(asociacion=asociacion_principal).first() if asociacion_principal else None
+    informes_principal = informes.filter(asociacion=asociacion_principal).order_by("mes") if asociacion_principal else InformeMensual.objects.none()
+
+    chart_payload = {
+        "expedienteProgreso": [items_completos, items_pendientes],
+        "informesResumen": [
+            informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+        ],
+        "cumplimiento": cumplimiento,
+    }
+
+    context = {
+        "es_admin_dashboard": False,
+        "mis_asociaciones": asociaciones,
+        "asociacion_principal": asociacion_principal,
+        "expediente_principal": expediente_principal,
+        "informes_principal": informes_principal,
+        "kpis": {
+            "total_mis_asociaciones": asociaciones.count(),
+            "expediente_estado": expediente_principal.estado if expediente_principal else "SIN_EXPEDIENTE",
+            "expediente_total_items": total_items,
+            "expediente_items_completos": items_completos,
+            "expediente_items_pendientes": items_pendientes,
+            "informes_aprobados": informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "alertas_no_leidas": notificaciones.filter(leida=False).count(),
+            "cumplimiento": cumplimiento,
+        },
+        "notificaciones_recientes": notificaciones.order_by("-creada_en")[:8],
+        "anios_disponibles": anios_disponibles,
+        "anio_seleccionado": anio_seleccionado,
+        "chart_payload": chart_payload,
+    }
+    return render(request, "asociaciones_app/dashboard.html", context)
 
 
 @login_required
@@ -111,6 +356,14 @@ def anio_checklist_guardar(request, pk):
         formset.save()
         for expediente in ExpedienteCAIMUS.objects.filter(asociacion__anio=anio).select_related("asociacion", "asociacion__anio"):
             crear_items_expediente(expediente)
+            crear_notificacion_asociacion(
+                asociacion=expediente.asociacion,
+                titulo="Checklist anual actualizado",
+                mensaje=f"Se actualizaron los requisitos del checklist del año {anio.anio}.",
+                tipo=NotificacionAsociacion.TIPO_INFO,
+                creada_por=request.user,
+                enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]),
+            )
         messages.success(request, "Checklist del año guardado y sincronizado correctamente.")
         return redirect("asociaciones:anio_checklist", pk=anio.pk)
     messages.error(request, "Revise los datos del checklist antes de guardar.")
@@ -180,13 +433,15 @@ def asociacion_edit(request, pk):
 def asociacion_usuarios(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
-        form = AsociacionUsuarioForm(request.POST)
+        form = AsociacionUsuarioForm(request.POST, asociacion_actual=asociacion)
         if form.is_valid():
-            asignacion = form.save()
+            asignacion = form.save(commit=False)
+            asignacion.asociacion = asociacion
+            asignacion.save()
             messages.success(request, "Usuario asignado correctamente.")
             return redirect("asociaciones:asociacion_usuarios", pk=asociacion.pk)
     else:
-        form = AsociacionUsuarioForm(initial={"asociacion": asociacion})
+        form = AsociacionUsuarioForm(asociacion_actual=asociacion)
     asignaciones = asociacion.usuarios.select_related("usuario")
     return render(
         request,
@@ -203,6 +458,9 @@ def mis_asociaciones(request):
         asociaciones = get_asociaciones_usuario(request.user)
     else:
         raise PermissionDenied
+    for asociacion in asociaciones:
+        asociacion.notificaciones_recientes = list(asociacion.notificaciones.all()[:3])
+        asociacion.notificaciones_pendientes = asociacion.notificaciones.filter(leida=False).count()
     return render(
         request,
         "asociaciones_app/mis_asociaciones.html",
@@ -240,6 +498,15 @@ def expediente_caimus(request, pk):
             expediente.actualizado_por = request.user
             expediente.save()
             formset.save()
+            if is_admin(request.user):
+                crear_notificacion_asociacion(
+                    asociacion=asociacion,
+                    titulo="Expediente actualizado",
+                    mensaje="El administrador actualizó información del expediente CAIMUS.",
+                    tipo=NotificacionAsociacion.TIPO_INFO,
+                    creada_por=request.user,
+                    enlace=reverse("asociaciones:expediente_caimus", args=[asociacion.pk]),
+                )
             if request.POST.get("save_item"):
                 messages.success(request, "Observación guardada correctamente.")
             else:
@@ -284,6 +551,36 @@ def expediente_sync_checklist(request, pk):
     expediente = get_object_or_404(ExpedienteCAIMUS, asociacion=asociacion)
     crear_items_expediente(expediente)
     messages.success(request, "Checklist del expediente sincronizado con el año.")
+    return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
+
+
+@asociacion_required
+@require_POST
+def expediente_enviar_revision(request, pk):
+    asociacion = get_object_or_404(Asociacion, pk=pk)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    if is_admin(request.user):
+        raise PermissionDenied
+    expediente = get_object_or_404(ExpedienteCAIMUS, asociacion=asociacion)
+    if expediente.estado not in [ExpedienteCAIMUS.ESTADO_BORRADOR, ExpedienteCAIMUS.ESTADO_RECHAZADO]:
+        messages.warning(request, "El expediente ya fue enviado a revisión.")
+        return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
+    if not expediente_esta_completo(expediente):
+        messages.error(request, "Debes completar todos los documentos para enviar el expediente a revisión.")
+        return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
+    expediente.estado = ExpedienteCAIMUS.ESTADO_EN_REVISION
+    expediente.actualizado_por = request.user
+    expediente.save(update_fields=["estado", "actualizado_por", "actualizado_en"])
+    crear_notificacion_admin(
+        titulo="Expediente enviado a revisión",
+        mensaje=f"La asociación {asociacion.nombre} envió su expediente a revisión.",
+        tipo=NotificacionAdmin.TIPO_WARNING,
+        creada_por=request.user,
+        enlace=reverse("asociaciones:expediente_caimus", args=[asociacion.pk]),
+        asociacion=asociacion,
+    )
+    messages.success(request, "Expediente enviado a revisión correctamente.")
     return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
 
 
@@ -392,12 +689,11 @@ def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
 
     if tipo_archivo == "narrativo":
         informe.archivo_narrativo = archivo
-        mensaje_ok = f"Informe narrativo de {informe.get_mes_display()} cargado correctamente."
     else:
         informe.archivo_presupuestario = archivo
-        mensaje_ok = f"Informe presupuestario de {informe.get_mes_display()} cargado correctamente."
-    if informe.tiene_archivos_completos():
-        informe.estado = InformeMensual.ESTADO_EN_REVISION
+    if is_asociacion(request.user):
+        if informe.estado in [InformeMensual.ESTADO_RECHAZADO, InformeMensual.ESTADO_APROBADO]:
+            informe.estado = InformeMensual.ESTADO_BORRADOR
     informe.observacion_admin = ""
     informe.aprobado_por = None
     informe.aprobado_en = None
@@ -408,7 +704,41 @@ def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
         messages.error(request, "; ".join(exc.messages))
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe.save()
-    messages.success(request, mensaje_ok)
+    messages.success(request, "Archivo cargado correctamente.")
+    return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+
+@asociacion_required
+@require_POST
+def informe_enviar_revision(request, asociacion_id, mes):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    if is_admin(request.user):
+        raise PermissionDenied
+    informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
+    if informe.estado == InformeMensual.ESTADO_EN_REVISION:
+        messages.warning(request, "El informe ya está en revisión.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if informe.estado == InformeMensual.ESTADO_APROBADO:
+        messages.warning(request, "El informe ya está aprobado.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if not informe.tiene_archivos_completos():
+        messages.error(request, "Debes cargar ambos archivos para enviar el informe a revisión.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    informe.estado = InformeMensual.ESTADO_EN_REVISION
+    informe.actualizado_por = request.user
+    informe.save(update_fields=["estado", "actualizado_por", "actualizado_en"])
+    crear_notificacion_admin(
+        titulo="Informe enviado a revisión",
+        mensaje=f"La asociación {asociacion.nombre} envió a revisión el informe mensual de {informe.get_mes_display()}.",
+        tipo=NotificacionAdmin.TIPO_WARNING,
+        creada_por=request.user,
+        enlace=f"{reverse('asociaciones:informes_mensuales', args=[asociacion.pk])}#informe-mes-{informe.mes}",
+        asociacion=asociacion,
+        informe=informe,
+    )
+    messages.success(request, "Informe enviado a revisión correctamente.")
     return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 
 
@@ -427,8 +757,20 @@ def informe_observacion(request, asociacion_id, mes):
     informe.observaciones_usuario = request.POST.get("observaciones", "")
     informe.actualizado_por = request.user
     informe.save()
-    messages.success(request, "Observación guardada correctamente.")
+    messages.success(request, "Observaciones guardadas correctamente.")
     return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+
+@login_required
+@admin_required
+def alerta_admin_revisar(request, pk):
+    alerta = get_object_or_404(NotificacionAdmin, pk=pk)
+    if not alerta.leida:
+        alerta.leida = True
+        alerta.save(update_fields=["leida"])
+    if alerta.enlace:
+        return redirect(alerta.enlace)
+    return redirect("asociaciones:inicio")
 
 
 @login_required
@@ -441,11 +783,12 @@ def informe_estado(request, asociacion_id, mes):
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
     estado_anterior = informe.estado
+    observacion_anterior = (informe.observacion_admin or "").strip()
     estado_nuevo = request.POST.get("estado")
     if estado_nuevo not in dict(InformeMensual.ESTADOS):
         messages.error(request, "Estado inválido.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
-    observacion_admin = request.POST.get("observacion_admin", "")
+    observacion_admin = request.POST.get("observacion_admin", "").strip()
     if estado_nuevo == InformeMensual.ESTADO_RECHAZADO and not observacion_admin:
         messages.error(request, "Debe indicar la observación del rechazo.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
@@ -460,11 +803,10 @@ def informe_estado(request, asociacion_id, mes):
     if estado_nuevo == InformeMensual.ESTADO_APROBADO:
         informe.aprobado_por = request.user
         informe.aprobado_en = timezone.now()
-        informe.observacion_admin = ""
     else:
         informe.aprobado_por = None
         informe.aprobado_en = None
-        informe.observacion_admin = observacion_admin
+    informe.observacion_admin = observacion_admin
     informe.actualizado_por = request.user
     informe.save()
 
@@ -488,6 +830,36 @@ def informe_estado(request, asociacion_id, mes):
                 "mes": informe.get_mes_display(),
                 "estado": informe.estado,
             },
+        )
+    if estado_nuevo == InformeMensual.ESTADO_APROBADO:
+        crear_notificacion_asociacion(
+            asociacion=asociacion,
+            titulo="Informe mensual aprobado",
+            mensaje=f"El informe mensual de {informe.get_mes_display()} fue aprobado.",
+            tipo=NotificacionAsociacion.TIPO_SUCCESS,
+            creada_por=request.user,
+            enlace=reverse("asociaciones:informes_mensuales", args=[asociacion.pk]),
+        )
+    elif estado_nuevo == InformeMensual.ESTADO_RECHAZADO:
+        crear_notificacion_asociacion(
+            asociacion=asociacion,
+            titulo="Informe mensual rechazado",
+            mensaje=f"El informe mensual de {informe.get_mes_display()} fue rechazado. Revise observaciones.",
+            tipo=NotificacionAsociacion.TIPO_ERROR,
+            creada_por=request.user,
+            enlace=reverse("asociaciones:informes_mensuales", args=[asociacion.pk]),
+        )
+    if observacion_anterior != observacion_admin and observacion_admin:
+        crear_notificacion_asociacion(
+            asociacion=asociacion,
+            titulo="Nueva observación en informe mensual",
+            mensaje=(
+                f"El administrador agregó o actualizó una observación en el informe mensual de "
+                f"{informe.get_mes_display()}. Revísala."
+            ),
+            tipo=NotificacionAsociacion.TIPO_WARNING,
+            creada_por=request.user,
+            enlace=reverse("asociaciones:informes_mensuales", args=[asociacion.pk]),
         )
     messages.success(request, "Estado actualizado correctamente.")
     return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
@@ -551,15 +923,17 @@ def informe_resolucion_pdf(request, asociacion_id, mes):
 def expediente_revision(request, pk):
     expediente = get_object_or_404(ExpedienteCAIMUS, pk=pk)
     estado_anterior = expediente.estado
+    observacion_anterior = (expediente.observacion_admin or "").strip()
 
     if request.method == "POST":
         form = RevisionExpedienteForm(request.POST, instance=expediente)
         if form.is_valid():
             expediente = form.save(commit=False)
+            observacion_nueva = (expediente.observacion_admin or "").strip()
+            expediente.observacion_admin = observacion_nueva
             if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO:
                 expediente.aprobado_por = request.user
                 expediente.aprobado_en = timezone.now()
-                expediente.observacion_admin = ""
             else:
                 expediente.aprobado_por = None
                 expediente.aprobado_en = None
@@ -586,6 +960,42 @@ def expediente_revision(request, pk):
                         "anio": expediente.asociacion.anio.anio,
                         "estado": expediente.estado,
                     },
+                )
+            if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO:
+                crear_notificacion_asociacion(
+                    asociacion=expediente.asociacion,
+                    titulo="Expediente aprobado",
+                    mensaje="El expediente fue aprobado.",
+                    tipo=NotificacionAsociacion.TIPO_SUCCESS,
+                    creada_por=request.user,
+                    enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]),
+                )
+            elif expediente.estado == ExpedienteCAIMUS.ESTADO_RECHAZADO:
+                crear_notificacion_asociacion(
+                    asociacion=expediente.asociacion,
+                    titulo="Expediente rechazado",
+                    mensaje="El expediente fue rechazado. Revise observaciones.",
+                    tipo=NotificacionAsociacion.TIPO_ERROR,
+                    creada_por=request.user,
+                    enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]),
+                )
+            elif expediente.estado == ExpedienteCAIMUS.ESTADO_EN_REVISION:
+                crear_notificacion_asociacion(
+                    asociacion=expediente.asociacion,
+                    titulo="Expediente en revisión",
+                    mensaje="El administrador cambió el estado del expediente a en revisión.",
+                    tipo=NotificacionAsociacion.TIPO_WARNING,
+                    creada_por=request.user,
+                    enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]),
+                )
+            if observacion_anterior != observacion_nueva and observacion_nueva:
+                crear_notificacion_asociacion(
+                    asociacion=expediente.asociacion,
+                    titulo="Nueva observación en expediente",
+                    mensaje="El administrador agregó o actualizó una observación en tu expediente. Revísala.",
+                    tipo=NotificacionAsociacion.TIPO_WARNING,
+                    creada_por=request.user,
+                    enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]),
                 )
 
             messages.success(request, "Estado actualizado correctamente.")
@@ -683,3 +1093,15 @@ def resolucion_pdf(request, pk):
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f"inline; filename=Resolucion-{resolucion.correlativo}.pdf"
     return response
+
+
+@login_required
+@asociacion_required
+@require_POST
+def notificaciones_marcar_leidas(request, asociacion_id):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    asociacion.notificaciones.filter(leida=False).update(leida=True)
+    messages.success(request, "Alertas marcadas como leídas.")
+    return redirect("asociaciones:mis_asociaciones")
