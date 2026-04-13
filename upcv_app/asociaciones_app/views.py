@@ -744,6 +744,40 @@ def informe_enviar_revision(request, asociacion_id, mes):
 
 @asociacion_required
 @require_POST
+def informe_enviar_revision(request, asociacion_id, mes):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if not user_has_asociacion_access(request.user, asociacion):
+        raise PermissionDenied
+    if is_admin(request.user):
+        raise PermissionDenied
+    informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
+    if informe.estado == InformeMensual.ESTADO_EN_REVISION:
+        messages.warning(request, "El informe ya está en revisión.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if informe.estado == InformeMensual.ESTADO_APROBADO:
+        messages.warning(request, "El informe ya está aprobado.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if not informe.tiene_archivos_completos():
+        messages.error(request, "Debes cargar ambos archivos para enviar el informe a revisión.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    informe.estado = InformeMensual.ESTADO_EN_REVISION
+    informe.actualizado_por = request.user
+    informe.save(update_fields=["estado", "actualizado_por", "actualizado_en"])
+    crear_notificacion_admin(
+        titulo="Informe enviado a revisión",
+        mensaje=f"La asociación {asociacion.nombre} envió a revisión el informe mensual de {informe.get_mes_display()}.",
+        tipo=NotificacionAdmin.TIPO_WARNING,
+        creada_por=request.user,
+        enlace=reverse("asociaciones:informes_mensuales", args=[asociacion.pk]),
+        asociacion=asociacion,
+        informe=informe,
+    )
+    messages.success(request, "Informe enviado a revisión correctamente.")
+    return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+
+@asociacion_required
+@require_POST
 def informe_observacion(request, asociacion_id, mes):
     asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
     if not user_has_asociacion_access(request.user, asociacion):
