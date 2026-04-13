@@ -3,10 +3,22 @@
 {% block content %}
 <div class="page-body">
   <div class="container-fluid">
-    <div class="page-title"><h4>Bandeja de revisión</h4></div>
+    <div class="page-title d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h4>Bandeja de revisión</h4>
+      <span class="badge accessible-badge bg-primary">{{ pendientes_total }} pendientes</span>
+    </div>
     <div class="card mb-3">
       <div class="card-body">
         <form method="get" class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" name="tipo">
+              <option value="">Todos</option>
+              {% for valor, etiqueta in tipos %}
+                <option value="{{ valor }}" {% if tipo == valor %}selected{% endif %}>{{ etiqueta }}</option>
+              {% endfor %}
+            </select>
+          </div>
           <div class="col-md-4">
             <label class="form-label">Año</label>
             <select class="form-select" name="anio">
@@ -16,7 +28,7 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Estado</label>
             <select class="form-select" name="estado">
               <option value="">Todos</option>
@@ -25,7 +37,7 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4 align-self-end">
+          <div class="col-md-2 align-self-end">
             <button class="btn btn-primary" type="submit">Filtrar</button>
           </div>
         </form>
@@ -38,27 +50,56 @@
           <table class="table">
             <thead>
               <tr>
+                <th>Tipo</th>
+                <th>Título</th>
                 <th>Asociación</th>
                 <th>Año</th>
                 <th>Estado</th>
+                <th>Fecha</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {% for expediente in expedientes %}
+              {% for entrada in entradas %}
               <tr>
-                <td>{{ expediente.asociacion.nombre }}</td>
-                <td>{{ expediente.asociacion.anio.anio }}</td>
-                <td>{{ expediente.get_estado_display }}</td>
+                <td>
+                  <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">
+                    {{ entrada.get_tipo_display }}
+                  </span>
+                </td>
+                <td>
+                  <strong>{{ entrada.titulo }}</strong>
+                  <div class="text-muted small">{{ entrada.mensaje|truncatechars:80 }}</div>
+                </td>
+                <td>{{ entrada.asociacion.nombre|default:"-" }}</td>
+                <td>{{ entrada.asociacion.anio.anio|default:"-" }}</td>
+                <td>
+                  <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">
+                    {{ entrada.get_estado_display }}
+                  </span>
+                </td>
+                <td>{{ entrada.creada_en|date:"d/m/Y H:i" }}</td>
                 <td>
                   <div class="d-flex gap-2 flex-wrap">
-                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:expediente_caimus' expediente.asociacion.pk %}">Abrir</a>
-                    <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:expediente_revision' expediente.pk %}">Revisar</a>
+                    {% if entrada.enlace %}
+                      <a class="btn btn-primary btn-sm" href="{{ entrada.enlace }}">
+                        {% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}
+                      </a>
+                    {% endif %}
+                    {% if entrada.asociacion %}
+                      <a class="btn btn-outline-primary btn-sm" href="{% if entrada.tipo == 'informe' %}{% url 'asociaciones:informes_mensuales' entrada.asociacion.pk %}{% else %}{% url 'asociaciones:expediente_caimus' entrada.asociacion.pk %}{% endif %}">Ir a asociación</a>
+                    {% endif %}
+                    {% if entrada.estado == 'pendiente' %}
+                      <form method="post" action="{% url 'asociaciones:bandeja_marcar_atendida' entrada.pk %}">
+                        {% csrf_token %}
+                        <button class="btn btn-outline-success btn-sm" type="submit">Marcar atendida</button>
+                      </form>
+                    {% endif %}
                   </div>
                 </td>
               </tr>
               {% empty %}
-              <tr><td colspan="4">No hay expedientes.</td></tr>
+              <tr><td colspan="7">No hay entradas en la bandeja.</td></tr>
               {% endfor %}
             </tbody>
           </table>
