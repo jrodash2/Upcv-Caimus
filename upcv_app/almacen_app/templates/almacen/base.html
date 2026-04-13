@@ -303,6 +303,7 @@
         <span>Asociaciones</span>
       </a>
       <ul class="sidebar-submenu">
+        <li><a href="{% url 'asociaciones:dashboard' %}">Dashboard asociaciones</a></li>
         <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
         <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
         <li><a href="{% url 'asociaciones:bandeja_revision' %}">Bandeja de revisión</a></li>
@@ -436,6 +437,15 @@
 {% endif %}
 
 {% if user.is_authenticated and es_asociacion %}
+  <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="{% url 'asociaciones:dashboard' %}">
+    <svg class="stroke-icon">
+      <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+    </svg>
+    <svg class="fill-icon">
+      <use href="../assets/svg/icon-sprite.svg#fill-home"></use>
+    </svg>
+    <span>Mi dashboard</span></a>
+  </li>
   <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="{% url 'asociaciones:mis_asociaciones' %}">
     <svg class="stroke-icon">
       <use href="../assets/svg/icon-sprite.svg#stroke-gallery"></use>
