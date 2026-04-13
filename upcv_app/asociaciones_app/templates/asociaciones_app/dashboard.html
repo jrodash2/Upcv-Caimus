@@ -64,6 +64,32 @@
         {% if es_admin_dashboard %}
         <div class="card">
           <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Bandeja de entrada</h5>
+            <span class="badge accessible-badge bg-primary">{{ bandeja_pendientes_total }} pendientes</span>
+          </div>
+          <div class="card-body">
+            {% if bandeja_pendientes_recientes %}
+              {% for entrada in bandeja_pendientes_recientes %}
+                <div class="border rounded p-2 mb-2">
+                  <h6 class="mb-1">{{ entrada.titulo }}</h6>
+                  <small class="text-muted d-block">{{ entrada.mensaje|truncatechars:95 }}</small>
+                  <small class="text-muted d-block">{{ entrada.creada_en|date:"d/m/Y H:i" }}</small>
+                  {% if entrada.enlace %}
+                    <a class="btn btn-primary btn-xs mt-2" href="{{ entrada.enlace }}">
+                      {% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}
+                    </a>
+                  {% endif %}
+                </div>
+              {% endfor %}
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'asociaciones:bandeja_revision' %}">Ver bandeja completa</a>
+            {% else %}
+              <div class="alert alert-light mb-0">No hay pendientes de revisión.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header pb-0 d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Alertas pendientes</h5>
             <span class="badge accessible-badge bg-warning text-dark">{{ total_alertas_admin_no_leidas }} sin leer</span>
           </div>

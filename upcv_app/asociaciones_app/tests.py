@@ -14,6 +14,7 @@ from .models import (
     AsociacionUsuario,
     ChecklistAnioItem,
     ExpedienteCAIMUS,
+    EntradaRevisionAdmin,
     InformeMensual,
     NotificacionAdmin,
     NotificacionAsociacion,
@@ -485,6 +486,13 @@ class AsociacionesTests(TestCase):
             informe=informe,
         )
         self.assertIn(f"#informe-mes-{informe.mes}", alerta.enlace)
+        self.assertTrue(
+            EntradaRevisionAdmin.objects.filter(
+                tipo=EntradaRevisionAdmin.TIPO_INFORME,
+                informe=informe,
+                estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            ).exists()
+        )
 
     def test_enviar_expediente_a_revision_crea_alerta_admin(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
@@ -503,21 +511,51 @@ class AsociacionesTests(TestCase):
                 asociacion=self.asociacion,
             ).exists()
         )
+        self.assertTrue(
+            EntradaRevisionAdmin.objects.filter(
+                tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
+                expediente=expediente,
+                estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            ).exists()
+        )
 
     def test_dashboard_admin_muestra_alertas_pendientes(self):
-        NotificacionAdmin.objects.create(
+        EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_INFORME,
             titulo="Informe enviado a revisión",
             mensaje="Pendiente revisar informe.",
             asociacion=self.asociacion,
             enlace=reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]),
-            leida=False,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
         )
         client = Client()
         client.login(username="admin", password="pass123")
         response = client.get(reverse("asociaciones:dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Alertas pendientes")
-        self.assertContains(response, "Revisar")
+        self.assertContains(response, "Bandeja de entrada")
+        self.assertContains(response, "Ver bandeja completa")
+
+    def test_admin_ve_bandeja_revision(self):
+        EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
+            titulo="Expediente enviado a revisión",
+            mensaje="Pendiente revisar expediente.",
+            asociacion=self.asociacion,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:bandeja_revision"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bandeja de revisión")
+        self.assertContains(response, "Expediente enviado a revisión")
+
+    def test_usuario_asociacion_no_ve_bandeja_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:bandeja_revision"))
+        self.assertEqual(response.status_code, 403)
 
     def test_alerta_admin_revisar_marca_leida_y_redirige(self):
         alerta = NotificacionAdmin.objects.create(
@@ -598,6 +636,57 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         informe.refresh_from_db()
         self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
+
+    def test_informe_aprobado_marca_entrada_bandeja_como_atendida(self):
+        informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=12,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_EN_REVISION,
+            creado_por=self.user,
+        )
+        entrada = EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_INFORME,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            titulo="Informe pendiente",
+            mensaje="Pendiente",
+            asociacion=self.asociacion,
+            informe=informe,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(
+            reverse("asociaciones:informe_estado", args=[self.asociacion.pk, informe.mes]),
+            {"estado": InformeMensual.ESTADO_APROBADO, "observacion_admin": ""},
+        )
+        self.assertEqual(response.status_code, 302)
+        entrada.refresh_from_db()
+        self.assertEqual(entrada.estado, EntradaRevisionAdmin.ESTADO_ATENDIDA)
+
+    def test_expediente_aprobado_marca_entrada_bandeja_como_atendida(self):
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.user,
+            estado=ExpedienteCAIMUS.ESTADO_EN_REVISION,
+        )
+        entrada = EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            titulo="Expediente pendiente",
+            mensaje="Pendiente",
+            asociacion=self.asociacion,
+            expediente=expediente,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(
+            reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+            {"estado": ExpedienteCAIMUS.ESTADO_APROBADO, "observacion_admin": ""},
+        )
+        self.assertEqual(response.status_code, 302)
+        entrada.refresh_from_db()
+        self.assertEqual(entrada.estado, EntradaRevisionAdmin.ESTADO_ATENDIDA)
 
     def test_dashboard_admin_filtra_por_anio(self):
         Asociacion.objects.create(anio=self.anio_otro, nombre="Asociacion 2027", codigo="A27")

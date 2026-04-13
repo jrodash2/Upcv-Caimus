@@ -39,6 +39,7 @@ from .models import (
     ResolucionExpediente,
     crear_notificacion_asociacion,
     crear_notificacion_admin,
+    crear_entrada_revision_admin,
     crear_items_expediente,
     crear_informes_mensuales,
     generar_correlativo,
@@ -193,6 +194,10 @@ def _dashboard_admin(request):
     if anio_seleccionado:
         alertas_admin_qs = alertas_admin_qs.filter(Q(asociacion__anio=anio_seleccionado) | Q(asociacion__isnull=True))
     alertas_admin_qs = alertas_admin_qs.order_by("-creada_en")
+    bandeja_qs = EntradaRevisionAdmin.objects.select_related("asociacion", "asociacion__anio", "expediente", "informe")
+    if anio_seleccionado:
+        bandeja_qs = bandeja_qs.filter(Q(asociacion__anio=anio_seleccionado) | Q(asociacion__isnull=True))
+    bandeja_qs = bandeja_qs.order_by("-creada_en")
 
     context = {
         "es_admin_dashboard": True,
@@ -217,6 +222,8 @@ def _dashboard_admin(request):
         "alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False)[:8],
         "alertas_admin_recientes": alertas_admin_qs[:8],
         "total_alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False).count(),
+        "bandeja_pendientes_total": bandeja_qs.filter(estado=EntradaRevisionAdmin.ESTADO_PENDIENTE).count(),
+        "bandeja_pendientes_recientes": bandeja_qs.filter(estado=EntradaRevisionAdmin.ESTADO_PENDIENTE)[:5],
         "anios_disponibles": anios_disponibles,
         "anio_seleccionado": anio_seleccionado,
         "actividad_reciente": actividad_reciente,
@@ -580,6 +587,15 @@ def expediente_enviar_revision(request, pk):
         enlace=reverse("asociaciones:expediente_caimus", args=[asociacion.pk]),
         asociacion=asociacion,
     )
+    crear_entrada_revision_admin(
+        tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
+        titulo="Expediente enviado a revisión",
+        mensaje=f"La asociación {asociacion.nombre} envió su expediente a revisión.",
+        creada_por=request.user,
+        enlace=reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+        asociacion=asociacion,
+        expediente=expediente,
+    )
     messages.success(request, "Expediente enviado a revisión correctamente.")
     return redirect("asociaciones:expediente_caimus", pk=asociacion.pk)
 
@@ -724,7 +740,7 @@ def informe_enviar_revision(request, asociacion_id, mes):
         messages.warning(request, "El informe ya está aprobado.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     if not informe.tiene_archivos_completos():
-        messages.error(request, "Debes cargar el informe narrativo y presupuestario antes de enviar a revisión.")
+        messages.error(request, "Debes cargar ambos archivos antes de enviar a revisión.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe.estado = InformeMensual.ESTADO_EN_REVISION
     informe.actualizado_por = request.user
@@ -733,6 +749,15 @@ def informe_enviar_revision(request, asociacion_id, mes):
         titulo="Informe enviado a revisión",
         mensaje=f"La asociación {asociacion.nombre} envió a revisión el informe mensual de {informe.get_mes_display()}.",
         tipo=NotificacionAdmin.TIPO_WARNING,
+        creada_por=request.user,
+        enlace=f"{reverse('asociaciones:informes_mensuales', args=[asociacion.pk])}#informe-mes-{informe.mes}",
+        asociacion=asociacion,
+        informe=informe,
+    )
+    crear_entrada_revision_admin(
+        tipo=EntradaRevisionAdmin.TIPO_INFORME,
+        titulo="Informe enviado a revisión",
+        mensaje=f"La asociación {asociacion.nombre} envió a revisión el informe mensual de {informe.get_mes_display()}.",
         creada_por=request.user,
         enlace=f"{reverse('asociaciones:informes_mensuales', args=[asociacion.pk])}#informe-mes-{informe.mes}",
         asociacion=asociacion,
@@ -816,6 +841,13 @@ def informe_estado(request, asociacion_id, mes):
         estado_nuevo=estado_nuevo,
         observacion=observacion_admin,
         cambiado_por=request.user,
+    )
+    EntradaRevisionAdmin.objects.filter(
+        informe=informe,
+        estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+    ).update(
+        estado=EntradaRevisionAdmin.ESTADO_ATENDIDA,
+        atendida_en=timezone.now(),
     )
     if estado_nuevo == InformeMensual.ESTADO_APROBADO and not hasattr(informe, "resolucion"):
         correlativo = generar_correlativo_informe(asociacion.anio.anio, informe.mes)
@@ -939,6 +971,13 @@ def expediente_revision(request, pk):
                 expediente.aprobado_en = None
             expediente.actualizado_por = request.user
             expediente.save()
+            EntradaRevisionAdmin.objects.filter(
+                expediente=expediente,
+                estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            ).update(
+                estado=EntradaRevisionAdmin.ESTADO_ATENDIDA,
+                atendida_en=timezone.now(),
+            )
 
             ExpedienteEstadoHistorial.objects.create(
                 expediente=expediente,
@@ -1013,27 +1052,45 @@ def expediente_revision(request, pk):
 @login_required
 @admin_required
 def bandeja_revision(request):
+    tipo = request.GET.get("tipo")
     estado = request.GET.get("estado")
     anio_id = request.GET.get("anio")
-    asociaciones = Asociacion.objects.select_related("anio")
-    expedientes = ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio")
-    if estado:
-        expedientes = expedientes.filter(estado=estado)
+    entradas = EntradaRevisionAdmin.objects.select_related("asociacion", "asociacion__anio", "expediente", "informe")
+    if tipo in [EntradaRevisionAdmin.TIPO_EXPEDIENTE, EntradaRevisionAdmin.TIPO_INFORME]:
+        entradas = entradas.filter(tipo=tipo)
+    if estado in [EntradaRevisionAdmin.ESTADO_PENDIENTE, EntradaRevisionAdmin.ESTADO_ATENDIDA]:
+        entradas = entradas.filter(estado=estado)
     if anio_id:
-        expedientes = expedientes.filter(asociacion__anio_id=anio_id)
-
-    anios = Anio.objects.all()
+        entradas = entradas.filter(asociacion__anio_id=anio_id)
+    entradas = entradas.order_by("-creada_en")
+    anios = Anio.objects.order_by("-anio")
     return render(
         request,
         "asociaciones_app/bandeja_revision.html",
         {
-            "expedientes": expedientes,
+            "entradas": entradas,
             "anios": anios,
+            "tipo": tipo,
             "estado": estado,
             "anio_id": anio_id,
-            "estados": ExpedienteCAIMUS.ESTADOS,
+            "tipos": EntradaRevisionAdmin.TIPOS,
+            "estados": EntradaRevisionAdmin.ESTADOS,
+            "pendientes_total": entradas.filter(estado=EntradaRevisionAdmin.ESTADO_PENDIENTE).count(),
         },
     )
+
+
+@login_required
+@admin_required
+@require_POST
+def bandeja_marcar_atendida(request, pk):
+    entrada = get_object_or_404(EntradaRevisionAdmin, pk=pk)
+    if entrada.estado != EntradaRevisionAdmin.ESTADO_ATENDIDA:
+        entrada.estado = EntradaRevisionAdmin.ESTADO_ATENDIDA
+        entrada.atendida_en = timezone.now()
+        entrada.save(update_fields=["estado", "atendida_en"])
+        messages.success(request, "La entrada fue marcada como atendida.")
+    return redirect("asociaciones:bandeja_revision")
 
 
 @login_required
@@ -1105,3 +1162,4 @@ def notificaciones_marcar_leidas(request, asociacion_id):
     asociacion.notificaciones.filter(leida=False).update(leida=True)
     messages.success(request, "Alertas marcadas como leídas.")
     return redirect("asociaciones:mis_asociaciones")
+    EntradaRevisionAdmin,
