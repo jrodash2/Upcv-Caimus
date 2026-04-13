@@ -254,6 +254,20 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Dashboard de asociaciones")
 
+    def test_admin_dashboard_principal_redirige_a_dashboard_asociaciones(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("almacen:dahsboard"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("asociaciones:inicio"))
+
+    def test_dashboard_admin_no_muestra_link_redundante_dashboard_asociaciones(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:inicio"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Dashboard asociaciones")
+
     def test_usuario_asociacion_dashboard_solo_datos_propios(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
@@ -343,10 +357,50 @@ class AsociacionesTests(TestCase):
         self.assertEqual(
             NotificacionAsociacion.objects.filter(
                 asociacion=self.asociacion,
-                titulo="Observación del administrador en expediente",
+                titulo="Nueva observación en expediente",
             ).count(),
             1,
         )
+
+    def test_notificacion_observacion_informe_se_crea_para_asociacion_correcta(self):
+        informe_a = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=4,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_EN_REVISION,
+        )
+        InformeMensual.objects.create(
+            asociacion=self.asociacion_otra,
+            mes=4,
+            archivo_narrativo=SimpleUploadedFile("narrativo2.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario2.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_EN_REVISION,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        client.post(
+            reverse("asociaciones:informe_estado", args=[self.asociacion.pk, informe_a.mes]),
+            {"estado": InformeMensual.ESTADO_RECHAZADO, "observacion_admin": "Detalle actualizado."},
+        )
+        self.assertTrue(
+            NotificacionAsociacion.objects.filter(
+                asociacion=self.asociacion,
+                titulo="Nueva observación en informe mensual",
+            ).exists()
+        )
+        self.assertFalse(
+            NotificacionAsociacion.objects.filter(
+                asociacion=self.asociacion_otra,
+                titulo="Nueva observación en informe mensual",
+            ).exists()
+        )
+
+    def test_usuario_asociacion_no_accede_dashboard_admin_principal(self):
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("almacen:dahsboard"))
+        self.assertEqual(response.status_code, 403)
 
     def test_usuario_otra_asociacion_no_ve_observaciones_ajenas(self):
         expediente = ExpedienteCAIMUS.objects.create(
