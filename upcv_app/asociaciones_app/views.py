@@ -29,6 +29,7 @@ from .models import (
     Anio,
     Asociacion,
     AsociacionUsuario,
+    EntradaRevisionAdmin,
     ExpedienteCAIMUS,
     ExpedienteEstadoHistorial,
     InformeEstadoHistorial,
