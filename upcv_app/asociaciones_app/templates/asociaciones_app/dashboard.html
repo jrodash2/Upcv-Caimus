@@ -1,0 +1,154 @@
+{% extends 'almacen/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <h4>{% if es_admin_dashboard %}Dashboard de asociaciones{% else %}Mi dashboard de asociaciones{% endif %}</h4>
+    </div>
+
+    <div class="row">
+      {% if es_admin_dashboard %}
+      <div class="col-xl-2 col-sm-6">
+        <div class="card o-hidden small-widget">
+          <div class="card-body total-project border-b-primary border-2">
+            <span class="f-light">Años activos</span><h4 class="mt-1 mb-0">{{ kpis.total_anios }}</h4>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-secondary border-2"><span class="f-light">Asociaciones</span><h4 class="mt-1 mb-0">{{ kpis.total_asociaciones }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-success border-2"><span class="f-light">Expedientes aprobados</span><h4 class="mt-1 mb-0">{{ kpis.expedientes_aprobados }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-warning border-2"><span class="f-light">Informes pendientes</span><h4 class="mt-1 mb-0">{{ kpis.informes_pendientes }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-info border-2"><span class="f-light">Usuarios asignados</span><h4 class="mt-1 mb-0">{{ kpis.total_usuarios_asignados }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-dark border-2"><span class="f-light">Resoluciones emitidas</span><h4 class="mt-1 mb-0">{{ kpis.resoluciones_emitidas }}</h4></div></div></div>
+      {% else %}
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-primary border-2"><span class="f-light">Mis asociaciones</span><h4 class="mt-1 mb-0">{{ kpis.total_mis_asociaciones }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-secondary border-2"><span class="f-light">Estado expediente</span><h6 class="mt-2 mb-0">{{ kpis.expediente_estado }}</h6></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-success border-2"><span class="f-light">Docs cargados</span><h4 class="mt-1 mb-0">{{ kpis.expediente_items_completos }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-warning border-2"><span class="f-light">Docs pendientes</span><h4 class="mt-1 mb-0">{{ kpis.expediente_items_pendientes }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-info border-2"><span class="f-light">Informes aprobados</span><h4 class="mt-1 mb-0">{{ kpis.informes_aprobados }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-danger border-2"><span class="f-light">Alertas nuevas</span><h4 class="mt-1 mb-0">{{ kpis.alertas_no_leidas }}</h4></div></div></div>
+      {% endif %}
+    </div>
+
+    <div class="row">
+      <div class="col-xl-8">
+        <div class="card">
+          <div class="card-header pb-0"><h5>{% if es_admin_dashboard %}Análisis general{% else %}Mi cumplimiento{% endif %}</h5></div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6"><div id="dashboard-chart-1" style="min-height: 280px;"></div></div>
+              <div class="col-md-6"><div id="dashboard-chart-2" style="min-height: 280px;"></div></div>
+            </div>
+            <div class="mt-3" id="dashboard-chart-3" style="min-height: 280px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="card">
+          <div class="card-header pb-0"><h5>Actividad y alertas</h5></div>
+          <div class="card-body">
+            <ul class="list-unstyled">
+              {% if es_admin_dashboard %}
+                {% for evento in actividad_reciente %}
+                  <li class="d-flex align-items-start mb-3">
+                    <span class="badge badge-light-{{ evento.tipo }} me-2">•</span>
+                    <div>
+                      <h6 class="mb-0">{{ evento.titulo }}</h6>
+                      <small class="text-muted">{{ evento.detalle }} · {{ evento.fecha|date:"d/m/Y H:i" }}</small>
+                    </div>
+                  </li>
+                {% empty %}
+                  <li class="text-muted">Sin actividad reciente.</li>
+                {% endfor %}
+              {% else %}
+                {% for notif in notificaciones_recientes %}
+                  <li class="d-flex align-items-start mb-3">
+                    <span class="badge badge-light-{% if notif.tipo == 'error' %}danger{% elif notif.tipo == 'warning' %}warning{% elif notif.tipo == 'success' %}success{% else %}info{% endif %} me-2">•</span>
+                    <div>
+                      <h6 class="mb-0">{{ notif.titulo }}</h6>
+                      <small class="text-muted">{{ notif.mensaje|truncatechars:90 }} · {{ notif.creada_en|date:"d/m/Y H:i" }}</small>
+                    </div>
+                  </li>
+                {% empty %}
+                  <li class="text-muted">Sin notificaciones recientes.</li>
+                {% endfor %}
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header pb-0"><h5>Accesos rápidos</h5></div>
+          <div class="card-body d-grid gap-2">
+            <a class="btn btn-outline-primary" href="{% url 'asociaciones:mis_asociaciones' %}">Ir a Mis asociaciones</a>
+            {% if es_admin_dashboard %}
+              <a class="btn btn-outline-secondary" href="{% url 'asociaciones:anios_list' %}">Ver años</a>
+              <a class="btn btn-outline-secondary" href="{% url 'asociaciones:asignaciones_list' %}">Ver asignaciones</a>
+              <a class="btn btn-outline-secondary" href="{% url 'asociaciones:bandeja_revision' %}">Bandeja de revisión</a>
+            {% elif asociacion_principal %}
+              <a class="btn btn-outline-secondary" href="{% url 'asociaciones:expediente_caimus' asociacion_principal.pk %}">Abrir expediente</a>
+              <a class="btn btn-outline-secondary" href="{% url 'asociaciones:informes_mensuales' asociacion_principal.pk %}">Abrir informes</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header pb-0">
+            <h5>{% if es_admin_dashboard %}Resumen de asociaciones{% else %}Resumen mensual de informes{% endif %}</h5>
+          </div>
+          <div class="card-body table-responsive">
+            {% if es_admin_dashboard %}
+            <table class="table table-hover">
+              <thead><tr><th>Asociación</th><th>Año</th><th>Expediente</th><th>Informes aprobados</th><th>Pendientes</th><th>Acciones</th></tr></thead>
+              <tbody>
+                {% for fila in asociaciones_resumen %}
+                <tr>
+                  <td>{{ fila.asociacion.nombre }}</td>
+                  <td>{{ fila.asociacion.anio.anio }}</td>
+                  <td><span class="badge badge-light-info">{{ fila.estado_expediente }}</span></td>
+                  <td>{{ fila.informes_aprobados }}</td>
+                  <td>{{ fila.informes_pendientes }}</td>
+                  <td>
+                    <a class="btn btn-pill btn-outline-primary btn-xs" href="{% url 'asociaciones:expediente_caimus' fila.asociacion.pk %}">Expediente</a>
+                    <a class="btn btn-pill btn-outline-secondary btn-xs" href="{% url 'asociaciones:informes_mensuales' fila.asociacion.pk %}">Informes</a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <table class="table table-hover">
+              <thead><tr><th>Mes</th><th>Narrativo</th><th>Presupuestario</th><th>Estado</th><th>Acción</th></tr></thead>
+              <tbody>
+                {% for informe in informes_principal %}
+                <tr>
+                  <td>{{ informe.get_mes_display }}</td>
+                  <td>{% if informe.archivo_narrativo %}<span class="badge badge-light-success">Cargado</span>{% else %}<span class="badge badge-light-warning">Pendiente</span>{% endif %}</td>
+                  <td>{% if informe.archivo_presupuestario %}<span class="badge badge-light-success">Cargado</span>{% else %}<span class="badge badge-light-warning">Pendiente</span>{% endif %}</td>
+                  <td><span class="badge badge-light-info">{{ informe.get_estado_display }}</span></td>
+                  <td><a class="btn btn-pill btn-outline-primary btn-xs" href="{% url 'asociaciones:informes_mensuales' informe.asociacion.pk %}">Ver</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-muted">No hay informes disponibles.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{{ chart_payload|json_script:"dashboard-chart-data" }}
+{{ meses_labels|json_script:"dashboard-month-labels" }}
+<script src="{% static 'asociaciones_app/js/dashboard.js' %}"></script>
+{% endblock %}
