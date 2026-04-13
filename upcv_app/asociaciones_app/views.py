@@ -594,7 +594,7 @@ def expediente_enviar_revision(request, pk):
         titulo="Expediente enviado a revisión",
         mensaje=f"La asociación {asociacion.nombre} envió su expediente a revisión.",
         creada_por=request.user,
-        enlace=reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+        enlace=reverse("asociaciones:expediente_caimus", args=[asociacion.pk]),
         asociacion=asociacion,
         expediente=expediente,
     )

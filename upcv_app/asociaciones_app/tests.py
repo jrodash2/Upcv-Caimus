@@ -609,16 +609,69 @@ class AsociacionesTests(TestCase):
         client.login(username="admin", password="pass123")
         response = client.get(reverse("asociaciones:bandeja_revision"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, reverse("asociaciones:expediente_revision", args=[expediente.pk]))
-        self.assertNotContains(response, reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertContains(response, reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertNotContains(response, reverse("asociaciones:expediente_revision", args=[expediente.pk]))
 
-    def test_admin_puede_abrir_revision_expediente_desde_url_real(self):
+    def test_admin_puede_abrir_detalle_expediente_caimus_desde_bandeja(self):
         expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
         client = Client()
         client.login(username="admin", password="pass123")
-        response = client.get(reverse("asociaciones:expediente_revision", args=[expediente.pk]))
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Revisión del expediente")
+        self.assertContains(response, "Expediente")
+
+    def test_admin_marcar_atendida_por_post_actualiza_estado_y_fecha(self):
+        entrada = EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            titulo="Expediente pendiente",
+            mensaje="Pendiente",
+            asociacion=self.asociacion,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(reverse("asociaciones:bandeja_marcar_atendida", args=[entrada.pk]))
+        self.assertEqual(response.status_code, 302)
+        entrada.refresh_from_db()
+        self.assertEqual(entrada.estado, EntradaRevisionAdmin.ESTADO_ATENDIDA)
+        self.assertIsNotNone(entrada.atendida_en)
+
+    def test_usuario_asociacion_no_puede_marcar_atendida(self):
+        entrada = EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_INFORME,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            titulo="Informe pendiente",
+            mensaje="Pendiente",
+            asociacion=self.asociacion,
+        )
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(reverse("asociaciones:bandeja_marcar_atendida", args=[entrada.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_marcar_atendida_disminuye_pendientes_y_no_se_recrea(self):
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            estado=ExpedienteCAIMUS.ESTADO_EN_REVISION,
+        )
+        entrada = EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            titulo="Expediente pendiente",
+            mensaje="Pendiente",
+            asociacion=self.asociacion,
+            expediente=expediente,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(reverse("asociaciones:bandeja_marcar_atendida", args=[entrada.pk]))
+        self.assertEqual(response.status_code, 302)
+        response = client.get(reverse("asociaciones:bandeja_revision"), {"estado": "pendiente"})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Expediente pendiente")
+        self.assertContains(response, "0 pendientes")
 
     def test_usuario_asociacion_no_ve_bandeja_revision(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")

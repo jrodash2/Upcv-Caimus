@@ -740,7 +740,7 @@ def crear_entrada_revision_admin(
     from django.urls import reverse
 
     if tipo == EntradaRevisionAdmin.TIPO_EXPEDIENTE and expediente is not None:
-        enlace = enlace or reverse("asociaciones:expediente_revision", args=[expediente.pk])
+        enlace = enlace or reverse("asociaciones:expediente_caimus", args=[expediente.asociacion_id])
     if tipo == EntradaRevisionAdmin.TIPO_INFORME and informe is not None and asociacion is not None:
         enlace = enlace or f"{reverse('asociaciones:informes_mensuales', args=[asociacion.pk])}#informe-mes-{informe.mes}"
     filtros = {

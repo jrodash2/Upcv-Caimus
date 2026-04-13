@@ -72,8 +72,10 @@
                   <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">{{ entrada.get_estado_display }}</span>
                 </div>
                 <div class="d-flex gap-1 flex-wrap justify-content-end">
-                  {% if entrada.tipo == 'expediente' and entrada.expediente_id %}
-                    <a class="btn btn-primary btn-xs" href="{% url 'asociaciones:expediente_revision' entrada.expediente_id %}">Revisar expediente</a>
+                  {% if entrada.tipo == 'expediente' and entrada.asociacion_id %}
+                    <a class="btn btn-primary btn-xs" href="{% url 'asociaciones:expediente_caimus' entrada.asociacion_id %}">Revisar expediente</a>
+                  {% elif entrada.tipo == 'expediente' and entrada.expediente and entrada.expediente.asociacion_id %}
+                    <a class="btn btn-primary btn-xs" href="{% url 'asociaciones:expediente_caimus' entrada.expediente.asociacion_id %}">Revisar expediente</a>
                   {% elif entrada.enlace %}
                     <a class="btn btn-primary btn-xs" href="{{ entrada.enlace }}">{% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}</a>
                   {% endif %}

@@ -44,13 +44,12 @@ def sincronizar_entradas_revision_admin(anio=None) -> None:
         informes_en_revision = informes_en_revision.filter(asociacion__anio_id=anio_id)
         expedientes_en_revision = expedientes_en_revision.filter(asociacion__anio_id=anio_id)
 
-    pendientes_informes = set(
+    existentes_informes = set(
         EntradaRevisionAdmin.objects.filter(
-            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
             informe__in=informes_en_revision,
         ).values_list("informe_id", flat=True)
     )
-    for informe in informes_en_revision.exclude(id__in=pendientes_informes):
+    for informe in informes_en_revision.exclude(id__in=existentes_informes):
         crear_entrada_revision_admin(
             tipo=EntradaRevisionAdmin.TIPO_INFORME,
             titulo="Informe enviado a revisión",
@@ -60,18 +59,17 @@ def sincronizar_entradas_revision_admin(anio=None) -> None:
             informe=informe,
         )
 
-    pendientes_expedientes = set(
+    existentes_expedientes = set(
         EntradaRevisionAdmin.objects.filter(
-            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
             expediente__in=expedientes_en_revision,
         ).values_list("expediente_id", flat=True)
     )
-    for expediente in expedientes_en_revision.exclude(id__in=pendientes_expedientes):
+    for expediente in expedientes_en_revision.exclude(id__in=existentes_expedientes):
         crear_entrada_revision_admin(
             tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
             titulo="Expediente enviado a revisión",
             mensaje=f"Expediente de {expediente.asociacion.nombre} requiere revisión.",
-            enlace=reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+            enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion_id]),
             asociacion=expediente.asociacion,
             expediente=expediente,
         )
