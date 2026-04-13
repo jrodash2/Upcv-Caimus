@@ -554,6 +554,14 @@ class AsociacionesTests(TestCase):
         informe.refresh_from_db()
         self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
 
+    def test_boton_enviar_revision_visible_para_usuario_asociacion(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Enviar a revisión")
+
     def test_upload_presupuestario_no_cambia_a_en_revision(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         informe = InformeMensual.objects.create(
