@@ -534,6 +534,30 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Bandeja de entrada")
         self.assertContains(response, "Ver bandeja completa")
+        self.assertContains(response, "1 pendientes")
+        self.assertContains(response, "Informe enviado a revisión")
+
+    def test_dashboard_admin_muestra_total_alertas_no_leidas(self):
+        NotificacionAdmin.objects.create(
+            titulo="Alerta nueva",
+            mensaje="Pendiente de revisar",
+            asociacion=self.asociacion,
+            leida=False,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Alertas pendientes")
+        self.assertContains(response, "1 sin leer")
+        self.assertContains(response, "Alerta nueva")
+
+    def test_dashboard_admin_no_renderiza_card_requieren_revision(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Requieren revisión")
 
     def test_admin_ve_bandeja_revision(self):
         EntradaRevisionAdmin.objects.create(

@@ -241,13 +241,11 @@ def _dashboard_admin(request):
             asociacion__anio=anio_seleccionado
         )[:8] if anio_seleccionado else NotificacionAsociacion.objects.select_related("asociacion").all()[:8],
         "alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False)[:8],
-        "alertas_admin_recientes": alertas_admin_qs[:8],
         "total_alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False).count(),
         "bandeja_pendientes_total": bandeja_qs.filter(estado=EntradaRevisionAdmin.ESTADO_PENDIENTE).count(),
         "bandeja_pendientes_recientes": bandeja_qs.filter(estado=EntradaRevisionAdmin.ESTADO_PENDIENTE)[:5],
         "anios_disponibles": anios_disponibles,
         "anio_seleccionado": anio_seleccionado,
-        "actividad_reciente": actividad_reciente,
         "asociaciones_resumen": asociaciones_resumen,
         "chart_payload": chart_payload,
         "meses_labels": [month_name[i] for i in range(1, 13)],

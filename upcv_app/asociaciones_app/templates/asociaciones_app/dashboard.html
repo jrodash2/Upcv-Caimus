@@ -117,34 +117,11 @@
         </div>
         {% endif %}
 
+        {% if not es_admin_dashboard %}
         <div class="card">
-          <div class="card-header pb-0"><h5>{% if es_admin_dashboard %}Requieren revisión{% else %}Actividad y alertas{% endif %}</h5></div>
+          <div class="card-header pb-0"><h5>Actividad y alertas</h5></div>
           <div class="card-body">
             <ul class="list-unstyled">
-              {% if es_admin_dashboard %}
-                {% for alerta in alertas_admin_recientes %}
-                  <li class="d-flex align-items-start mb-3">
-                    <span class="badge badge-light-{% if alerta.tipo == 'error' %}danger{% elif alerta.tipo == 'warning' %}warning{% elif alerta.tipo == 'success' %}success{% else %}info{% endif %} me-2">•</span>
-                    <div>
-                      <h6 class="mb-0">{{ alerta.titulo }}</h6>
-                      <small class="text-muted d-block">{{ alerta.mensaje|truncatechars:100 }}</small>
-                      <small class="text-muted d-block">{{ alerta.creada_en|date:"d/m/Y H:i" }} · {% if alerta.leida %}Leída{% else %}No leída{% endif %}</small>
-                      <a class="btn btn-primary btn-xs mt-1" href="{% url 'asociaciones:alerta_admin_revisar' alerta.pk %}">Revisar</a>
-                    </div>
-                  </li>
-                {% endfor %}
-                {% for evento in actividad_reciente %}
-                  <li class="d-flex align-items-start mb-3">
-                    <span class="badge badge-light-{{ evento.tipo }} me-2">•</span>
-                    <div>
-                      <h6 class="mb-0">{{ evento.titulo }}</h6>
-                      <small class="text-muted">{{ evento.detalle }} · {{ evento.fecha|date:"d/m/Y H:i" }}</small>
-                    </div>
-                  </li>
-                {% empty %}
-                  <li class="text-muted">Sin actividad reciente.</li>
-                {% endfor %}
-              {% else %}
                 {% for notif in notificaciones_recientes %}
                   <li class="d-flex align-items-start mb-3">
                     <span class="badge badge-light-{% if notif.tipo == 'error' %}danger{% elif notif.tipo == 'warning' %}warning{% elif notif.tipo == 'success' %}success{% else %}info{% endif %} me-2">•</span>
@@ -156,10 +133,10 @@
                 {% empty %}
                   <li class="text-muted">Sin notificaciones recientes.</li>
                 {% endfor %}
-              {% endif %}
             </ul>
           </div>
         </div>
+        {% endif %}
 
         <div class="card">
           <div class="card-header pb-0"><h5>Accesos rápidos</h5></div>
