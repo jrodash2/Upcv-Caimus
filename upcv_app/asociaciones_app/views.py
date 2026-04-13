@@ -56,6 +56,7 @@ from .permissions import (
     user_has_asociacion_access,
     user_has_expediente_access,
 )
+from .utils import obtener_entradas_bandeja_admin, resumen_dashboard_admin
 @asociacion_required
 def dashboard(request):
     if is_admin(request.user):
@@ -73,6 +74,55 @@ def asociaciones_inicio(request):
         return _dashboard_asociacion(request)
     raise PermissionDenied
 
+    expedientes = ExpedienteCAIMUS.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    informes = InformeMensual.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+    notificaciones = NotificacionAsociacion.objects.filter(asociacion__in=asociaciones).select_related("asociacion")
+
+    total_items = 0
+    items_completos = 0
+    for expediente in expedientes.prefetch_related("items"):
+        stats = expediente.progress_stats()
+        total_items += stats["total"]
+        items_completos += stats["done"]
+    items_pendientes = max(total_items - items_completos, 0)
+    cumplimiento = int((items_completos / total_items) * 100) if total_items else 0
+
+    asociacion_principal = asociaciones.first()
+    expediente_principal = expedientes.filter(asociacion=asociacion_principal).first() if asociacion_principal else None
+    informes_principal = informes.filter(asociacion=asociacion_principal).order_by("mes") if asociacion_principal else InformeMensual.objects.none()
+
+    chart_payload = {
+        "expedienteProgreso": [items_completos, items_pendientes],
+        "informesResumen": [
+            informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+        ],
+        "cumplimiento": cumplimiento,
+    }
+
+    context = {
+        "es_admin_dashboard": False,
+        "mis_asociaciones": asociaciones,
+        "asociacion_principal": asociacion_principal,
+        "expediente_principal": expediente_principal,
+        "informes_principal": informes_principal,
+        "kpis": {
+            "total_mis_asociaciones": asociaciones.count(),
+            "expediente_estado": expediente_principal.estado if expediente_principal else "SIN_EXPEDIENTE",
+            "expediente_total_items": total_items,
+            "expediente_items_completos": items_completos,
+            "expediente_items_pendientes": items_pendientes,
+            "informes_aprobados": informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "alertas_no_leidas": notificaciones.filter(leida=False).count(),
+            "cumplimiento": cumplimiento,
+        },
+        "notificaciones_recientes": notificaciones.order_by("-creada_en")[:8],
+        "anios_disponibles": anios_disponibles,
+        "anio_seleccionado": anio_seleccionado,
+        "chart_payload": chart_payload,
+    }
+    return render(request, "asociaciones_app/dashboard.html", context)
 
 def _dashboard_admin(request):
     anios_disponibles = Anio.objects.order_by("-anio")
@@ -191,34 +241,7 @@ def _dashboard_admin(request):
         "cumplimientoPromedio": promedio_cumplimiento,
     }
 
-    alertas_admin_qs = NotificacionAdmin.objects.select_related("asociacion", "informe")
-    if anio_seleccionado:
-        alertas_admin_qs = alertas_admin_qs.filter(Q(asociacion__anio=anio_seleccionado) | Q(asociacion__isnull=True))
-    alertas_admin_qs = alertas_admin_qs.order_by("-creada_en")
-    informes_en_revision = informes.filter(estado=InformeMensual.ESTADO_EN_REVISION).select_related("asociacion", "asociacion__anio")
-    entradas_pendientes_informes = set(
-        EntradaRevisionAdmin.objects.filter(
-            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
-            informe__in=informes_en_revision,
-        ).values_list("informe_id", flat=True)
-    )
-    for informe in informes_en_revision.exclude(id__in=entradas_pendientes_informes):
-        crear_entrada_revision_admin(
-            tipo=EntradaRevisionAdmin.TIPO_INFORME,
-            titulo="Informe enviado a revisión",
-            mensaje=(
-                f"La asociación {informe.asociacion.nombre} tiene en revisión el informe mensual de "
-                f"{informe.get_mes_display()}."
-            ),
-            enlace=f"{reverse('asociaciones:informes_mensuales', args=[informe.asociacion_id])}#informe-mes-{informe.mes}",
-            asociacion=informe.asociacion,
-            informe=informe,
-        )
-
-    bandeja_qs = EntradaRevisionAdmin.objects.select_related("asociacion", "asociacion__anio", "expediente", "informe")
-    if anio_seleccionado:
-        bandeja_qs = bandeja_qs.filter(Q(asociacion__anio=anio_seleccionado) | Q(asociacion__isnull=True))
-    bandeja_qs = bandeja_qs.order_by("-creada_en")
+    resumen_inbox = resumen_dashboard_admin(anio=anio_seleccionado)
 
     context = {
         "es_admin_dashboard": True,
@@ -240,10 +263,10 @@ def _dashboard_admin(request):
         "notificaciones_recientes": NotificacionAsociacion.objects.select_related("asociacion").filter(
             asociacion__anio=anio_seleccionado
         )[:8] if anio_seleccionado else NotificacionAsociacion.objects.select_related("asociacion").all()[:8],
-        "alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False)[:8],
-        "total_alertas_admin_no_leidas": alertas_admin_qs.filter(leida=False).count(),
-        "bandeja_pendientes_total": bandeja_qs.filter(estado=EntradaRevisionAdmin.ESTADO_PENDIENTE).count(),
-        "bandeja_pendientes_recientes": bandeja_qs.filter(estado=EntradaRevisionAdmin.ESTADO_PENDIENTE)[:5],
+        "alertas_admin_no_leidas": resumen_inbox["alertas_no_leidas_recientes"],
+        "total_alertas_admin_no_leidas": resumen_inbox["total_alertas_no_leidas"],
+        "bandeja_pendientes_total": resumen_inbox["total_bandeja_pendiente"],
+        "bandeja_pendientes_recientes": resumen_inbox["entradas_bandeja_recientes"],
         "anios_disponibles": anios_disponibles,
         "anio_seleccionado": anio_seleccionado,
         "asociaciones_resumen": asociaciones_resumen,
@@ -1074,14 +1097,9 @@ def bandeja_revision(request):
     tipo = request.GET.get("tipo")
     estado = request.GET.get("estado")
     anio_id = request.GET.get("anio")
-    entradas = EntradaRevisionAdmin.objects.select_related("asociacion", "asociacion__anio", "expediente", "informe")
-    if tipo in [EntradaRevisionAdmin.TIPO_EXPEDIENTE, EntradaRevisionAdmin.TIPO_INFORME]:
-        entradas = entradas.filter(tipo=tipo)
-    if estado in [EntradaRevisionAdmin.ESTADO_PENDIENTE, EntradaRevisionAdmin.ESTADO_ATENDIDA]:
-        entradas = entradas.filter(estado=estado)
-    if anio_id:
-        entradas = entradas.filter(asociacion__anio_id=anio_id)
-    entradas = entradas.order_by("-creada_en")
+    tipo_filtro = tipo if tipo in [EntradaRevisionAdmin.TIPO_EXPEDIENTE, EntradaRevisionAdmin.TIPO_INFORME] else None
+    estado_filtro = estado if estado in [EntradaRevisionAdmin.ESTADO_PENDIENTE, EntradaRevisionAdmin.ESTADO_ATENDIDA] else None
+    entradas = obtener_entradas_bandeja_admin(anio=anio_id, estado=estado_filtro, tipo=tipo_filtro)
     anios = Anio.objects.order_by("-anio")
     return render(
         request,

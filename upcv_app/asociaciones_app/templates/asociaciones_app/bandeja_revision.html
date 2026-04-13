@@ -1,6 +1,8 @@
 {% extends 'almacen/base.html' %}
+{% load static %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'asociaciones_app/css/inbox.css' %}">
 <div class="page-body">
   <div class="container-fluid">
     <div class="page-title d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -44,67 +46,49 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Título</th>
-                <th>Asociación</th>
-                <th>Año</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for entrada in entradas %}
-              <tr>
-                <td>
-                  <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">
-                    {{ entrada.get_tipo_display }}
-                  </span>
-                </td>
-                <td>
-                  <strong>{{ entrada.titulo }}</strong>
-                  <div class="text-muted small">{{ entrada.mensaje|truncatechars:80 }}</div>
-                </td>
-                <td>{{ entrada.asociacion.nombre|default:"-" }}</td>
-                <td>{{ entrada.asociacion.anio.anio|default:"-" }}</td>
-                <td>
-                  <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">
-                    {{ entrada.get_estado_display }}
-                  </span>
-                </td>
-                <td>{{ entrada.creada_en|date:"d/m/Y H:i" }}</td>
-                <td>
-                  <div class="d-flex gap-2 flex-wrap">
-                    {% if entrada.enlace %}
-                      <a class="btn btn-primary btn-sm" href="{{ entrada.enlace }}">
-                        {% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}
-                      </a>
-                    {% endif %}
-                    {% if entrada.asociacion %}
-                      <a class="btn btn-outline-primary btn-sm" href="{% if entrada.tipo == 'informe' %}{% url 'asociaciones:informes_mensuales' entrada.asociacion.pk %}{% else %}{% url 'asociaciones:expediente_caimus' entrada.asociacion.pk %}{% endif %}">Ir a asociación</a>
-                    {% endif %}
-                    {% if entrada.estado == 'pendiente' %}
-                      <form method="post" action="{% url 'asociaciones:bandeja_marcar_atendida' entrada.pk %}">
-                        {% csrf_token %}
-                        <button class="btn btn-outline-success btn-sm" type="submit">Marcar atendida</button>
-                      </form>
-                    {% endif %}
-                  </div>
-                </td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="7">No hay entradas en la bandeja.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+    <div class="d-grid gap-3">
+      {% for entrada in entradas %}
+      <div class="card inbox-card">
+        <div class="card-body">
+          <div class="inbox-item">
+            <div class="inbox-item__left">
+              <span class="inbox-item__icon">
+                <i data-feather="{% if entrada.tipo == 'informe' %}file-text{% else %}folder{% endif %}" aria-hidden="true"></i>
+              </span>
+              <div class="min-w-0">
+                <h6 class="inbox-item__title">{{ entrada.titulo }}</h6>
+                <p class="mb-1 text-muted">{{ entrada.mensaje|truncatechars:120 }}</p>
+                <div class="inbox-item__meta">
+                  {{ entrada.asociacion.nombre|default:"Sin asociación" }}
+                  {% if entrada.asociacion %} · Año {{ entrada.asociacion.anio.anio }}{% endif %}
+                  · {{ entrada.creada_en|date:"d/m/Y H:i" }}
+                </div>
+              </div>
+            </div>
+            <div class="inbox-item__right">
+              <span class="badge accessible-badge bg-{% if entrada.tipo == 'informe' %}info{% else %}secondary{% endif %}">{{ entrada.get_tipo_display }}</span>
+              <span class="badge accessible-badge bg-{% if entrada.estado == 'pendiente' %}warning text-dark{% else %}success{% endif %}">{{ entrada.get_estado_display }}</span>
+              <div class="d-flex gap-2 flex-wrap justify-content-end">
+                {% if entrada.enlace %}
+                  <a class="btn btn-primary btn-xs" href="{{ entrada.enlace }}">{% if entrada.tipo == 'informe' %}Revisar informe{% else %}Revisar expediente{% endif %}</a>
+                {% endif %}
+                {% if entrada.estado == 'pendiente' %}
+                  <form method="post" action="{% url 'asociaciones:bandeja_marcar_atendida' entrada.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-success btn-xs" type="submit">Marcar atendida</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+      {% empty %}
+      <div class="inbox-empty-state">
+        <i data-feather="inbox" class="mb-2" aria-hidden="true"></i>
+        <div>No hay pendientes de revisión.</div>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>

@@ -559,6 +559,28 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Requieren revisión")
 
+    def test_dashboard_y_bandeja_comparten_total_pendientes(self):
+        EntradaRevisionAdmin.objects.create(
+            tipo=EntradaRevisionAdmin.TIPO_INFORME,
+            titulo="Informe pendiente",
+            mensaje="Pendiente",
+            asociacion=self.asociacion,
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        dashboard = client.get(reverse("asociaciones:dashboard"), {"anio": self.anio.anio})
+        bandeja = client.get(reverse("asociaciones:bandeja_revision"), {"anio": self.anio.pk, "estado": "pendiente"})
+        self.assertContains(dashboard, "1 pendientes")
+        self.assertContains(bandeja, "1 pendientes")
+
+    def test_bandeja_muestra_estado_vacio(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:bandeja_revision"), {"estado": "pendiente"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No hay pendientes de revisión.")
+
     def test_admin_ve_bandeja_revision(self):
         EntradaRevisionAdmin.objects.create(
             tipo=EntradaRevisionAdmin.TIPO_EXPEDIENTE,
