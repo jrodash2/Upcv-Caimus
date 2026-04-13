@@ -117,6 +117,15 @@
 
           <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
             <button class="btn btn-primary" type="submit" name="save_all" value="1">Guardar todo</button>
+            {% if es_asociacion and expediente.estado == 'BORRADOR' or es_asociacion and expediente.estado == 'RECHAZADO' %}
+              {% if expediente_completo %}
+                <button class="btn btn-success" type="submit" formaction="{% url 'asociaciones:expediente_enviar_revision' asociacion.pk %}" formmethod="post">
+                  <i data-feather="send" aria-hidden="true"></i>Enviar a revisión
+                </button>
+              {% else %}
+                <span class="alert alert-light-warning py-2 px-3 mb-0">Completa todos los documentos para poder enviar el expediente a revisión.</span>
+              {% endif %}
+            {% endif %}
           </div>
         </form>
       </div>
@@ -151,6 +160,18 @@
           </div>
         </div>
 
+        {% if expediente.observacion_admin %}
+        <div class="card card-soft section-panel">
+          <div class="card-header"><h5>Observación del administrador</h5></div>
+          <div class="card-body">
+            <div class="alert alert-light-warning mb-0">
+              <p class="mb-1">{{ expediente.observacion_admin }}</p>
+              <small class="text-muted">Última actualización: {{ expediente.actualizado_en|date:"d/m/Y H:i" }}</small>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
         {% if es_admin %}
         <div class="card card-soft section-panel">
           <div class="card-header"><h5>Panel de revisión</h5></div>
@@ -159,7 +180,7 @@
               {% csrf_token %}
               <div class="mb-2">
                 <label class="form-label">Observación (solo rechazo)</label>
-                <textarea name="observacion_admin" class="form-control" rows="3"></textarea>
+                <textarea name="observacion_admin" class="form-control" rows="3">{{ expediente.observacion_admin }}</textarea>
               </div>
               <div class="d-flex flex-wrap gap-2">
                 <button class="btn btn-primary" name="estado" value="EN_REVISION" type="submit"><i data-feather="clock" aria-hidden="true"></i>Marcar En revisión</button>
