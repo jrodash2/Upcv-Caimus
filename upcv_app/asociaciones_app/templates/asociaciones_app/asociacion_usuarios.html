@@ -11,8 +11,8 @@
           {{ form.non_field_errors }}
           <div class="row">
             <div class="col-md-4 mb-3">
-              <label class="form-label" for="{{ form.asociacion.id_for_label }}">{{ form.asociacion.label }}</label>
-              {{ form.asociacion }}
+              <label class="form-label">Asociación</label>
+              <div class="form-control-plaintext fw-semibold">{{ asociacion.nombre }} ({{ asociacion.anio.anio }})</div>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label" for="{{ form.usuario.id_for_label }}">{{ form.usuario.label }}</label>
