@@ -517,6 +517,42 @@ class ResolucionInformeMensual(models.Model):
         return self.correlativo
 
 
+class NotificacionAsociacion(models.Model):
+    TIPO_INFO = "info"
+    TIPO_WARNING = "warning"
+    TIPO_SUCCESS = "success"
+    TIPO_ERROR = "error"
+    TIPOS = [
+        (TIPO_INFO, "Info"),
+        (TIPO_WARNING, "Warning"),
+        (TIPO_SUCCESS, "Success"),
+        (TIPO_ERROR, "Error"),
+    ]
+
+    asociacion = models.ForeignKey(Asociacion, on_delete=models.CASCADE, related_name="notificaciones")
+    titulo = models.CharField(max_length=255)
+    mensaje = models.TextField()
+    tipo = models.CharField(max_length=30, choices=TIPOS, default=TIPO_INFO)
+    leida = models.BooleanField(default=False)
+    creada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notificaciones_asociacion_creadas",
+    )
+    creada_en = models.DateTimeField(auto_now_add=True)
+    enlace = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Notificación de asociación"
+        verbose_name_plural = "Notificaciones de asociación"
+        ordering = ["-creada_en"]
+
+    def __str__(self) -> str:
+        return f"{self.asociacion} - {self.titulo}"
+
+
 def crear_informes_mensuales(asociacion: Asociacion, usuario: Optional[models.Model] = None) -> None:
     existentes = set(asociacion.informes_mensuales.values_list("mes", flat=True))
     informes = []
@@ -567,3 +603,23 @@ def generar_correlativo_informe(anio: int, mes: int) -> str:
             except (ValueError, IndexError):
                 secuencia = 1
         return f"UPCV-INF-{anio}-{mes:02d}-{secuencia:04d}"
+
+
+def crear_notificacion_asociacion(
+    asociacion: Asociacion,
+    titulo: str,
+    mensaje: str,
+    tipo: str = NotificacionAsociacion.TIPO_INFO,
+    creada_por=None,
+    enlace: str = "",
+) -> NotificacionAsociacion:
+    if tipo not in dict(NotificacionAsociacion.TIPOS):
+        tipo = NotificacionAsociacion.TIPO_INFO
+    return NotificacionAsociacion.objects.create(
+        asociacion=asociacion,
+        titulo=titulo,
+        mensaje=mensaje,
+        tipo=tipo,
+        creada_por=creada_por,
+        enlace=enlace,
+    )

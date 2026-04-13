@@ -5,6 +5,8 @@ from . import views
 app_name = "asociaciones"
 
 urlpatterns = [
+    path("", views.asociaciones_inicio, name="inicio"),
+    path("dashboard/", views.dashboard, name="dashboard"),
     path("anios/", views.anio_list, name="anios_list"),
     path("anios/nuevo/", views.anio_create, name="anio_create"),
     path("anios/<int:pk>/editar/", views.anio_edit, name="anio_edit"),
@@ -15,6 +17,11 @@ urlpatterns = [
     path("<int:pk>/editar/", views.asociacion_edit, name="asociacion_edit"),
     path("<int:pk>/usuarios/", views.asociacion_usuarios, name="asociacion_usuarios"),
     path("mis-asociaciones/", views.mis_asociaciones, name="mis_asociaciones"),
+    path(
+        "<int:asociacion_id>/notificaciones/marcar-leidas/",
+        views.notificaciones_marcar_leidas,
+        name="notificaciones_marcar_leidas",
+    ),
     path("<int:pk>/caimus/", views.expediente_caimus, name="expediente_caimus"),
     path("<int:pk>/caimus/sincronizar-checklist/", views.expediente_sync_checklist, name="expediente_sync_checklist"),
     path("<int:pk>/informes/", views.informes_mensuales, name="informes_mensuales"),
