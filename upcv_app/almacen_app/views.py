@@ -190,8 +190,8 @@ import json
 @login_required
 @grupo_requerido('Administrador', 'Almacen')
 def dahsboard(request):
-  
-
+    if request.user.groups.filter(name='Administrador').exists():
+        return redirect('asociaciones:inicio')
     return render(request, 'almacen/dashboard.html')
 
 
