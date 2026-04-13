@@ -195,6 +195,26 @@ def _dashboard_admin(request):
     if anio_seleccionado:
         alertas_admin_qs = alertas_admin_qs.filter(Q(asociacion__anio=anio_seleccionado) | Q(asociacion__isnull=True))
     alertas_admin_qs = alertas_admin_qs.order_by("-creada_en")
+    informes_en_revision = informes.filter(estado=InformeMensual.ESTADO_EN_REVISION).select_related("asociacion", "asociacion__anio")
+    entradas_pendientes_informes = set(
+        EntradaRevisionAdmin.objects.filter(
+            estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            informe__in=informes_en_revision,
+        ).values_list("informe_id", flat=True)
+    )
+    for informe in informes_en_revision.exclude(id__in=entradas_pendientes_informes):
+        crear_entrada_revision_admin(
+            tipo=EntradaRevisionAdmin.TIPO_INFORME,
+            titulo="Informe enviado a revisión",
+            mensaje=(
+                f"La asociación {informe.asociacion.nombre} tiene en revisión el informe mensual de "
+                f"{informe.get_mes_display()}."
+            ),
+            enlace=f"{reverse('asociaciones:informes_mensuales', args=[informe.asociacion_id])}#informe-mes-{informe.mes}",
+            asociacion=informe.asociacion,
+            informe=informe,
+        )
+
     bandeja_qs = EntradaRevisionAdmin.objects.select_related("asociacion", "asociacion__anio", "expediente", "informe")
     if anio_seleccionado:
         bandeja_qs = bandeja_qs.filter(Q(asociacion__anio=anio_seleccionado) | Q(asociacion__isnull=True))

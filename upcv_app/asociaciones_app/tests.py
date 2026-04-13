@@ -1000,7 +1000,7 @@ class AsociacionesTests(TestCase):
         self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
         self.assertEqual(informe.observaciones_usuario, "Obs")
 
-    def test_usuario_asociacion_puede_subir_presupuestario(self):
+    def test_usuario_asociacion_puede_subir_presupuestario_sin_enviar_a_revision(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         informe = InformeMensual.objects.create(
             asociacion=self.asociacion,
@@ -1017,7 +1017,28 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         informe.refresh_from_db()
         self.assertTrue(informe.archivo_presupuestario)
-        self.assertEqual(informe.estado, InformeMensual.ESTADO_EN_REVISION)
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
+        self.assertFalse(
+            EntradaRevisionAdmin.objects.filter(
+                informe=informe,
+                estado=EntradaRevisionAdmin.ESTADO_PENDIENTE,
+            ).exists()
+        )
+
+    def test_dashboard_admin_muestra_informes_en_revision_aun_si_falta_entrada(self):
+        InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=4,
+            archivo_narrativo=SimpleUploadedFile("narrativo.pdf", b"%PDF-1.4 nar", content_type="application/pdf"),
+            archivo_presupuestario=SimpleUploadedFile("presupuestario.pdf", b"%PDF-1.4 pre", content_type="application/pdf"),
+            estado=InformeMensual.ESTADO_EN_REVISION,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:dashboard"), {"anio": self.anio.anio})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bandeja de entrada")
+        self.assertContains(response, self.asociacion.nombre)
 
     def test_no_se_puede_aprobar_informe_si_falta_un_archivo(self):
         informe = InformeMensual.objects.create(

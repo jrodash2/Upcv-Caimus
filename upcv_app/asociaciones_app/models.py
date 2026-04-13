@@ -478,8 +478,6 @@ class InformeMensual(models.Model):
         return bool(self.archivo_narrativo and self.archivo_presupuestario)
 
     def save(self, *args, **kwargs) -> None:
-        if self.tiene_archivos_completos() and self.estado in [self.ESTADO_BORRADOR, self.ESTADO_RECHAZADO]:
-            self.estado = self.ESTADO_EN_REVISION
         super().save(*args, **kwargs)
 
 
