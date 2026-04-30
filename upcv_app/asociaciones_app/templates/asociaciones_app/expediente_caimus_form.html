@@ -114,6 +114,13 @@
                           <button type="button" class="btn btn-success btn-sm item-review-btn" data-accion="aprobar" data-review-url="{% url 'asociaciones:item_revision_estado' expediente.id item_form.instance.id %}">Aprobar</button>
                           <button type="button" class="btn btn-danger btn-sm item-review-btn" data-accion="rechazar" data-review-url="{% url 'asociaciones:item_revision_estado' expediente.id item_form.instance.id %}">Rechazar</button>
                         </div>
+                        {% endif %}
+                        {% if item_form.instance.observacion_revision %}
+                          <div class="alert {% if item_form.instance.estado_item == 'rechazado' %}alert-light-danger{% else %}alert-light-info{% endif %} py-2 px-3 mt-2 mb-2">
+                            <span class="badge bg-primary me-1">Observación</span>
+                            <strong>Observación de revisión:</strong> {{ item_form.instance.observacion_revision }}
+                          </div>
+                        {% endif %}
                         <small class="text-muted d-block">
                           {% if item_form.instance.estado_item == 'aprobado' and item_form.instance.aprobado_por %}
                             Aprobado por: {{ item_form.instance.aprobado_por.get_full_name|default:item_form.instance.aprobado_por.username }}
@@ -121,7 +128,6 @@
                             Rechazado por: {{ item_form.instance.rechazado_por.get_full_name|default:item_form.instance.rechazado_por.username }}
                           {% endif %}
                         </small>
-                        {% endif %}
                         <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
                           <i data-feather="save" aria-hidden="true"></i>Guardar observación
                         </button>
@@ -180,17 +186,22 @@
           </div>
         </div>
 
-        {% if expediente.observacion_admin %}
         <div class="card card-soft section-panel">
-          <div class="card-header"><h5>Observación del administrador</h5></div>
+          <div class="card-header"><h5>Observaciones del Administrador</h5></div>
           <div class="card-body">
-            <div class="alert alert-light-warning mb-0">
-              <p class="mb-1">{{ expediente.observacion_admin }}</p>
-              <small class="text-muted">Última actualización: {{ expediente.actualizado_en|date:"d/m/Y H:i" }}</small>
-            </div>
+            {% if expediente.observacion_admin %}
+              <div class="alert alert-light-warning mb-0">
+                <p class="mb-1">{{ expediente.observacion_admin }}</p>
+                <small class="text-muted d-block">Última actualización: {{ expediente.actualizado_en|date:"d/m/Y H:i" }}</small>
+                {% if expediente.actualizado_por %}
+                  <small class="text-muted d-block">Registrado por: {{ expediente.actualizado_por.get_full_name|default:expediente.actualizado_por.username }}</small>
+                {% endif %}
+              </div>
+            {% else %}
+              <small class="text-muted">Sin observaciones del administrador.</small>
+            {% endif %}
           </div>
         </div>
-        {% endif %}
 
         {% if es_admin %}
         <div class="card card-soft section-panel">
