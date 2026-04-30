@@ -8,7 +8,7 @@ from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -34,6 +34,7 @@ from .models import (
     ExpedienteEstadoHistorial,
     InformeEstadoHistorial,
     InformeMensual,
+    ItemChecklistCAIMUS,
     NotificacionAdmin,
     NotificacionAsociacion,
     ResolucionInformeMensual,
@@ -527,6 +528,9 @@ def expediente_caimus(request, pk):
 
     progress = expediente.progress_stats()
     expediente_completo = expediente_esta_completo(expediente)
+    todos_items_aprobados = not expediente.items.filter(activo=True).exclude(
+        estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO
+    ).exists()
     puede_descargar_resolucion = (
         is_asociacion(request.user)
         and user_has_expediente_access(request.user, expediente)
@@ -546,6 +550,7 @@ def expediente_caimus(request, pk):
             "es_admin": is_admin(request.user),
             "es_asociacion": is_asociacion(request.user),
             "expediente_completo": expediente_completo,
+            "todos_items_aprobados": todos_items_aprobados,
             "puede_descargar_resolucion": puede_descargar_resolucion,
         },
     )
@@ -640,6 +645,61 @@ def item_observacion(request, expediente_id, item_id):
     item.save()
     messages.success(request, "Observación guardada correctamente.")
     return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+
+
+def _nombre_usuario(user):
+    if not user:
+        return ""
+    return user.get_full_name() or user.username
+
+
+@asociacion_required
+@require_POST
+def item_revision_estado(request, expediente_id, item_id):
+    if not is_admin(request.user):
+        raise PermissionDenied
+    expediente = get_object_or_404(ExpedienteCAIMUS, pk=expediente_id)
+    if not user_has_expediente_access(request.user, expediente):
+        raise PermissionDenied
+    item = get_object_or_404(expediente.items, pk=item_id, activo=True)
+    accion = request.POST.get("accion")
+    observacion_revision = (request.POST.get("observacion_revision") or "").strip()
+    ahora = timezone.now()
+    if accion == "aprobar":
+        item.estado_item = item.ESTADO_APROBADO
+        item.aprobado_por = request.user
+        item.fecha_aprobacion = ahora
+        item.rechazado_por = None
+        item.fecha_rechazo = None
+        item.observacion_revision = observacion_revision
+        item.save(update_fields=["estado_item", "aprobado_por", "fecha_aprobacion", "rechazado_por", "fecha_rechazo", "observacion_revision"])
+        crear_notificacion_asociacion(
+            asociacion=expediente.asociacion,
+            titulo="Documento aprobado",
+            mensaje="Uno de los documentos de su expediente ha sido aprobado.",
+            tipo=NotificacionAsociacion.TIPO_SUCCESS,
+            creada_por=request.user,
+            enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]),
+        )
+    elif accion == "rechazar":
+        item.estado_item = item.ESTADO_RECHAZADO
+        item.rechazado_por = request.user
+        item.fecha_rechazo = ahora
+        item.aprobado_por = None
+        item.fecha_aprobacion = None
+        item.observacion_revision = observacion_revision
+        item.save(update_fields=["estado_item", "rechazado_por", "fecha_rechazo", "aprobado_por", "fecha_aprobacion", "observacion_revision"])
+        crear_notificacion_asociacion(
+            asociacion=expediente.asociacion,
+            titulo="Documento rechazado",
+            mensaje="Uno de los documentos de su expediente ha sido rechazado. Revise las observaciones.",
+            tipo=NotificacionAsociacion.TIPO_ERROR,
+            creada_por=request.user,
+            enlace=reverse("asociaciones:expediente_caimus", args=[expediente.asociacion.pk]),
+        )
+    else:
+        return JsonResponse({"ok": False, "message": "Acción inválida."}, status=400)
+    return JsonResponse({"ok": True})
 
 
 @asociacion_required
@@ -965,6 +1025,15 @@ def expediente_revision(request, pk):
             expediente = form.save(commit=False)
             observacion_nueva = (expediente.observacion_admin or "").strip()
             expediente.observacion_admin = observacion_nueva
+            todos_items_aprobados = not expediente.items.filter(activo=True).exclude(
+                estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO
+            ).exists()
+            if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and not todos_items_aprobados:
+                messages.error(
+                    request,
+                    "No es posible aprobar el expediente. Aún existen documentos pendientes de aprobación.",
+                )
+                return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
             if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO:
                 expediente.aprobado_por = request.user
                 expediente.aprobado_en = timezone.now()
