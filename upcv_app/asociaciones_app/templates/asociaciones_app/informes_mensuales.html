@@ -34,6 +34,7 @@
                     <div class="summary-meta d-flex flex-wrap gap-2 mt-1">
                       <span class="summary-chip accordion-meta-item"><i data-feather="file-text" aria-hidden="true"></i>Narrativo <span class="badge accessible-badge rounded-pill {% if informe.archivo_narrativo %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_narrativo %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_narrativo %}Subido{% else %}Pendiente{% endif %}</span></span>
                       <span class="summary-chip accordion-meta-item"><i data-feather="bar-chart-2" aria-hidden="true"></i>Presupuestario <span class="badge accessible-badge rounded-pill {% if informe.archivo_presupuestario %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_presupuestario %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_presupuestario %}Subido{% else %}Pendiente{% endif %}</span></span>
+                      <span class="summary-chip accordion-meta-item"><i data-feather="grid" aria-hidden="true"></i>Presupuestario Excel <span class="badge accessible-badge rounded-pill {% if informe.archivo_presupuestario_excel %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_presupuestario_excel %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_presupuestario_excel %}Subido{% else %}Pendiente{% endif %}</span></span>
                     </div>
                   </div>
                   <div class="summary-side d-flex align-items-center gap-2 ms-auto">
@@ -84,6 +85,24 @@
                         <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
                         <button class="btn btn-primary btn-sm mt-2" type="submit">
                           <i data-feather="upload" aria-hidden="true"></i>{% if informe.archivo_presupuestario %}Re-subir presupuestario{% else %}Subir presupuestario{% endif %}
+                        </button>
+                      </form>
+                    {% endif %}
+                  </div>
+                  <div class="col-lg-6">
+                    <h6>Informe presupuestario (Excel)</h6>
+                    {% if informe.archivo_presupuestario_excel %}
+                      <span class="badge accessible-badge bg-success"><i data-feather="check-circle" aria-hidden="true"></i>Subido</span>
+                      <div class="mt-1"><a href="{{ informe.archivo_presupuestario_excel.url }}" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver Excel</a></div>
+                    {% else %}
+                      <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
+                    {% endif %}
+                    {% if puede_subir and informe.es_requerido and informe.estado != 'APROBADO' %}
+                      <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_presupuestario_excel' asociacion.pk informe.mes %}">
+                        {% csrf_token %}
+                        <input type="file" name="pdf" class="form-control form-control-sm" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                        <button class="btn btn-primary btn-sm mt-2" type="submit">
+                          <i data-feather="upload" aria-hidden="true"></i>{% if informe.archivo_presupuestario_excel %}Re-subir Excel{% else %}Subir Excel{% endif %}
                         </button>
                       </form>
                     {% endif %}

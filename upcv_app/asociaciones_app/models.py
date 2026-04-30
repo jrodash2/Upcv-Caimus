@@ -10,6 +10,7 @@ from django.db import models, transaction
 
 
 PDF_VALIDATOR = FileExtensionValidator(["pdf"])
+XLSX_VALIDATOR = FileExtensionValidator(["xlsx"])
 
 
 def validate_pdf_size(value):
@@ -455,6 +456,12 @@ class InformeMensual(models.Model):
         null=True,
         validators=[PDF_VALIDATOR, validate_pdf_size],
     )
+    archivo_presupuestario_excel = models.FileField(
+        upload_to="informes/presupuestario_excel/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[XLSX_VALIDATOR],
+    )
     pdf = models.FileField(
         upload_to="informes/%Y/%m/",
         blank=True,
@@ -501,7 +508,7 @@ class InformeMensual(models.Model):
         return f"{self.asociacion} - {self.get_mes_display()}"
 
     def tiene_archivos_completos(self) -> bool:
-        return bool(self.archivo_narrativo and self.archivo_presupuestario)
+        return bool(self.archivo_narrativo and self.archivo_presupuestario and self.archivo_presupuestario_excel)
 
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)

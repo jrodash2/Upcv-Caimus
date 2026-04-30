@@ -853,6 +853,12 @@ def informe_upload_presupuestario(request, asociacion_id, mes):
 
 @asociacion_required
 @require_POST
+def informe_upload_presupuestario_excel(request, asociacion_id, mes):
+    return _informe_upload_por_tipo(request, asociacion_id, mes, "presupuestario_excel")
+
+
+@asociacion_required
+@require_POST
 def informe_upload(request, asociacion_id, mes):
     # Compatibilidad con endpoint previo: el archivo legado se guarda como narrativo.
     return _informe_upload_por_tipo(request, asociacion_id, mes, "narrativo")
@@ -873,21 +879,35 @@ def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
         mes=mes,
         defaults={"creado_por": request.user, "actualizado_por": request.user},
     )
-    if tipo_archivo not in ["narrativo", "presupuestario"]:
+    if tipo_archivo not in ["narrativo", "presupuestario", "presupuestario_excel"]:
         messages.error(request, "Tipo de archivo inválido.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     archivo = request.FILES.get("pdf")
     if not archivo:
         messages.error(request, "Debe seleccionar un archivo PDF.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
-    if archivo.content_type != "application/pdf":
-        messages.error(request, "El archivo debe ser un PDF válido.")
+    if tipo_archivo == "presupuestario_excel":
+        tipos_excel = [
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/octet-stream",
+        ]
+        if not archivo.name.lower().endswith(".xlsx") or archivo.content_type not in tipos_excel:
+            messages.error(request, "El archivo debe ser formato Excel (.xlsx)")
+            return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    else:
+        if archivo.content_type != "application/pdf":
+            messages.error(request, "El archivo debe ser un PDF válido.")
+            return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if tipo_archivo == "presupuestario_excel" and informe.estado == InformeMensual.ESTADO_APROBADO:
+        messages.error(request, "No se puede subir archivo en un informe aprobado.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 
     if tipo_archivo == "narrativo":
         informe.archivo_narrativo = archivo
-    else:
+    elif tipo_archivo == "presupuestario":
         informe.archivo_presupuestario = archivo
+    else:
+        informe.archivo_presupuestario_excel = archivo
     if is_asociacion(request.user):
         if informe.estado in [InformeMensual.ESTADO_RECHAZADO, InformeMensual.ESTADO_APROBADO]:
             informe.estado = InformeMensual.ESTADO_BORRADOR
