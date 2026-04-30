@@ -1,0 +1,32 @@
+{% extends 'almacen/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><h4>Configuración de informes del año {{ anio.anio }}</h4></div>
+    <div class="card card-soft section-panel">
+      <div class="card-header"><h5>Informes requeridos</h5></div>
+      <div class="card-body">
+        <p class="text-muted">Los meses deshabilitados no serán requeridos para las asociaciones de este año.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="row">
+            {% for config in configs %}
+            <div class="col-md-4 mb-2">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="mes_requerido" value="{{ config.mes }}" id="mes-{{ config.mes }}" {% if config.requerido %}checked{% endif %}>
+                <label class="form-check-label" for="mes-{{ config.mes }}">{{ config.get_mes_display }}</label>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Guardar cambios</button>
+            <a class="btn btn-primary" href="{% url 'asociaciones:anios_list' %}">Volver</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -24,6 +24,7 @@
       <div class="card-body">
         <div class="accordion informes-accordion" id="accordionInformes">
           {% for informe in informes %}
+          {% if informe.es_requerido %}
           <div class="accordion-item informe-item-card" id="informe-mes-{{ informe.mes }}">
             <h2 class="accordion-header" id="headingInforme{{ informe.mes }}">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInforme{{ informe.mes }}" aria-expanded="false" aria-controls="collapseInforme{{ informe.mes }}">
@@ -33,6 +34,7 @@
                     <div class="summary-meta d-flex flex-wrap gap-2 mt-1">
                       <span class="summary-chip accordion-meta-item"><i data-feather="file-text" aria-hidden="true"></i>Narrativo <span class="badge accessible-badge rounded-pill {% if informe.archivo_narrativo %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_narrativo %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_narrativo %}Subido{% else %}Pendiente{% endif %}</span></span>
                       <span class="summary-chip accordion-meta-item"><i data-feather="bar-chart-2" aria-hidden="true"></i>Presupuestario <span class="badge accessible-badge rounded-pill {% if informe.archivo_presupuestario %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_presupuestario %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_presupuestario %}Subido{% else %}Pendiente{% endif %}</span></span>
+                      <span class="summary-chip accordion-meta-item"><i data-feather="grid" aria-hidden="true"></i>Presupuestario Excel <span class="badge accessible-badge rounded-pill {% if informe.archivo_presupuestario_excel %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_presupuestario_excel %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_presupuestario_excel %}Subido{% else %}Pendiente{% endif %}</span></span>
                     </div>
                   </div>
                   <div class="summary-side d-flex align-items-center gap-2 ms-auto">
@@ -40,6 +42,9 @@
                       <i data-feather="{% if informe.estado == 'APROBADO' %}check-circle{% elif informe.estado == 'RECHAZADO' %}x-circle{% elif informe.estado == 'EN_REVISION' %}clock{% else %}edit-3{% endif %}" aria-hidden="true"></i>
                       {{ informe.get_estado_display }}
                     </span>
+                    {% if not informe.es_requerido %}
+                      <span class="summary-status badge accessible-badge rounded-pill bg-dark">No requerido</span>
+                    {% endif %}
                     <span class="toggle-icon" aria-hidden="true">▾</span>
                   </div>
                 </div>
@@ -56,7 +61,7 @@
                     {% else %}
                       <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                     {% endif %}
-                    {% if puede_subir %}
+                    {% if puede_subir and informe.es_requerido %}
                       <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_narrativo' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
@@ -74,7 +79,7 @@
                     {% else %}
                       <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                     {% endif %}
-                    {% if puede_subir %}
+                    {% if puede_subir and informe.es_requerido %}
                       <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_presupuestario' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
@@ -85,16 +90,42 @@
                     {% endif %}
                   </div>
                   <div class="col-lg-6">
+                    <h6>Informe presupuestario (Excel)</h6>
+                    {% if informe.archivo_presupuestario_excel %}
+                      <span class="badge accessible-badge bg-success"><i data-feather="check-circle" aria-hidden="true"></i>Subido</span>
+                      <div class="mt-1"><a href="{{ informe.archivo_presupuestario_excel.url }}" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver Excel</a></div>
+                    {% else %}
+                      <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
+                    {% endif %}
+                    {% if puede_subir and informe.es_requerido and informe.estado != 'APROBADO' %}
+                      <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_presupuestario_excel' asociacion.pk informe.mes %}">
+                        {% csrf_token %}
+                        <input type="file" name="pdf" class="form-control form-control-sm" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                        <button class="btn btn-primary btn-sm mt-2" type="submit">
+                          <i data-feather="upload" aria-hidden="true"></i>{% if informe.archivo_presupuestario_excel %}Re-subir Excel{% else %}Subir Excel{% endif %}
+                        </button>
+                      </form>
+                    {% endif %}
+                  </div>
+                  <div class="col-lg-6">
                     <label class="form-label">Observaciones</label>
                     <textarea class="form-control observaciones-usuario" rows="2" {% if es_admin %}readonly{% endif %}>{{ informe.observaciones_usuario }}</textarea>
                   </div>
                   <div class="col-lg-6">
-                    <label class="form-label">Observación admin</label>
+                    <label class="form-label">Observación del administrador</label>
                     {% if es_admin %}
                       <textarea class="form-control" rows="2" name="observacion_admin" form="estado-form-{{ informe.mes }}">{{ informe.observacion_admin }}</textarea>
                     {% else %}
                       {% if informe.observacion_admin %}
-                        <div class="alert alert-light-warning mb-0">{{ informe.observacion_admin }}</div>
+                        <div class="alert {% if informe.estado == 'RECHAZADO' %}alert-light-danger{% else %}alert-light-warning{% endif %} mb-0">
+                          <span class="badge bg-primary me-1">Observación</span>{{ informe.observacion_admin }}
+                          <small class="text-muted d-block mt-1">Actualizado: {{ informe.actualizado_en|date:"d/m/Y H:i" }}</small>
+                          {% if informe.actualizado_por %}
+                            <small class="text-muted d-block">Registrado por: {{ informe.actualizado_por.get_full_name|default:informe.actualizado_por.username }}</small>
+                          {% endif %}
+                        </div>
+                      {% else %}
+                        <small class="text-muted">Sin observaciones del administrador.</small>
                       {% endif %}
                     {% endif %}
                   </div>
@@ -104,7 +135,7 @@
                   {% if not es_admin %}
                     <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:informe_observacion' asociacion.pk informe.mes %}"><i data-feather="save" aria-hidden="true"></i>Guardar
                     </button>
-                    {% if informe.estado == 'BORRADOR' or informe.estado == 'RECHAZADO' %}
+                    {% if informe.es_requerido and informe.estado == 'BORRADOR' or informe.es_requerido and informe.estado == 'RECHAZADO' %}
                       <form method="post" action="{% url 'asociaciones:informe_enviar_revision' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <button class="btn btn-success btn-sm" type="submit"><i data-feather="send" aria-hidden="true"></i>Enviar a revisión</button>
@@ -122,12 +153,25 @@
                       <i data-feather="download" aria-hidden="true"></i>{% if es_admin %}Generar / Descargar constancia{% else %}Descargar constancia{% endif %}
                     </a>
                   {% else %}
-                    <span class="text-muted small">Disponible al aprobarse el informe</span>
+                    <span class="text-muted small">{% if informe.es_requerido %}Disponible al aprobarse el informe{% else %}Este informe no está requerido para el año seleccionado.{% endif %}</span>
                   {% endif %}
                 </div>
               </div>
             </div>
           </div>
+          {% else %}
+          <div class="card card-soft section-panel mb-2" id="informe-mes-{{ informe.mes }}">
+            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <h6 class="mb-1">{{ informe.get_mes_display }}</h6>
+                <small class="text-muted">Este informe no está requerido para el año seleccionado.</small>
+              </div>
+              <span class="badge accessible-badge rounded-pill bg-secondary">
+                <i data-feather="minus-circle" aria-hidden="true"></i>No requerido
+              </span>
+            </div>
+          </div>
+          {% endif %}
           {% empty %}
           <div class="alert alert-light mb-0">No hay informes registrados.</div>
           {% endfor %}

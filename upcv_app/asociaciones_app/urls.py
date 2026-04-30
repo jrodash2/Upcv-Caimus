@@ -7,10 +7,12 @@ app_name = "asociaciones"
 urlpatterns = [
     path("", views.asociaciones_inicio, name="inicio"),
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("dashboard/resumen/excel/", views.exportar_resumen_asociaciones_excel, name="exportar_resumen_asociaciones_excel"),
     path("anios/", views.anio_list, name="anios_list"),
     path("anios/nuevo/", views.anio_create, name="anio_create"),
     path("anios/<int:pk>/editar/", views.anio_edit, name="anio_edit"),
     path("anios/<int:pk>/checklist/", views.anio_checklist, name="anio_checklist"),
+    path("anios/<int:pk>/informes-config/", views.anio_informes_config, name="anio_informes_config"),
     path("anios/<int:pk>/checklist/guardar/", views.anio_checklist_guardar, name="anio_checklist_guardar"),
     path("<int:anio_id>/lista/", views.asociacion_list, name="asociacion_list"),
     path("<int:anio_id>/nuevo/", views.asociacion_create, name="asociacion_create"),
@@ -39,6 +41,11 @@ urlpatterns = [
         name="item_observacion",
     ),
     path(
+        "expedientes/<int:expediente_id>/items/<int:item_id>/revision/",
+        views.item_revision_estado,
+        name="item_revision_estado",
+    ),
+    path(
         "<int:asociacion_id>/informes/<int:mes>/upload/",
         views.informe_upload,
         name="informe_upload",
@@ -52,6 +59,11 @@ urlpatterns = [
         "<int:asociacion_id>/informes/<int:mes>/upload/presupuestario/",
         views.informe_upload_presupuestario,
         name="informe_upload_presupuestario",
+    ),
+    path(
+        "<int:asociacion_id>/informes/<int:mes>/upload/presupuestario-excel/",
+        views.informe_upload_presupuestario_excel,
+        name="informe_upload_presupuestario_excel",
     ),
     path(
         "<int:asociacion_id>/informes/<int:mes>/observacion/",

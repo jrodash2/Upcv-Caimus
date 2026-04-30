@@ -10,6 +10,7 @@ from django.db import models, transaction
 
 
 PDF_VALIDATOR = FileExtensionValidator(["pdf"])
+XLSX_VALIDATOR = FileExtensionValidator(["xlsx"])
 
 
 def validate_pdf_size(value):
@@ -221,6 +222,14 @@ class ExpedienteCAIMUS(models.Model):
 
 
 class ItemChecklistCAIMUS(models.Model):
+    ESTADO_BORRADOR = "borrador"
+    ESTADO_APROBADO = "aprobado"
+    ESTADO_RECHAZADO = "rechazado"
+    ESTADOS_ITEM = [
+        (ESTADO_BORRADOR, "Pendiente"),
+        (ESTADO_APROBADO, "Aprobado"),
+        (ESTADO_RECHAZADO, "Rechazado"),
+    ]
     SECCION_1 = 1
     SECCION_2 = 2
     SECCION_3 = 3
@@ -250,6 +259,24 @@ class ItemChecklistCAIMUS(models.Model):
         validators=[PDF_VALIDATOR, validate_pdf_size],
     )
     observaciones = models.TextField(blank=True)
+    estado_item = models.CharField(max_length=20, choices=ESTADOS_ITEM, default=ESTADO_BORRADOR)
+    aprobado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items_caimus_aprobados",
+    )
+    fecha_aprobacion = models.DateTimeField(null=True, blank=True)
+    rechazado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items_caimus_rechazados",
+    )
+    fecha_rechazo = models.DateTimeField(null=True, blank=True)
+    observacion_revision = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
 
     class Meta:
@@ -429,6 +456,12 @@ class InformeMensual(models.Model):
         null=True,
         validators=[PDF_VALIDATOR, validate_pdf_size],
     )
+    archivo_presupuestario_excel = models.FileField(
+        upload_to="informes/presupuestario_excel/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[XLSX_VALIDATOR],
+    )
     pdf = models.FileField(
         upload_to="informes/%Y/%m/",
         blank=True,
@@ -475,10 +508,79 @@ class InformeMensual(models.Model):
         return f"{self.asociacion} - {self.get_mes_display()}"
 
     def tiene_archivos_completos(self) -> bool:
-        return bool(self.archivo_narrativo and self.archivo_presupuestario)
+        return bool(self.archivo_narrativo and self.archivo_presupuestario and self.archivo_presupuestario_excel)
 
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
+
+
+class ConfiguracionInformeAnio(models.Model):
+    anio = models.ForeignKey(Anio, on_delete=models.CASCADE, related_name="configuracion_informes")
+    mes = models.PositiveSmallIntegerField(choices=MESES_CHOICES)
+    requerido = models.BooleanField(default=True)
+    activo = models.BooleanField(default=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    actualizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="configuraciones_informe_actualizadas",
+    )
+
+    class Meta:
+        verbose_name = "Configuración de informe por año"
+        verbose_name_plural = "Configuraciones de informes por año"
+        constraints = [
+            models.UniqueConstraint(fields=["anio", "mes"], name="unique_configuracion_informe_anio_mes"),
+        ]
+        ordering = ["mes"]
+
+
+def asegurar_configuracion_informes_anio(anio: Anio, usuario: Optional[models.Model] = None) -> None:
+    existentes = set(anio.configuracion_informes.values_list("mes", flat=True))
+    nuevos = []
+    for mes, _label in MESES_CHOICES:
+        if mes in existentes:
+            continue
+        nuevos.append(
+            ConfiguracionInformeAnio(anio=anio, mes=mes, requerido=True, activo=True, actualizado_por=usuario)
+        )
+    if nuevos:
+        ConfiguracionInformeAnio.objects.bulk_create(nuevos)
+
+
+def informe_mes_requerido(asociacion: Asociacion, mes: int) -> bool:
+    asegurar_configuracion_informes_anio(asociacion.anio)
+    config = asociacion.anio.configuracion_informes.filter(mes=mes, activo=True).first()
+    return bool(config.requerido) if config else True
+
+
+def obtener_configuracion_informes_anio(anio: Anio) -> Dict[str, object]:
+    asegurar_configuracion_informes_anio(anio)
+    configuraciones = list(anio.configuracion_informes.filter(activo=True).order_by("mes"))
+    meses_no_requeridos = [c.mes for c in configuraciones if not c.requerido]
+    return {
+        "configuraciones": configuraciones,
+        "requeridos": sum(1 for c in configuraciones if c.requerido),
+        "no_requeridos": sum(1 for c in configuraciones if not c.requerido),
+        "meses_no_requeridos": meses_no_requeridos,
+    }
+
+
+def resumen_informes_asociacion(asociacion: Asociacion) -> Dict[str, object]:
+    config = obtener_configuracion_informes_anio(asociacion.anio)
+    informes = list(asociacion.informes_mensuales.all())
+    meses_requeridos = {c.mes for c in config["configuraciones"] if c.requerido}
+    aprobados = sum(1 for i in informes if i.mes in meses_requeridos and i.estado == InformeMensual.ESTADO_APROBADO)
+    pendientes = sum(1 for i in informes if i.mes in meses_requeridos and i.estado != InformeMensual.ESTADO_APROBADO)
+    return {
+        "requeridos": config["requeridos"],
+        "no_requeridos": config["no_requeridos"],
+        "pendientes": pendientes,
+        "aprobados": aprobados,
+        "meses_no_requeridos": config["meses_no_requeridos"],
+    }
 
 
 class InformeEstadoHistorial(models.Model):
