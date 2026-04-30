@@ -783,6 +783,9 @@ def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
     if mes not in range(1, 13):
         messages.error(request, "Mes inválido.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if not informe_mes_requerido(asociacion, mes):
+        messages.warning(request, "Este informe mensual no está requerido para el año seleccionado.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe, _creado = InformeMensual.objects.get_or_create(
         asociacion=asociacion,
         mes=mes,
@@ -877,6 +880,9 @@ def informe_observacion(request, asociacion_id, mes):
     if mes not in range(1, 13):
         messages.error(request, "Mes inválido.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if not informe_mes_requerido(asociacion, mes):
+        messages.warning(request, "Este informe mensual no está requerido para el año seleccionado.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
     informe.observaciones_usuario = request.POST.get("observaciones", "")
     informe.actualizado_por = request.user
@@ -904,6 +910,9 @@ def informe_estado(request, asociacion_id, mes):
     asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
     if mes not in range(1, 13):
         messages.error(request, "Mes inválido.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+    if not informe_mes_requerido(asociacion, mes):
+        messages.warning(request, "Este informe mensual no está requerido para el año seleccionado.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
     estado_anterior = informe.estado

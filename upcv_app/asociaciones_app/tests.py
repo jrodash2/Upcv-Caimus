@@ -294,6 +294,17 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         informe = InformeMensual.objects.get(asociacion=self.asociacion, mes=1)
         self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
+
+    def test_mes_no_requerido_no_permite_subir_ni_observacion(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        ConfiguracionInformeAnio.objects.create(anio=self.anio, mes=2, requerido=False, actualizado_por=self.admin_user)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        archivo = SimpleUploadedFile("test.pdf", b"%PDF-1.4 test", content_type="application/pdf")
+        response_upload = client.post(reverse("asociaciones:informe_upload_narrativo", args=[self.asociacion.pk, 2]), {"pdf": archivo})
+        response_obs = client.post(reverse("asociaciones:informe_observacion", args=[self.asociacion.pk, 2]), {"observaciones": "x"})
+        self.assertEqual(response_upload.status_code, 302)
+        self.assertEqual(response_obs.status_code, 302)
         self.assertNotContains(response, "Dashboard asociaciones")
 
     def test_usuario_asociacion_dashboard_solo_datos_propios(self):
