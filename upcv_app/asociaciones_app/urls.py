@@ -7,6 +7,7 @@ app_name = "asociaciones"
 urlpatterns = [
     path("", views.asociaciones_inicio, name="inicio"),
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("dashboard/resumen/excel/", views.exportar_resumen_asociaciones_excel, name="exportar_resumen_asociaciones_excel"),
     path("anios/", views.anio_list, name="anios_list"),
     path("anios/nuevo/", views.anio_create, name="anio_create"),
     path("anios/<int:pk>/editar/", views.anio_edit, name="anio_edit"),

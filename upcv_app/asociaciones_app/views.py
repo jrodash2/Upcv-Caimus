@@ -15,6 +15,8 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from weasyprint import HTML
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 
 from .forms import (
     AnioForm,
@@ -179,6 +181,7 @@ def _dashboard_admin(request):
                 "estado_expediente": expediente.estado if expediente else "SIN_EXPEDIENTE",
                 "informes_aprobados": resumen_asoc["aprobados"],
                 "informes_pendientes": resumen_asoc["pendientes"],
+                "informes_no_requeridos": resumen_asoc["no_requeridos"],
             }
         )
         resumen_informes_admin["requeridos"] += resumen_asoc["requeridos"]
@@ -238,6 +241,64 @@ def _dashboard_admin(request):
         "meses_labels": [month_name[i] for i in range(1, 13)],
     }
     return render(request, "asociaciones_app/dashboard.html", context)
+
+
+@login_required
+@admin_required
+def exportar_resumen_asociaciones_excel(request):
+    anio_param = request.GET.get("anio")
+    asociaciones = Asociacion.objects.select_related("anio")
+    if anio_param:
+        asociaciones = asociaciones.filter(anio__anio=anio_param)
+
+    resumen = []
+    for asociacion in asociaciones:
+        expediente = getattr(asociacion, "expediente_caimus", None)
+        resumen_asoc = resumen_informes_asociacion(asociacion)
+        resumen.append(
+            {
+                "asociacion": asociacion.nombre,
+                "anio": asociacion.anio.anio,
+                "expediente": expediente.estado if expediente else "SIN_EXPEDIENTE",
+                "informes_aprobados": resumen_asoc["aprobados"],
+                "informes_pendientes": resumen_asoc["pendientes"],
+                "informes_no_requeridos": resumen_asoc["no_requeridos"],
+            }
+        )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Resumen Asociaciones"
+    headers = ["Asociación", "Año", "Expediente", "Informes aprobados", "Informes pendientes", "Informes no requeridos", "Fecha de descarga"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="D9EAD3", end_color="D9EAD3", fill_type="solid")
+
+    if resumen:
+        for fila in resumen:
+            ws.append([
+                fila["asociacion"],
+                fila["anio"],
+                fila["expediente"],
+                fila["informes_aprobados"],
+                fila["informes_pendientes"],
+                fila["informes_no_requeridos"],
+                timezone.now().strftime("%d/%m/%Y %H:%M"),
+            ])
+    else:
+        ws.append(["Sin registros", "", "", "", "", "", timezone.now().strftime("%d/%m/%Y %H:%M")])
+
+    for col in ["A", "B", "C", "D", "E", "F", "G"]:
+        ws.column_dimensions[col].width = 24
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    filename = f"resumen_asociaciones_{anio_param}.xlsx" if anio_param else "resumen_asociaciones.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
 
 
 def _dashboard_asociacion(request):
