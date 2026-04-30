@@ -89,12 +89,20 @@
                     <textarea class="form-control observaciones-usuario" rows="2" {% if es_admin %}readonly{% endif %}>{{ informe.observaciones_usuario }}</textarea>
                   </div>
                   <div class="col-lg-6">
-                    <label class="form-label">Observación admin</label>
+                    <label class="form-label">Observación del administrador</label>
                     {% if es_admin %}
                       <textarea class="form-control" rows="2" name="observacion_admin" form="estado-form-{{ informe.mes }}">{{ informe.observacion_admin }}</textarea>
                     {% else %}
                       {% if informe.observacion_admin %}
-                        <div class="alert alert-light-warning mb-0">{{ informe.observacion_admin }}</div>
+                        <div class="alert {% if informe.estado == 'RECHAZADO' %}alert-light-danger{% else %}alert-light-warning{% endif %} mb-0">
+                          <span class="badge bg-primary me-1">Observación</span>{{ informe.observacion_admin }}
+                          <small class="text-muted d-block mt-1">Actualizado: {{ informe.actualizado_en|date:"d/m/Y H:i" }}</small>
+                          {% if informe.actualizado_por %}
+                            <small class="text-muted d-block">Registrado por: {{ informe.actualizado_por.get_full_name|default:informe.actualizado_por.username }}</small>
+                          {% endif %}
+                        </div>
+                      {% else %}
+                        <small class="text-muted">Sin observaciones del administrador.</small>
                       {% endif %}
                     {% endif %}
                   </div>
