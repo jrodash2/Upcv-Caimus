@@ -35,6 +35,7 @@ from .models import (
     InformeEstadoHistorial,
     InformeMensual,
     ItemChecklistCAIMUS,
+    ConfiguracionInformeAnio,
     NotificacionAdmin,
     NotificacionAsociacion,
     ResolucionInformeMensual,
@@ -44,6 +45,8 @@ from .models import (
     crear_entrada_revision_admin,
     crear_items_expediente,
     crear_informes_mensuales,
+    asegurar_configuracion_informes_anio,
+    informe_mes_requerido,
     generar_correlativo,
     generar_correlativo_informe,
 )
@@ -272,8 +275,8 @@ def _dashboard_asociacion(request):
     chart_payload = {
         "expedienteProgreso": [items_completos, items_pendientes],
         "informesResumen": [
-            informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
-            informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado == InformeMensual.ESTADO_APROBADO),
+            sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado != InformeMensual.ESTADO_APROBADO),
         ],
         "cumplimiento": cumplimiento,
     }
@@ -292,8 +295,8 @@ def _dashboard_asociacion(request):
             "expediente_total_items": total_items,
             "expediente_items_completos": items_completos,
             "expediente_items_pendientes": items_pendientes,
-            "informes_aprobados": informes.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
-            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "informes_aprobados": sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado == InformeMensual.ESTADO_APROBADO),
+            "informes_pendientes": sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado != InformeMensual.ESTADO_APROBADO),
             "alertas_no_leidas": notificaciones.filter(leida=False).count(),
             "cumplimiento": cumplimiento,
         },
@@ -310,6 +313,32 @@ def _dashboard_asociacion(request):
 def anio_list(request):
     anios = Anio.objects.all()
     return render(request, "asociaciones_app/anio_list.html", {"anios": anios})
+
+
+@login_required
+@admin_required
+def anio_informes_config(request, pk):
+    anio = get_object_or_404(Anio, pk=pk)
+    asegurar_configuracion_informes_anio(anio, request.user)
+    configs = list(anio.configuracion_informes.order_by("mes"))
+    if request.method == "POST":
+        meses_requeridos = {int(v) for v in request.POST.getlist("mes_requerido")}
+        for config in configs:
+            config.requerido = config.mes in meses_requeridos
+            config.actualizado_por = request.user
+        ConfiguracionInformeAnio.objects.bulk_update(configs, ["requerido", "actualizado_por", "actualizado_en"])
+        for asociacion in anio.asociaciones.all():
+            crear_notificacion_asociacion(
+                asociacion=asociacion,
+                titulo="Configuración de informes actualizada",
+                mensaje="La configuración de informes mensuales del año fue actualizada.",
+                tipo=NotificacionAsociacion.TIPO_INFO,
+                creada_por=request.user,
+                enlace=reverse("asociaciones:informes_mensuales", args=[asociacion.pk]),
+            )
+        messages.success(request, "Configuración de informes actualizada correctamente.")
+        return redirect("asociaciones:anio_informes_config", pk=anio.pk)
+    return render(request, "asociaciones_app/anio_informes_config.html", {"anio": anio, "configs": configs})
 
 
 @login_required
@@ -708,7 +737,11 @@ def informes_mensuales(request, pk):
     if not user_has_asociacion_access(request.user, asociacion):
         raise PermissionDenied
     crear_informes_mensuales(asociacion, request.user)
+    asegurar_configuracion_informes_anio(asociacion.anio)
     informes = asociacion.informes_mensuales.all()
+    config_map = {c.mes: c for c in asociacion.anio.configuracion_informes.filter(activo=True)}
+    for informe in informes:
+        informe.es_requerido = config_map.get(informe.mes).requerido if config_map.get(informe.mes) else True
     puede_subir = is_admin(request.user) or user_has_asociacion_access(request.user, asociacion)
     return render(
         request,
@@ -719,6 +752,7 @@ def informes_mensuales(request, pk):
             "es_admin": is_admin(request.user),
             "es_asociacion": is_asociacion(request.user),
             "puede_subir": puede_subir,
+            "config_map": config_map,
         },
     )
 
@@ -795,6 +829,9 @@ def informe_enviar_revision(request, asociacion_id, mes):
     if is_admin(request.user):
         raise PermissionDenied
     informe = get_object_or_404(asociacion.informes_mensuales, mes=mes)
+    if not informe_mes_requerido(asociacion, mes):
+        messages.warning(request, "Este informe mensual no está requerido para el año seleccionado.")
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     if informe.estado == InformeMensual.ESTADO_EN_REVISION:
         messages.warning(request, "El informe ya está en revisión.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)

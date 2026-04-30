@@ -40,6 +40,9 @@
                       <i data-feather="{% if informe.estado == 'APROBADO' %}check-circle{% elif informe.estado == 'RECHAZADO' %}x-circle{% elif informe.estado == 'EN_REVISION' %}clock{% else %}edit-3{% endif %}" aria-hidden="true"></i>
                       {{ informe.get_estado_display }}
                     </span>
+                    {% if not informe.es_requerido %}
+                      <span class="summary-status badge accessible-badge rounded-pill bg-dark">No requerido</span>
+                    {% endif %}
                     <span class="toggle-icon" aria-hidden="true">▾</span>
                   </div>
                 </div>
@@ -56,7 +59,7 @@
                     {% else %}
                       <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                     {% endif %}
-                    {% if puede_subir %}
+                    {% if puede_subir and informe.es_requerido %}
                       <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_narrativo' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
@@ -74,7 +77,7 @@
                     {% else %}
                       <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                     {% endif %}
-                    {% if puede_subir %}
+                    {% if puede_subir and informe.es_requerido %}
                       <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_presupuestario' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <input type="file" name="pdf" class="form-control form-control-sm" accept="application/pdf" required>
@@ -112,7 +115,7 @@
                   {% if not es_admin %}
                     <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:informe_observacion' asociacion.pk informe.mes %}"><i data-feather="save" aria-hidden="true"></i>Guardar
                     </button>
-                    {% if informe.estado == 'BORRADOR' or informe.estado == 'RECHAZADO' %}
+                    {% if informe.es_requerido and informe.estado == 'BORRADOR' or informe.es_requerido and informe.estado == 'RECHAZADO' %}
                       <form method="post" action="{% url 'asociaciones:informe_enviar_revision' asociacion.pk informe.mes %}">
                         {% csrf_token %}
                         <button class="btn btn-success btn-sm" type="submit"><i data-feather="send" aria-hidden="true"></i>Enviar a revisión</button>
@@ -130,7 +133,7 @@
                       <i data-feather="download" aria-hidden="true"></i>{% if es_admin %}Generar / Descargar constancia{% else %}Descargar constancia{% endif %}
                     </a>
                   {% else %}
-                    <span class="text-muted small">Disponible al aprobarse el informe</span>
+                    <span class="text-muted small">{% if informe.es_requerido %}Disponible al aprobarse el informe{% else %}Este informe no está requerido para el año seleccionado.{% endif %}</span>
                   {% endif %}
                 </div>
               </div>

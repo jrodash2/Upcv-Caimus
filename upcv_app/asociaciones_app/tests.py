@@ -21,6 +21,7 @@ from .models import (
     ResolucionInformeMensual,
     ResolucionExpediente,
     crear_items_expediente,
+    ConfiguracionInformeAnio,
 )
 
 
@@ -268,6 +269,31 @@ class AsociacionesTests(TestCase):
         client.login(username="admin", password="pass123")
         response = client.get(reverse("asociaciones:inicio"))
         self.assertEqual(response.status_code, 200)
+
+    def test_admin_puede_configurar_informes_anio(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(reverse("asociaciones:anio_informes_config", args=[self.anio.pk]), {"mes_requerido": ["1", "2"]})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(ConfiguracionInformeAnio.objects.get(anio=self.anio, mes=1).requerido)
+        self.assertFalse(ConfiguracionInformeAnio.objects.get(anio=self.anio, mes=3).requerido)
+
+    def test_asociacion_no_puede_entrar_config_informes(self):
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:anio_informes_config", args=[self.anio.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_mes_no_requerido_no_permite_enviar_revision(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        InformeMensual.objects.create(asociacion=self.asociacion, mes=1, creado_por=self.user, actualizado_por=self.user)
+        ConfiguracionInformeAnio.objects.create(anio=self.anio, mes=1, requerido=False, actualizado_por=self.admin_user)
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.post(reverse("asociaciones:informe_enviar_revision", args=[self.asociacion.pk, 1]))
+        self.assertEqual(response.status_code, 302)
+        informe = InformeMensual.objects.get(asociacion=self.asociacion, mes=1)
+        self.assertEqual(informe.estado, InformeMensual.ESTADO_BORRADOR)
         self.assertNotContains(response, "Dashboard asociaciones")
 
     def test_usuario_asociacion_dashboard_solo_datos_propios(self):

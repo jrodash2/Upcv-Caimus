@@ -507,6 +507,48 @@ class InformeMensual(models.Model):
         super().save(*args, **kwargs)
 
 
+class ConfiguracionInformeAnio(models.Model):
+    anio = models.ForeignKey(Anio, on_delete=models.CASCADE, related_name="configuracion_informes")
+    mes = models.PositiveSmallIntegerField(choices=MESES_CHOICES)
+    requerido = models.BooleanField(default=True)
+    activo = models.BooleanField(default=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    actualizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="configuraciones_informe_actualizadas",
+    )
+
+    class Meta:
+        verbose_name = "Configuración de informe por año"
+        verbose_name_plural = "Configuraciones de informes por año"
+        constraints = [
+            models.UniqueConstraint(fields=["anio", "mes"], name="unique_configuracion_informe_anio_mes"),
+        ]
+        ordering = ["mes"]
+
+
+def asegurar_configuracion_informes_anio(anio: Anio, usuario: Optional[models.Model] = None) -> None:
+    existentes = set(anio.configuracion_informes.values_list("mes", flat=True))
+    nuevos = []
+    for mes, _label in MESES_CHOICES:
+        if mes in existentes:
+            continue
+        nuevos.append(
+            ConfiguracionInformeAnio(anio=anio, mes=mes, requerido=True, activo=True, actualizado_por=usuario)
+        )
+    if nuevos:
+        ConfiguracionInformeAnio.objects.bulk_create(nuevos)
+
+
+def informe_mes_requerido(asociacion: Asociacion, mes: int) -> bool:
+    asegurar_configuracion_informes_anio(asociacion.anio)
+    config = asociacion.anio.configuracion_informes.filter(mes=mes, activo=True).first()
+    return bool(config.requerido) if config else True
+
+
 class InformeEstadoHistorial(models.Model):
     informe = models.ForeignKey(InformeMensual, on_delete=models.CASCADE, related_name="historial_estados")
     estado_anterior = models.CharField(max_length=20, choices=InformeMensual.ESTADOS)
