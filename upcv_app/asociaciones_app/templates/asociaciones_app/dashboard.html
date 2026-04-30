@@ -50,6 +50,8 @@
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-secondary border-2"><span class="f-light">Asociaciones</span><h4 class="mt-1 mb-0">{{ kpis.total_asociaciones }}</h4></div></div></div>
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-success border-2"><span class="f-light">Expedientes apro.</span><h4 class="mt-1 mb-0">{{ kpis.expedientes_aprobados }}</h4></div></div></div>
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-warning border-2"><span class="f-light">Informes pendientes</span><h4 class="mt-1 mb-0">{{ kpis.informes_pendientes }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-success border-2"><span class="f-light">Informes requeridos</span><h4 class="mt-1 mb-0">{{ kpis.informes_requeridos }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-secondary border-2"><span class="f-light">No requeridos</span><h4 class="mt-1 mb-0">{{ kpis.informes_no_requeridos }}</h4></div></div></div>
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-info border-2"><span class="f-light">Usuarios asignados</span><h4 class="mt-1 mb-0">{{ kpis.total_usuarios_asignados }}</h4></div></div></div>
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-dark border-2"><span class="f-light">Resoluciones</span><h4 class="mt-1 mb-0">{{ kpis.resoluciones_emitidas }}</h4></div></div></div>
       {% else %}
@@ -59,8 +61,13 @@
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-warning border-2"><span class="f-light">Docs pendientes</span><h4 class="mt-1 mb-0">{{ kpis.expediente_items_pendientes }}</h4></div></div></div>
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-info border-2"><span class="f-light">Informes apro.</span><h4 class="mt-1 mb-0">{{ kpis.informes_aprobados }}</h4></div></div></div>
       <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-danger border-2"><span class="f-light">Alertas nuevas</span><h4 class="mt-1 mb-0">{{ kpis.alertas_no_leidas }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-success border-2"><span class="f-light">Meses requeridos</span><h4 class="mt-1 mb-0">{{ kpis.informes_requeridos }}</h4></div></div></div>
+      <div class="col-xl-2 col-sm-6"><div class="card o-hidden small-widget"><div class="card-body total-project border-b-secondary border-2"><span class="f-light">No requeridos</span><h4 class="mt-1 mb-0">{{ kpis.informes_no_requeridos }}</h4></div></div></div>
       {% endif %}
     </div>
+    {% if kpis.informes_no_requeridos and kpis.informes_no_requeridos > 0 %}
+    <div class="alert alert-light-info">Hay meses deshabilitados en este año.</div>
+    {% endif %}
 
     <div class="row">
       <div class="col-xl-8">
@@ -145,12 +152,17 @@
       <div class="col-12">
         <div class="card">
           <div class="card-header pb-0">
-            <h5>{% if es_admin_dashboard %}Resumen de asociaciones{% else %}Resumen mensual de informes{% endif %}</h5>
+            <div class="d-flex justify-content-between align-items-center">
+              <h5>{% if es_admin_dashboard %}Resumen de asociaciones{% else %}Resumen mensual de informes{% endif %}</h5>
+              {% if es_admin_dashboard %}
+                <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:exportar_resumen_asociaciones_excel' %}{% if anio_seleccionado %}?anio={{ anio_seleccionado.anio }}{% endif %}">Descargar Excel</a>
+              {% endif %}
+            </div>
           </div>
           <div class="card-body table-responsive">
             {% if es_admin_dashboard %}
             <table class="table table-hover">
-              <thead><tr><th>Asociación</th><th>Año</th><th>Expediente</th><th>Informes aprobados</th><th>Pendientes</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>Asociación</th><th>Año</th><th>Expediente</th><th>Informes aprobados</th><th>Pendientes</th><th>No requeridos</th><th>Acciones</th></tr></thead>
               <tbody>
                 {% for fila in asociaciones_resumen %}
                 <tr>
@@ -159,6 +171,7 @@
                   <td><span class="badge badge-light-info">{{ fila.estado_expediente }}</span></td>
                   <td>{{ fila.informes_aprobados }}</td>
                   <td>{{ fila.informes_pendientes }}</td>
+                  <td>{{ fila.informes_no_requeridos }}</td>
                   <td>
                     <a class="btn btn-pill btn-outline-primary btn-xs" href="{% url 'asociaciones:expediente_caimus' fila.asociacion.pk %}">Expediente</a>
                     <a class="btn btn-pill btn-outline-secondary btn-xs" href="{% url 'asociaciones:informes_mensuales' fila.asociacion.pk %}">Informes</a>
@@ -169,14 +182,15 @@
             </table>
             {% else %}
             <table class="table table-hover">
-              <thead><tr><th>Mes</th><th>Narrativo</th><th>Presupuestario</th><th>Estado</th><th>Acción</th></tr></thead>
+              <thead><tr><th>Mes</th><th>Configuración</th><th>Narrativo</th><th>Presupuestario</th><th>Estado</th><th>Acción</th></tr></thead>
               <tbody>
                 {% for informe in informes_principal %}
                 <tr>
                   <td>{{ informe.get_mes_display }}</td>
-                  <td>{% if informe.archivo_narrativo %}<span class="badge badge-light-success">Cargado</span>{% else %}<span class="badge badge-light-warning">Pendiente</span>{% endif %}</td>
-                  <td>{% if informe.archivo_presupuestario %}<span class="badge badge-light-success">Cargado</span>{% else %}<span class="badge badge-light-warning">Pendiente</span>{% endif %}</td>
-                  <td><span class="badge badge-light-info">{{ informe.get_estado_display }}</span></td>
+                  <td>{% if informe.es_requerido %}<span class="badge badge-light-success">Requerido</span>{% else %}<span class="badge badge-light-secondary">No requerido</span>{% endif %}</td>
+                  <td>{% if informe.es_requerido %}{% if informe.archivo_narrativo %}<span class="badge badge-light-success">Cargado</span>{% else %}<span class="badge badge-light-warning">Pendiente</span>{% endif %}{% else %}<span class="text-muted">No aplica</span>{% endif %}</td>
+                  <td>{% if informe.es_requerido %}{% if informe.archivo_presupuestario %}<span class="badge badge-light-success">Cargado</span>{% else %}<span class="badge badge-light-warning">Pendiente</span>{% endif %}{% else %}<span class="text-muted">No aplica</span>{% endif %}</td>
+                  <td><span class="badge badge-light-info">{% if informe.es_requerido %}{{ informe.get_estado_display }}{% else %}No requerido{% endif %}</span></td>
                   <td><a class="btn btn-pill btn-outline-primary btn-xs" href="{% url 'asociaciones:informes_mensuales' informe.asociacion.pk %}">Ver</a></td>
                 </tr>
                 {% empty %}
