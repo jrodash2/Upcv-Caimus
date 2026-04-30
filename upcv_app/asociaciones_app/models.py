@@ -221,6 +221,14 @@ class ExpedienteCAIMUS(models.Model):
 
 
 class ItemChecklistCAIMUS(models.Model):
+    ESTADO_BORRADOR = "borrador"
+    ESTADO_APROBADO = "aprobado"
+    ESTADO_RECHAZADO = "rechazado"
+    ESTADOS_ITEM = [
+        (ESTADO_BORRADOR, "Pendiente"),
+        (ESTADO_APROBADO, "Aprobado"),
+        (ESTADO_RECHAZADO, "Rechazado"),
+    ]
     SECCION_1 = 1
     SECCION_2 = 2
     SECCION_3 = 3
@@ -250,6 +258,24 @@ class ItemChecklistCAIMUS(models.Model):
         validators=[PDF_VALIDATOR, validate_pdf_size],
     )
     observaciones = models.TextField(blank=True)
+    estado_item = models.CharField(max_length=20, choices=ESTADOS_ITEM, default=ESTADO_BORRADOR)
+    aprobado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items_caimus_aprobados",
+    )
+    fecha_aprobacion = models.DateTimeField(null=True, blank=True)
+    rechazado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items_caimus_rechazados",
+    )
+    fecha_rechazo = models.DateTimeField(null=True, blank=True)
+    observacion_revision = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
 
     class Meta:

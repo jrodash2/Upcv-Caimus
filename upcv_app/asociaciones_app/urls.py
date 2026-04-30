@@ -39,6 +39,11 @@ urlpatterns = [
         name="item_observacion",
     ),
     path(
+        "expedientes/<int:expediente_id>/items/<int:item_id>/revision/",
+        views.item_revision_estado,
+        name="item_revision_estado",
+    ),
+    path(
         "<int:asociacion_id>/informes/<int:mes>/upload/",
         views.informe_upload,
         name="informe_upload",
