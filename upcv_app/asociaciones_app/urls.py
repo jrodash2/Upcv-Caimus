@@ -11,6 +11,7 @@ urlpatterns = [
     path("anios/nuevo/", views.anio_create, name="anio_create"),
     path("anios/<int:pk>/editar/", views.anio_edit, name="anio_edit"),
     path("anios/<int:pk>/checklist/", views.anio_checklist, name="anio_checklist"),
+    path("anios/<int:pk>/informes-config/", views.anio_informes_config, name="anio_informes_config"),
     path("anios/<int:pk>/checklist/guardar/", views.anio_checklist_guardar, name="anio_checklist_guardar"),
     path("<int:anio_id>/lista/", views.asociacion_list, name="asociacion_list"),
     path("<int:anio_id>/nuevo/", views.asociacion_create, name="asociacion_create"),
@@ -37,6 +38,11 @@ urlpatterns = [
         "expedientes/<int:expediente_id>/items/<int:item_id>/observacion/",
         views.item_observacion,
         name="item_observacion",
+    ),
+    path(
+        "expedientes/<int:expediente_id>/items/<int:item_id>/revision/",
+        views.item_revision_estado,
+        name="item_revision_estado",
     ),
     path(
         "<int:asociacion_id>/informes/<int:mes>/upload/",
