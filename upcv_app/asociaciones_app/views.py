@@ -49,6 +49,8 @@ from .models import (
     informe_mes_requerido,
     generar_correlativo,
     generar_correlativo_informe,
+    obtener_configuracion_informes_anio,
+    resumen_informes_asociacion,
 )
 from .mixins import admin_required, asociacion_required
 from .permissions import (
@@ -167,17 +169,22 @@ def _dashboard_admin(request):
             aprobaciones_mes[registro["cambiado_en__month"] - 1] += registro["total"]
 
     asociaciones_resumen = []
-    for asociacion in asociaciones[:12]:
+    resumen_informes_admin = {"requeridos": 0, "no_requeridos": 0, "pendientes": 0, "aprobados": 0}
+    for asociacion in asociaciones:
         expediente = getattr(asociacion, "expediente_caimus", None)
-        informes_asoc = asociacion.informes_mensuales.all()
+        resumen_asoc = resumen_informes_asociacion(asociacion)
         asociaciones_resumen.append(
             {
                 "asociacion": asociacion,
                 "estado_expediente": expediente.estado if expediente else "SIN_EXPEDIENTE",
-                "informes_aprobados": informes_asoc.filter(estado=InformeMensual.ESTADO_APROBADO).count(),
-                "informes_pendientes": informes_asoc.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+                "informes_aprobados": resumen_asoc["aprobados"],
+                "informes_pendientes": resumen_asoc["pendientes"],
             }
         )
+        resumen_informes_admin["requeridos"] += resumen_asoc["requeridos"]
+        resumen_informes_admin["no_requeridos"] += resumen_asoc["no_requeridos"]
+        resumen_informes_admin["pendientes"] += resumen_asoc["pendientes"]
+        resumen_informes_admin["aprobados"] += resumen_asoc["aprobados"]
 
     chart_payload = {
         "expedientesEstado": [
@@ -198,6 +205,7 @@ def _dashboard_admin(request):
 
     resumen_inbox = resumen_dashboard_admin(anio=anio_seleccionado)
 
+    asociaciones_resumen = asociaciones_resumen[:12]
     context = {
         "es_admin_dashboard": True,
         "kpis": {
@@ -211,7 +219,10 @@ def _dashboard_admin(request):
             "expedientes_borrador": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_BORRADOR],
             "total_informes": informes.count(),
             "informes_aprobados": informes_por_estado[InformeMensual.ESTADO_APROBADO],
-            "informes_pendientes": informes.exclude(estado=InformeMensual.ESTADO_APROBADO).count(),
+            "informes_pendientes": resumen_informes_admin["pendientes"],
+            "informes_requeridos": resumen_informes_admin["requeridos"],
+            "informes_no_requeridos": resumen_informes_admin["no_requeridos"],
+            "informes_aprobados_reales": resumen_informes_admin["aprobados"],
             "resoluciones_emitidas": ResolucionExpediente.objects.count() + ResolucionInformeMensual.objects.count(),
             "promedio_cumplimiento": promedio_cumplimiento,
         },
@@ -271,12 +282,17 @@ def _dashboard_asociacion(request):
     asociacion_principal = asociacion_seleccionada
     expediente_principal = expedientes.first() if asociacion_principal else None
     informes_principal = informes.order_by("mes") if asociacion_principal else InformeMensual.objects.none()
+    if asociacion_principal:
+        config_por_mes = {c.mes: c for c in obtener_configuracion_informes_anio(asociacion_principal.anio)["configuraciones"]}
+        for informe in informes_principal:
+            informe.es_requerido = config_por_mes.get(informe.mes).requerido if config_por_mes.get(informe.mes) else True
 
+    resumen_asoc = resumen_informes_asociacion(asociacion_seleccionada)
     chart_payload = {
         "expedienteProgreso": [items_completos, items_pendientes],
         "informesResumen": [
-            sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado == InformeMensual.ESTADO_APROBADO),
-            sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado != InformeMensual.ESTADO_APROBADO),
+            resumen_asoc["aprobados"],
+            resumen_asoc["pendientes"],
         ],
         "cumplimiento": cumplimiento,
     }
@@ -295,8 +311,10 @@ def _dashboard_asociacion(request):
             "expediente_total_items": total_items,
             "expediente_items_completos": items_completos,
             "expediente_items_pendientes": items_pendientes,
-            "informes_aprobados": sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado == InformeMensual.ESTADO_APROBADO),
-            "informes_pendientes": sum(1 for i in informes if informe_mes_requerido(asociacion_seleccionada, i.mes) and i.estado != InformeMensual.ESTADO_APROBADO),
+            "informes_aprobados": resumen_asoc["aprobados"],
+            "informes_pendientes": resumen_asoc["pendientes"],
+            "informes_requeridos": resumen_asoc["requeridos"],
+            "informes_no_requeridos": resumen_asoc["no_requeridos"],
             "alertas_no_leidas": notificaciones.filter(leida=False).count(),
             "cumplimiento": cumplimiento,
         },
@@ -304,6 +322,7 @@ def _dashboard_asociacion(request):
         "anios_disponibles": anios_disponibles,
         "anio_seleccionado": anio_seleccionado,
         "chart_payload": chart_payload,
+        "resumen_informes": resumen_asoc,
     }
     return render(request, "asociaciones_app/dashboard.html", context)
 
@@ -742,6 +761,7 @@ def informes_mensuales(request, pk):
     config_map = {c.mes: c for c in asociacion.anio.configuracion_informes.filter(activo=True)}
     for informe in informes:
         informe.es_requerido = config_map.get(informe.mes).requerido if config_map.get(informe.mes) else True
+    resumen_informes = resumen_informes_asociacion(asociacion)
     puede_subir = is_admin(request.user) or user_has_asociacion_access(request.user, asociacion)
     return render(
         request,
@@ -753,6 +773,7 @@ def informes_mensuales(request, pk):
             "es_asociacion": is_asociacion(request.user),
             "puede_subir": puede_subir,
             "config_map": config_map,
+            "resumen_informes": resumen_informes,
         },
     )
 

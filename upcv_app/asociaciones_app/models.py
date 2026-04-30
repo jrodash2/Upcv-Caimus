@@ -549,6 +549,33 @@ def informe_mes_requerido(asociacion: Asociacion, mes: int) -> bool:
     return bool(config.requerido) if config else True
 
 
+def obtener_configuracion_informes_anio(anio: Anio) -> Dict[str, object]:
+    asegurar_configuracion_informes_anio(anio)
+    configuraciones = list(anio.configuracion_informes.filter(activo=True).order_by("mes"))
+    meses_no_requeridos = [c.mes for c in configuraciones if not c.requerido]
+    return {
+        "configuraciones": configuraciones,
+        "requeridos": sum(1 for c in configuraciones if c.requerido),
+        "no_requeridos": sum(1 for c in configuraciones if not c.requerido),
+        "meses_no_requeridos": meses_no_requeridos,
+    }
+
+
+def resumen_informes_asociacion(asociacion: Asociacion) -> Dict[str, object]:
+    config = obtener_configuracion_informes_anio(asociacion.anio)
+    informes = list(asociacion.informes_mensuales.all())
+    meses_requeridos = {c.mes for c in config["configuraciones"] if c.requerido}
+    aprobados = sum(1 for i in informes if i.mes in meses_requeridos and i.estado == InformeMensual.ESTADO_APROBADO)
+    pendientes = sum(1 for i in informes if i.mes in meses_requeridos and i.estado != InformeMensual.ESTADO_APROBADO)
+    return {
+        "requeridos": config["requeridos"],
+        "no_requeridos": config["no_requeridos"],
+        "pendientes": pendientes,
+        "aprobados": aprobados,
+        "meses_no_requeridos": config["meses_no_requeridos"],
+    }
+
+
 class InformeEstadoHistorial(models.Model):
     informe = models.ForeignKey(InformeMensual, on_delete=models.CASCADE, related_name="historial_estados")
     estado_anterior = models.CharField(max_length=20, choices=InformeMensual.ESTADOS)
