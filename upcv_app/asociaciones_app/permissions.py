@@ -18,6 +18,12 @@ def is_superadmin(user) -> bool:
     return user.is_superuser or user.groups.filter(name__iexact="Superadmin").exists()
 
 
+def is_admin_operativo(user) -> bool:
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__iexact="Administrador").exists() or is_superadmin(user)
+
+
 def is_asociacion(user) -> bool:
     if not user.is_authenticated:
         return False

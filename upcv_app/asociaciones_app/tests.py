@@ -189,6 +189,22 @@ class AsociacionesTests(TestCase):
         client.login(username="superadmin", password="pass123")
         self.assertEqual(client.get(reverse("asociaciones:anios_list")).status_code, 200)
 
+    def test_dashboard_admin_no_muestra_enlaces_configuracion(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:inicio"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Ver años")
+        self.assertNotContains(response, "Ver asignaciones")
+
+    def test_dashboard_superadmin_muestra_enlaces_configuracion(self):
+        client = Client()
+        client.login(username="superadmin", password="pass123")
+        response = client.get(reverse("asociaciones:inicio"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ver años")
+        self.assertContains(response, "Ver asignaciones")
+
     def test_asociacion_puede_ver_mis_asociaciones(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         client = Client()

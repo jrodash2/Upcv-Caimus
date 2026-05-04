@@ -60,6 +60,7 @@ from .permissions import (
     expediente_items_100_aprobados,
     get_asociaciones_usuario,
     is_admin,
+    is_admin_operativo,
     is_asociacion,
     is_superadmin,
     user_can_download_resolucion,
@@ -69,7 +70,7 @@ from .permissions import (
 from .utils import obtener_entradas_bandeja_admin, resumen_dashboard_admin
 @asociacion_required
 def dashboard(request):
-    if is_admin(request.user):
+    if is_admin_operativo(request.user):
         return _dashboard_admin(request)
     if is_asociacion(request.user):
         return _dashboard_asociacion(request)
@@ -78,7 +79,7 @@ def dashboard(request):
 
 @asociacion_required
 def asociaciones_inicio(request):
-    if is_admin(request.user):
+    if is_admin_operativo(request.user):
         return _dashboard_admin(request)
     if is_asociacion(request.user):
         return _dashboard_asociacion(request)
@@ -588,7 +589,7 @@ def mis_asociaciones(request):
     return render(
         request,
         "asociaciones_app/mis_asociaciones.html",
-        {"asociaciones": asociaciones, "es_admin": is_admin(request.user)},
+        {"asociaciones": asociaciones, "es_admin": is_admin_operativo(request.user)},
     )
 
 
@@ -670,7 +671,7 @@ def expediente_caimus(request, pk):
             "porcentaje_subidos": progress["percent"],
             "porcentaje_aprobados": progress["approved_percent"],
             "items_revision_timeline": items_revision_timeline,
-            "es_admin": is_admin(request.user),
+            "es_admin": is_admin_operativo(request.user),
             "es_asociacion": is_asociacion(request.user),
             "expediente_completo": expediente_completo,
             "todos_items_aprobados": todos_items_aprobados,
@@ -846,7 +847,7 @@ def informes_mensuales(request, pk):
         {
             "asociacion": asociacion,
             "informes": informes,
-            "es_admin": is_admin(request.user),
+            "es_admin": is_admin_operativo(request.user),
             "es_asociacion": is_asociacion(request.user),
             "puede_subir": puede_subir,
             "config_map": config_map,
