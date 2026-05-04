@@ -7,19 +7,19 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 
 from .models import Asociacion, ExpedienteCAIMUS
-from .permissions import is_admin, is_asociacion, user_has_asociacion_access, user_has_expediente_access
+from .permissions import is_admin_operativo, is_asociacion, is_superadmin, user_has_asociacion_access, user_has_expediente_access
 
 
 class AdminRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
-        if not is_admin(request.user):
+        if not is_admin_operativo(request.user):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
 
 class AsociacionRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
-        if not (is_admin(request.user) or is_asociacion(request.user)):
+        if not (is_admin_operativo(request.user) or is_asociacion(request.user)):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -42,7 +42,18 @@ def admin_required(view_func):
     @login_required
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
-        if not is_admin(request.user):
+        if not is_admin_operativo(request.user):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
+def superadmin_required(view_func):
+    @login_required
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not is_superadmin(request.user):
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
 
@@ -53,7 +64,7 @@ def asociacion_required(view_func):
     @login_required
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
-        if not (is_admin(request.user) or is_asociacion(request.user)):
+        if not (is_admin_operativo(request.user) or is_asociacion(request.user)):
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
 

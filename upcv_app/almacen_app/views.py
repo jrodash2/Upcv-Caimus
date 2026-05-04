@@ -56,6 +56,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
 import re
+from asociaciones_app.permissions import is_superadmin
 
 
 @login_required
@@ -188,9 +189,9 @@ from django.db.models import Count, Q, Sum
 import json
 
 @login_required
-@grupo_requerido('Administrador', 'Almacen')
+@grupo_requerido('Administrador', 'Almacen', 'Superadmin')
 def dahsboard(request):
-    if request.user.groups.filter(name='Administrador').exists():
+    if request.user.groups.filter(name='Administrador').exists() or is_superadmin(request.user):
         return redirect('asociaciones:inicio')
     return render(request, 'almacen/dashboard.html')
 
@@ -224,7 +225,7 @@ def signin(request):
             # Ahora verificamos los grupos
             for g in user.groups.all():
                 print(g.name)
-                if g.name == 'Administrador':
+                if g.name == 'Administrador' or g.name.lower() == 'superadmin' or is_superadmin(user):
                     return redirect('almacen:dahsboard')
                 elif g.name == 'Asociacion':
                     return redirect('asociaciones:mis_asociaciones')
