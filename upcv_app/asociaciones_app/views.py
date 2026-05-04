@@ -54,12 +54,14 @@ from .models import (
     obtener_configuracion_informes_anio,
     resumen_informes_asociacion,
 )
-from .mixins import admin_required, asociacion_required
+from .mixins import admin_required, asociacion_required, superadmin_required
 from .permissions import (
     expediente_esta_completo,
+    expediente_items_100_aprobados,
     get_asociaciones_usuario,
     is_admin,
     is_asociacion,
+    is_superadmin,
     user_can_download_resolucion,
     user_has_asociacion_access,
     user_has_expediente_access,
@@ -98,9 +100,12 @@ def _dashboard_admin(request):
         expedientes = expedientes.filter(asociacion__anio=anio_seleccionado)
         informes = informes.filter(asociacion__anio=anio_seleccionado)
 
-    expedientes_por_estado = {
-        estado: expedientes.filter(estado=estado).count() for estado, _label in ExpedienteCAIMUS.ESTADOS
-    }
+    expedientes_por_estado = {estado: expedientes.filter(estado=estado).count() for estado, _label in ExpedienteCAIMUS.ESTADOS}
+    expedientes_aprobados_validos = 0
+    for expediente in expedientes.prefetch_related("items"):
+        if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and expediente_items_100_aprobados(expediente):
+            expedientes_aprobados_validos += 1
+    expedientes_por_estado[ExpedienteCAIMUS.ESTADO_APROBADO] = expedientes_aprobados_validos
     informes_por_estado = {estado: informes.filter(estado=estado).count() for estado, _label in InformeMensual.ESTADOS}
 
     progresos = []
@@ -389,14 +394,14 @@ def _dashboard_asociacion(request):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_list(request):
     anios = Anio.objects.all()
     return render(request, "asociaciones_app/anio_list.html", {"anios": anios})
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_informes_config(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     asegurar_configuracion_informes_anio(anio, request.user)
@@ -422,7 +427,7 @@ def anio_informes_config(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_create(request):
     if request.method == "POST":
         form = AnioForm(request.POST)
@@ -436,7 +441,7 @@ def anio_create(request):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_edit(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     if request.method == "POST":
@@ -451,7 +456,7 @@ def anio_edit(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_checklist(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     formset = ChecklistAnioItemFormSet(instance=anio, prefix="checklist")
@@ -466,7 +471,7 @@ def anio_checklist(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 @require_POST
 def anio_checklist_guardar(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
@@ -498,7 +503,7 @@ def anio_checklist_guardar(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_list(request, anio_id):
     anio = get_object_or_404(Anio, pk=anio_id)
     asociaciones = anio.asociaciones.all()
@@ -510,7 +515,7 @@ def asociacion_list(request, anio_id):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_create(request, anio_id):
     anio = get_object_or_404(Anio, pk=anio_id)
     if request.method == "POST":
@@ -529,7 +534,7 @@ def asociacion_create(request, anio_id):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_edit(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
@@ -548,7 +553,7 @@ def asociacion_edit(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_usuarios(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
@@ -636,14 +641,17 @@ def expediente_caimus(request, pk):
         formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.filter(activo=True).order_by("numero"))
 
     progress = expediente.progress_stats()
+    items_revision_timeline = expediente.items.filter(activo=True).select_related("aprobado_por", "rechazado_por").order_by("numero")
     expediente_completo = expediente_esta_completo(expediente)
-    todos_items_aprobados = not expediente.items.filter(activo=True).exclude(
-        estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO
-    ).exists()
+    todos_items_aprobados = expediente_items_100_aprobados(expediente)
+    estado_aprobado_valido = expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and todos_items_aprobados
+    estado_visual_expediente = expediente.estado if expediente.estado != ExpedienteCAIMUS.ESTADO_APROBADO else (
+        ExpedienteCAIMUS.ESTADO_APROBADO if estado_aprobado_valido else ExpedienteCAIMUS.ESTADO_EN_REVISION
+    )
     puede_descargar_resolucion = (
         is_asociacion(request.user)
         and user_has_expediente_access(request.user, expediente)
-        and expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO
+        and estado_aprobado_valido
         and expediente_completo
     )
 
@@ -656,10 +664,18 @@ def expediente_caimus(request, pk):
             "form": form,
             "formset": formset,
             "progress": progress,
+            "total_items": progress["total"],
+            "items_subidos": progress["done"],
+            "items_aprobados": progress["approved"],
+            "porcentaje_subidos": progress["percent"],
+            "porcentaje_aprobados": progress["approved_percent"],
+            "items_revision_timeline": items_revision_timeline,
             "es_admin": is_admin(request.user),
             "es_asociacion": is_asociacion(request.user),
             "expediente_completo": expediente_completo,
             "todos_items_aprobados": todos_items_aprobados,
+            "estado_aprobado_valido": estado_aprobado_valido,
+            "estado_visual_expediente": estado_visual_expediente,
             "puede_descargar_resolucion": puede_descargar_resolucion,
         },
     )
@@ -1176,10 +1192,12 @@ def expediente_revision(request, pk):
             todos_items_aprobados = not expediente.items.filter(activo=True).exclude(
                 estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO
             ).exists()
-            if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and not todos_items_aprobados:
+            if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and (
+                not todos_items_aprobados or not expediente_esta_completo(expediente)
+            ):
                 messages.error(
                     request,
-                    "No es posible aprobar el expediente. Aún existen documentos pendientes de aprobación.",
+                    "No es posible aprobar el expediente. Aún existen ítems pendientes de aprobación.",
                 )
                 return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
             if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO:
@@ -1308,7 +1326,7 @@ def bandeja_marcar_atendida(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asignaciones_list(request):
     anio_id = request.GET.get("anio")
     asignaciones = AsociacionUsuario.objects.select_related("asociacion", "asociacion__anio", "usuario")
