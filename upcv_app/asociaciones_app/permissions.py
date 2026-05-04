@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.db import models
 from django.db.models import QuerySet
 
-from .models import Asociacion, AsociacionUsuario, ExpedienteCAIMUS
+from .models import Asociacion, AsociacionUsuario, ExpedienteCAIMUS, ItemChecklistCAIMUS
 
 
 def is_admin(user) -> bool:
@@ -52,8 +52,17 @@ def expediente_esta_completo(expediente: ExpedienteCAIMUS) -> bool:
     return not items.filter(models.Q(pdf="") | models.Q(pdf__isnull=True)).exists()
 
 
+def expediente_items_100_aprobados(expediente: ExpedienteCAIMUS) -> bool:
+    items = expediente.items.filter(activo=True)
+    if not items.exists():
+        return False
+    return not items.exclude(estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO).exists()
+
+
 def user_can_download_resolucion(user, expediente: ExpedienteCAIMUS) -> bool:
     if expediente.estado != ExpedienteCAIMUS.ESTADO_APROBADO:
+        return False
+    if not expediente_items_100_aprobados(expediente):
         return False
     if is_admin(user):
         return True
