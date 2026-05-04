@@ -196,6 +196,7 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Ver años")
         self.assertNotContains(response, "Ver asignaciones")
+        self.assertNotContains(response, "<span>Configuración</span>", html=True)
 
     def test_dashboard_superadmin_muestra_enlaces_configuracion(self):
         client = Client()
@@ -204,6 +205,7 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Ver años")
         self.assertContains(response, "Ver asignaciones")
+        self.assertContains(response, "<span>Configuración</span>", html=True)
 
     def test_asociacion_puede_ver_mis_asociaciones(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
