@@ -636,6 +636,7 @@ def expediente_caimus(request, pk):
         formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.filter(activo=True).order_by("numero"))
 
     progress = expediente.progress_stats()
+    items_revision_timeline = expediente.items.filter(activo=True).select_related("aprobado_por", "rechazado_por").order_by("numero")
     expediente_completo = expediente_esta_completo(expediente)
     todos_items_aprobados = not expediente.items.filter(activo=True).exclude(
         estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO
@@ -656,6 +657,12 @@ def expediente_caimus(request, pk):
             "form": form,
             "formset": formset,
             "progress": progress,
+            "total_items": progress["total"],
+            "items_subidos": progress["done"],
+            "items_aprobados": progress["approved"],
+            "porcentaje_subidos": progress["percent"],
+            "porcentaje_aprobados": progress["approved_percent"],
+            "items_revision_timeline": items_revision_timeline,
             "es_admin": is_admin(request.user),
             "es_asociacion": is_asociacion(request.user),
             "expediente_completo": expediente_completo,
