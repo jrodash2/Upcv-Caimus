@@ -54,13 +54,14 @@ from .models import (
     obtener_configuracion_informes_anio,
     resumen_informes_asociacion,
 )
-from .mixins import admin_required, asociacion_required
+from .mixins import admin_required, asociacion_required, superadmin_required
 from .permissions import (
     expediente_esta_completo,
     expediente_items_100_aprobados,
     get_asociaciones_usuario,
     is_admin,
     is_asociacion,
+    is_superadmin,
     user_can_download_resolucion,
     user_has_asociacion_access,
     user_has_expediente_access,
@@ -393,14 +394,14 @@ def _dashboard_asociacion(request):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_list(request):
     anios = Anio.objects.all()
     return render(request, "asociaciones_app/anio_list.html", {"anios": anios})
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_informes_config(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     asegurar_configuracion_informes_anio(anio, request.user)
@@ -426,7 +427,7 @@ def anio_informes_config(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_create(request):
     if request.method == "POST":
         form = AnioForm(request.POST)
@@ -440,7 +441,7 @@ def anio_create(request):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_edit(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     if request.method == "POST":
@@ -455,7 +456,7 @@ def anio_edit(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def anio_checklist(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     formset = ChecklistAnioItemFormSet(instance=anio, prefix="checklist")
@@ -470,7 +471,7 @@ def anio_checklist(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 @require_POST
 def anio_checklist_guardar(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
@@ -502,7 +503,7 @@ def anio_checklist_guardar(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_list(request, anio_id):
     anio = get_object_or_404(Anio, pk=anio_id)
     asociaciones = anio.asociaciones.all()
@@ -514,7 +515,7 @@ def asociacion_list(request, anio_id):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_create(request, anio_id):
     anio = get_object_or_404(Anio, pk=anio_id)
     if request.method == "POST":
@@ -533,7 +534,7 @@ def asociacion_create(request, anio_id):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_edit(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
@@ -552,7 +553,7 @@ def asociacion_edit(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asociacion_usuarios(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
@@ -1325,7 +1326,7 @@ def bandeja_marcar_atendida(request, pk):
 
 
 @login_required
-@admin_required
+@superadmin_required
 def asignaciones_list(request):
     anio_id = request.GET.get("anio")
     asignaciones = AsociacionUsuario.objects.select_related("asociacion", "asociacion__anio", "usuario")
