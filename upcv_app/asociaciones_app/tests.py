@@ -25,6 +25,7 @@ from .models import (
     crear_items_expediente,
     ConfiguracionInformeAnio,
 )
+from .permissions import expediente_items_100_aprobados
 
 
 class AsociacionesTests(TestCase):
@@ -267,6 +268,51 @@ class AsociacionesTests(TestCase):
         response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "0%")
+
+    def test_helper_items_100_aprobados_exige_items_y_estado_aprobado(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        self.assertFalse(expediente_items_100_aprobados(expediente))
+        expediente.items.create(numero=1, seccion=1, titulo="Doc 1", hint="", activo=True)
+        self.assertFalse(expediente_items_100_aprobados(expediente))
+        expediente.items.filter(numero=1).update(estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO)
+        self.assertTrue(expediente_items_100_aprobados(expediente))
+
+    def test_expediente_aprobado_inconsistente_se_muestra_en_revision(self):
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            estado=ExpedienteCAIMUS.ESTADO_APROBADO,
+        )
+        expediente.items.create(numero=1, seccion=1, titulo="Doc 1", hint="", activo=True)
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertContains(response, "Pendiente de aprobación de ítems")
+
+    def test_no_permite_aprobar_expediente_si_faltan_pdfs_o_aprobaciones(self):
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            estado=ExpedienteCAIMUS.ESTADO_EN_REVISION,
+        )
+        expediente.items.create(
+            numero=1,
+            seccion=1,
+            titulo="Doc 1",
+            hint="",
+            activo=True,
+            estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO,
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.post(
+            reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+            {"estado": ExpedienteCAIMUS.ESTADO_APROBADO, "observacion_admin": ""},
+            follow=True,
+        )
+        expediente.refresh_from_db()
+        self.assertNotEqual(expediente.estado, ExpedienteCAIMUS.ESTADO_APROBADO)
+        self.assertContains(response, "No es posible aprobar el expediente. Aún existen ítems pendientes de aprobación.")
 
     def test_select_usuario_sin_nombre_muestra_username_y_sin_grupo(self):
         usuario_sin_grupo = User.objects.create_user(username="sin_grupo", password="pass123")

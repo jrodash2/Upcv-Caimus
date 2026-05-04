@@ -12,9 +12,13 @@
           <p class="text-muted">Año {{ asociacion.anio.anio }} · Código {{ asociacion.codigo }}</p>
         </div>
         <div class="col-4 text-end">
-          <span class="badge accessible-badge bg-{% if expediente.estado == 'APROBADO' %}success{% elif expediente.estado == 'RECHAZADO' %}danger{% elif expediente.estado == 'EN_REVISION' %}info{% else %}secondary{% endif %}">
-            <i data-feather="{% if expediente.estado == 'APROBADO' %}check-circle{% elif expediente.estado == 'RECHAZADO' %}x-circle{% elif expediente.estado == 'EN_REVISION' %}clock{% else %}edit-3{% endif %}" aria-hidden="true"></i>
-            {{ expediente.get_estado_display }}
+          <span class="badge accessible-badge bg-{% if estado_visual_expediente == 'APROBADO' %}success{% elif estado_visual_expediente == 'RECHAZADO' %}danger{% elif estado_visual_expediente == 'EN_REVISION' %}info{% else %}secondary{% endif %}">
+            <i data-feather="{% if estado_visual_expediente == 'APROBADO' %}check-circle{% elif estado_visual_expediente == 'RECHAZADO' %}x-circle{% elif estado_visual_expediente == 'EN_REVISION' %}clock{% else %}edit-3{% endif %}" aria-hidden="true"></i>
+            {% if expediente.estado == 'APROBADO' and not estado_aprobado_valido %}
+              Pendiente de aprobación de ítems
+            {% else %}
+              {{ expediente.get_estado_display }}
+            {% endif %}
           </span>
         </div>
       </div>
