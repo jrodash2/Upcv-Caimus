@@ -160,13 +160,59 @@
         <div class="card card-soft section-panel">
           <div class="card-header"><h5>Progreso</h5></div>
           <div class="card-body">
-            <p class="mb-2"><strong>General:</strong> {{ progress.done }} / {{ progress.total }} documentos completados.</p>
-            <p class="text-muted small mb-2">Avance actual: <strong>{{ progress.percent }}%</strong></p>
+            <p class="mb-2"><strong>Documentos subidos:</strong> {{ items_subidos }} / {{ total_items }}</p>
+            <p class="text-muted small mb-2">Avance actual: <strong>{{ porcentaje_subidos }}%</strong></p>
             <div class="progress mb-2">
-              <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress.percent }}%"></div>
+              <div class="progress-bar bg-primary" role="progressbar" style="width: {{ porcentaje_subidos }}%" aria-label="Porcentaje de documentos subidos">{{ porcentaje_subidos }}%</div>
             </div>
+
+            {% if es_admin %}
+              <hr>
+              <h6 class="mb-2"><i data-feather="check-square" aria-hidden="true"></i>Avance de revisión</h6>
+              <p class="mb-2"><strong>Ítems aprobados:</strong> {{ items_aprobados }} / {{ total_items }}</p>
+              <p class="text-muted small mb-2">Porcentaje aprobado: <strong>{{ porcentaje_aprobados }}%</strong></p>
+              <div class="progress mb-2">
+                <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentaje_aprobados }}%" aria-label="Porcentaje de ítems aprobados">{{ porcentaje_aprobados }}%</div>
+              </div>
+              <span class="badge accessible-badge bg-{% if porcentaje_aprobados == 100 %}success{% elif porcentaje_aprobados > 0 %}warning{% else %}secondary{% endif %}">
+                {% if porcentaje_aprobados == 100 %}Revisión completa{% elif porcentaje_aprobados > 0 %}Revisión en proceso{% else %}Sin ítems aprobados{% endif %}
+              </span>
+            {% endif %}
           </div>
         </div>
+
+        {% if es_admin %}
+        <div class="card card-soft section-panel">
+          <div class="card-header"><h5>Timeline de revisión</h5></div>
+          <div class="card-body">
+            <ul class="list-group list-group-flush">
+              {% for item in items_revision_timeline %}
+                <li class="list-group-item px-0">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <strong>{{ item.titulo }}</strong><br>
+                      <small class="text-muted">
+                        {% if item.estado_item == 'aprobado' and item.aprobado_por %}
+                          Aprobado por {{ item.aprobado_por.get_full_name|default:item.aprobado_por.username }}{% if item.fecha_aprobacion %} — {{ item.fecha_aprobacion|date:"d/m/Y H:i" }}{% endif %}
+                        {% elif item.estado_item == 'rechazado' and item.rechazado_por %}
+                          Rechazado por {{ item.rechazado_por.get_full_name|default:item.rechazado_por.username }}{% if item.fecha_rechazo %} — {{ item.fecha_rechazo|date:"d/m/Y H:i" }}{% endif %}
+                        {% else %}
+                          Pendiente de revisión
+                        {% endif %}
+                      </small>
+                    </div>
+                    <span class="badge accessible-badge {% if item.estado_item == 'aprobado' %}bg-success{% elif item.estado_item == 'rechazado' %}bg-danger{% else %}bg-secondary{% endif %}">
+                      {% if item.estado_item == 'aprobado' %}Aprobado{% elif item.estado_item == 'rechazado' %}Rechazado{% else %}Pendiente{% endif %}
+                    </span>
+                  </div>
+                </li>
+              {% empty %}
+                <li class="list-group-item px-0 text-muted">Sin ítems activos para revisión.</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        {% endif %}
 
         <div class="card card-soft section-panel">
           <div class="card-header"><h5>Resolución</h5></div>

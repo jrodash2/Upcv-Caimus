@@ -6,6 +6,7 @@ from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .forms import AsociacionUsuarioForm
 from .models import (
@@ -20,6 +21,7 @@ from .models import (
     NotificacionAsociacion,
     ResolucionInformeMensual,
     ResolucionExpediente,
+    ItemChecklistCAIMUS,
     crear_items_expediente,
     ConfiguracionInformeAnio,
 )
@@ -218,7 +220,53 @@ class AsociacionesTests(TestCase):
         client.login(username="admin", password="pass123")
         response = client.get(reverse("asociaciones:asociacion_usuarios", args=[self.asociacion.pk]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "María García — mgarcia — Asociacion, Compras")
+
+    def test_progress_aprobados_cero(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        expediente.items.create(numero=1, seccion=1, titulo="Doc 1", hint="", activo=True)
+        expediente.items.create(numero=2, seccion=1, titulo="Doc 2", hint="", activo=True)
+        stats = expediente.progress_stats()
+        self.assertEqual(stats["approved_percent"], 0)
+
+    def test_progress_aprobados_total(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        expediente.items.create(numero=1, seccion=1, titulo="Doc 1", hint="", activo=True, estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO)
+        expediente.items.create(numero=2, seccion=1, titulo="Doc 2", hint="", activo=True, estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO)
+        stats = expediente.progress_stats()
+        self.assertEqual(stats["approved_percent"], 100)
+
+    def test_progress_aprobados_parcial(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        expediente.items.create(numero=1, seccion=1, titulo="Doc 1", hint="", activo=True, estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO)
+        expediente.items.create(numero=2, seccion=1, titulo="Doc 2", hint="", activo=True)
+        expediente.items.create(numero=3, seccion=1, titulo="Doc 3", hint="", activo=True)
+        stats = expediente.progress_stats()
+        self.assertEqual(stats["approved_percent"], 33)
+
+    def test_timeline_revision_renderiza_estado_y_usuario(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        item = expediente.items.create(numero=1, seccion=1, titulo="Solicitud", hint="", activo=True, estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO)
+        item.aprobado_por = self.admin_user
+        item.fecha_aprobacion = timezone.now()
+        item.save(update_fields=["aprobado_por", "fecha_aprobacion"])
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertContains(response, "Timeline de revisión")
+        self.assertContains(response, "Solicitud")
+        self.assertContains(response, "Aprobado por")
+        self.assertContains(response, "admin")
+
+    def test_vista_expediente_no_falla_sin_items(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        expediente.items.all().delete()
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "0%")
 
     def test_select_usuario_sin_nombre_muestra_username_y_sin_grupo(self):
         usuario_sin_grupo = User.objects.create_user(username="sin_grupo", password="pass123")

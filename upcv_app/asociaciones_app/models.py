@@ -214,10 +214,13 @@ class ExpedienteCAIMUS(models.Model):
         items = self.items.filter(activo=True)
         total = items.count()
         completados = items.exclude(pdf="").exclude(pdf__isnull=True).count()
+        aprobados = items.filter(estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO).count()
         return {
             "total": total,
             "done": completados,
             "percent": int((completados / total) * 100) if total else 0,
+            "approved": aprobados,
+            "approved_percent": int((aprobados / total) * 100) if total else 0,
         }
 
 
