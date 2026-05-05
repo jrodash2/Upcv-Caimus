@@ -21,10 +21,11 @@ def grupo_usuario(request):
     if not request.user.is_authenticated:
         return {}
     return {
-        'es_asociacion': request.user.groups.filter(name='Asociacion').exists(),
-        'es_administrador': request.user.groups.filter(name='Administrador').exists(),
-        'es_almacen': request.user.groups.filter(name='Almacen').exists(),
-        'es_informatica': request.user.groups.filter(name='Informatica').exists(),
+        'es_asociacion': request.user.groups.filter(name__iexact='Asociacion').exists(),
+        'es_administrador': request.user.groups.filter(name__iexact='Administrador').exists(),
+        'es_informatica': request.user.groups.filter(name__iexact='Informatica').exists(),
+        'puede_ver_configuracion': request.user.groups.filter(name__iexact='Informatica').exists(),
+        'es_almacen': request.user.groups.filter(name__iexact='Almacen').exists(),
     }
 
 

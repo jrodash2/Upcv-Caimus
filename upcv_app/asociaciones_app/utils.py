@@ -10,9 +10,13 @@ from .models import EntradaRevisionAdmin, ExpedienteCAIMUS, InformeMensual, Noti
 
 
 def is_admin(user) -> bool:
-    if not user.is_authenticated:
-        return False
-    return user.groups.filter(name="Administrador").exists() or user.is_superuser
+    return (
+        user.is_authenticated
+        and (
+            user.groups.filter(name__iexact="Administrador").exists()
+            or user.groups.filter(name__iexact="Informatica").exists()
+        )
+    )
 
 
 def usuario_puede_ver_asociacion(user, asociacion: Asociacion) -> bool:
