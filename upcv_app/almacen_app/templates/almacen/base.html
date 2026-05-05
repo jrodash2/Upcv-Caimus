@@ -1,4 +1,5 @@
 {% load static %}
+{% load group_tags %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -250,7 +251,7 @@
 {% if user.is_authenticated %}
 
 
-  {# Mostrar "Configuración" solo a Administradores #}
+  {# Mostrar menú principal para Administrador/Superadmin #}
   {% if es_administrador or es_superadmin %}
     <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
                     <svg >
@@ -277,7 +278,7 @@
       </a>
       <ul class="sidebar-submenu">
 
-        {% if puede_ver_configuracion %}
+        {% if request.user.is_superuser or request.user|has_group:"Superadmin" %}
         <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
         <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
         {% endif %}
@@ -285,7 +286,7 @@
       </ul>
     </li>
 
-    {% if puede_ver_configuracion %}
+    {% if request.user.is_superuser or request.user|has_group:"Superadmin" %}
     <li class="sidebar-list"><i class="fa fa-thumb-tack"></i>
       <a class="sidebar-link sidebar-title" href="#">
         <svg class="stroke-icon">
