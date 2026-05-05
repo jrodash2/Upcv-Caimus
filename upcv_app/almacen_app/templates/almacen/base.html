@@ -250,7 +250,7 @@
 {% if user.is_authenticated %}
 
 
-  {# Mostrar "Configuración" solo a Administradores #}
+  {# Mostrar menú principal para Administrador/Superadmin #}
   {% if es_administrador or es_superadmin %}
     <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
                     <svg >
