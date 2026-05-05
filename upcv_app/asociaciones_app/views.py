@@ -54,15 +54,13 @@ from .models import (
     obtener_configuracion_informes_anio,
     resumen_informes_asociacion,
 )
-from .mixins import admin_required, asociacion_required, superadmin_required
+from .mixins import admin_required, asociacion_required
 from .permissions import (
     expediente_esta_completo,
     expediente_items_100_aprobados,
     get_asociaciones_usuario,
     is_admin,
-    is_admin_operativo,
     is_asociacion,
-    is_superadmin,
     user_can_download_resolucion,
     user_has_asociacion_access,
     user_has_expediente_access,
@@ -70,7 +68,7 @@ from .permissions import (
 from .utils import obtener_entradas_bandeja_admin, resumen_dashboard_admin
 @asociacion_required
 def dashboard(request):
-    if is_admin_operativo(request.user):
+    if is_admin(request.user):
         return _dashboard_admin(request)
     if is_asociacion(request.user):
         return _dashboard_asociacion(request)
@@ -79,7 +77,7 @@ def dashboard(request):
 
 @asociacion_required
 def asociaciones_inicio(request):
-    if is_admin_operativo(request.user):
+    if is_admin(request.user):
         return _dashboard_admin(request)
     if is_asociacion(request.user):
         return _dashboard_asociacion(request)
@@ -395,14 +393,14 @@ def _dashboard_asociacion(request):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def anio_list(request):
     anios = Anio.objects.all()
     return render(request, "asociaciones_app/anio_list.html", {"anios": anios})
 
 
 @login_required
-@superadmin_required
+@admin_required
 def anio_informes_config(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     asegurar_configuracion_informes_anio(anio, request.user)
@@ -428,7 +426,7 @@ def anio_informes_config(request, pk):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def anio_create(request):
     if request.method == "POST":
         form = AnioForm(request.POST)
@@ -442,7 +440,7 @@ def anio_create(request):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def anio_edit(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     if request.method == "POST":
@@ -457,7 +455,7 @@ def anio_edit(request, pk):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def anio_checklist(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     formset = ChecklistAnioItemFormSet(instance=anio, prefix="checklist")
@@ -472,7 +470,7 @@ def anio_checklist(request, pk):
 
 
 @login_required
-@superadmin_required
+@admin_required
 @require_POST
 def anio_checklist_guardar(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
@@ -504,7 +502,7 @@ def anio_checklist_guardar(request, pk):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def asociacion_list(request, anio_id):
     anio = get_object_or_404(Anio, pk=anio_id)
     asociaciones = anio.asociaciones.all()
@@ -516,7 +514,7 @@ def asociacion_list(request, anio_id):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def asociacion_create(request, anio_id):
     anio = get_object_or_404(Anio, pk=anio_id)
     if request.method == "POST":
@@ -535,7 +533,7 @@ def asociacion_create(request, anio_id):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def asociacion_edit(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
@@ -554,7 +552,7 @@ def asociacion_edit(request, pk):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def asociacion_usuarios(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
@@ -589,7 +587,7 @@ def mis_asociaciones(request):
     return render(
         request,
         "asociaciones_app/mis_asociaciones.html",
-        {"asociaciones": asociaciones, "es_admin": is_admin_operativo(request.user)},
+        {"asociaciones": asociaciones, "es_admin": is_admin(request.user)},
     )
 
 
@@ -671,7 +669,7 @@ def expediente_caimus(request, pk):
             "porcentaje_subidos": progress["percent"],
             "porcentaje_aprobados": progress["approved_percent"],
             "items_revision_timeline": items_revision_timeline,
-            "es_admin": is_admin_operativo(request.user),
+            "es_admin": is_admin(request.user),
             "es_asociacion": is_asociacion(request.user),
             "expediente_completo": expediente_completo,
             "todos_items_aprobados": todos_items_aprobados,
@@ -847,7 +845,7 @@ def informes_mensuales(request, pk):
         {
             "asociacion": asociacion,
             "informes": informes,
-            "es_admin": is_admin_operativo(request.user),
+            "es_admin": is_admin(request.user),
             "es_asociacion": is_asociacion(request.user),
             "puede_subir": puede_subir,
             "config_map": config_map,
@@ -1327,7 +1325,7 @@ def bandeja_marcar_atendida(request, pk):
 
 
 @login_required
-@superadmin_required
+@admin_required
 def asignaciones_list(request):
     anio_id = request.GET.get("anio")
     asignaciones = AsociacionUsuario.objects.select_related("asociacion", "asociacion__anio", "usuario")

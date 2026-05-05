@@ -56,11 +56,10 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
 import re
-from asociaciones_app.permissions import is_superadmin
 
 
 @login_required
-@grupo_requerido('Superadmin')
+@grupo_requerido('Administrador')
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -78,7 +77,7 @@ def editar_institucion(request):
 
 
 @login_required
-@grupo_requerido('Superadmin')
+@grupo_requerido('Administrador', 'Almacen')
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -111,7 +110,7 @@ def user_create(request):
     return render(request, 'almacen/user_form_create.html', {'form': form, 'users': users})
 
 @login_required
-@grupo_requerido('Superadmin')
+@grupo_requerido('Administrador', 'Almacen')
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
     try:
@@ -152,7 +151,7 @@ def user_edit(request, user_id):
 
 
 @login_required
-@grupo_requerido('Superadmin')
+@grupo_requerido('Administrador', 'Almacen')
 def perfil_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
     try:
@@ -171,7 +170,7 @@ def perfil_edit(request, user_id):
     return render(request, 'almacen/perfil_edit.html', {'form': form, 'user': user})
 
 @login_required
-@grupo_requerido('Superadmin')
+@grupo_requerido('Administrador', 'Almacen')
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -189,9 +188,9 @@ from django.db.models import Count, Q, Sum
 import json
 
 @login_required
-@grupo_requerido('Administrador', 'Almacen', 'Superadmin')
+@grupo_requerido('Administrador', 'Almacen')
 def dahsboard(request):
-    if request.user.groups.filter(name='Administrador').exists() or is_superadmin(request.user):
+    if request.user.groups.filter(name='Administrador').exists():
         return redirect('asociaciones:inicio')
     return render(request, 'almacen/dashboard.html')
 
@@ -225,7 +224,7 @@ def signin(request):
             # Ahora verificamos los grupos
             for g in user.groups.all():
                 print(g.name)
-                if g.name == 'Administrador' or g.name.lower() == 'superadmin' or is_superadmin(user):
+                if g.name == 'Administrador':
                     return redirect('almacen:dahsboard')
                 elif g.name == 'Asociacion':
                     return redirect('asociaciones:mis_asociaciones')

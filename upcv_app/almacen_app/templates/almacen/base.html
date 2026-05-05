@@ -1,5 +1,4 @@
 {% load static %}
-{% load group_tags %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -251,8 +250,8 @@
 {% if user.is_authenticated %}
 
 
-  {# Mostrar menú principal para Administrador/Superadmin #}
-  {% if es_administrador or es_superadmin %}
+  {# Mostrar "Configuración" solo a Administradores #}
+  {% if es_administrador %}
     <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
                     <svg >
                       <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
@@ -278,15 +277,12 @@
       </a>
       <ul class="sidebar-submenu">
 
-        {% if request.user.is_superuser or request.user|has_group:"Superadmin" %}
         <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
         <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
-        {% endif %}
         <li><a href="{% url 'asociaciones:bandeja_revision' %}">Bandeja de revisión</a></li>
       </ul>
     </li>
 
-    {% if request.user.is_superuser or request.user|has_group:"Superadmin" %}
     <li class="sidebar-list"><i class="fa fa-thumb-tack"></i>
       <a class="sidebar-link sidebar-title" href="#">
         <svg class="stroke-icon">
@@ -305,7 +301,6 @@
         <li><a href="#">Manuales</a></li>
       </ul>
     </li>
-    {% endif %}
   {% endif %}
 
   

@@ -70,7 +70,6 @@ TEMPLATES = [
                 'almacen_app.context_processors.frase_del_dia',  # Agregar el context processor personalizado
                 'almacen_app.context_processors.grupo_usuario',
                 'almacen_app.context_processors.datos_institucion',
-                'asociaciones_app.context_processors.permisos_globales',
 
             ],
         },

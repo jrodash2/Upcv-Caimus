@@ -33,9 +33,6 @@ class AsociacionesTests(TestCase):
         self.admin_group, _ = Group.objects.get_or_create(name="Administrador")
         self.admin_user = User.objects.create_user(username="admin", password="pass123")
         self.admin_user.groups.add(self.admin_group)
-        self.superadmin_group, _ = Group.objects.get_or_create(name="Superadmin")
-        self.superadmin_user = User.objects.create_user(username="superadmin", password="pass123")
-        self.superadmin_user.groups.add(self.superadmin_group)
 
         self.asociacion_group, _ = Group.objects.get_or_create(name="Asociacion")
         self.user = User.objects.create_user(username="user1", password="pass123")
@@ -176,40 +173,6 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 403)
         response = client.get(reverse("asociaciones:expediente_revision", args=[expediente.pk]))
         self.assertEqual(response.status_code, 403)
-
-    def test_administrador_no_puede_acceder_configuracion(self):
-        client = Client()
-        client.login(username="admin", password="pass123")
-        self.assertEqual(client.get(reverse("asociaciones:anios_list")).status_code, 403)
-        self.assertEqual(client.get(reverse("asociaciones:anio_create")).status_code, 403)
-        self.assertEqual(client.get(reverse("asociaciones:asignaciones_list")).status_code, 403)
-
-    def test_superadmin_si_puede_acceder_configuracion(self):
-        client = Client()
-        client.login(username="superadmin", password="pass123")
-        self.assertEqual(client.get(reverse("asociaciones:anios_list")).status_code, 200)
-
-    def test_dashboard_admin_no_muestra_enlaces_configuracion(self):
-        client = Client()
-        client.login(username="admin", password="pass123")
-        response = client.get(reverse("asociaciones:inicio"))
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.context["puede_ver_configuracion"])
-        self.assertFalse(response.context["es_superadmin"])
-        self.assertNotContains(response, "Ver años")
-        self.assertNotContains(response, "Ver asignaciones")
-        self.assertNotContains(response, "<span>Configuración</span>", html=True)
-
-    def test_dashboard_superadmin_muestra_enlaces_configuracion(self):
-        client = Client()
-        client.login(username="superadmin", password="pass123")
-        response = client.get(reverse("asociaciones:inicio"))
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context["puede_ver_configuracion"])
-        self.assertTrue(response.context["es_superadmin"])
-        self.assertContains(response, "Ver años")
-        self.assertContains(response, "Ver asignaciones")
-        self.assertContains(response, "<span>Configuración</span>", html=True)
 
     def test_asociacion_puede_ver_mis_asociaciones(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
