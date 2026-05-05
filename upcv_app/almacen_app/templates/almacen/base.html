@@ -250,8 +250,8 @@
 {% if user.is_authenticated %}
 
 
-  {# Mostrar opciones administrativas de asociaciones solo a Administradores #}
-  {% if es_administrador %}
+  {# Mostrar menú operativo a Administrador e Informatica #}
+  {% if es_administrador or es_informatica %}
     <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
                     <svg >
                       <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
@@ -261,9 +261,6 @@
                     </svg><span>Dashboard</span></a>
                   
                 </li>
-                
-
-
 
     <li class="sidebar-list"><i class="fa fa-thumb-tack"></i>
       <a class="sidebar-link sidebar-title" href="#">
@@ -276,27 +273,18 @@
         <span>Asociaciones</span>
       </a>
       <ul class="sidebar-submenu">
-
-        <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
-        <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
+        {% if es_informatica %}
+          <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
+          <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
+        {% endif %}
         <li><a href="{% url 'asociaciones:bandeja_revision' %}">Bandeja de revisión</a></li>
       </ul>
     </li>
-
   {% endif %}
 
 
   {# Mostrar "Configuración" solo al grupo Informatica #}
   {% if es_informatica %}
-    <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
-                    <svg >
-                      <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
-                    </svg>
-                    <svg class="fill-icon">
-                      <use href="../assets/svg/icon-sprite.svg#fill-home"></use>
-                    </svg><span>Dashboard</span></a>
-                </li>
-
     <li class="sidebar-list"><i class="fa fa-thumb-tack"></i>
       <a class="sidebar-link sidebar-title" href="#">
         <svg class="stroke-icon">

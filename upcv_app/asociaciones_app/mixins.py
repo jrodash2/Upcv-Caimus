@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 
 from .models import Asociacion, ExpedienteCAIMUS
-from .permissions import is_admin, is_asociacion, user_has_asociacion_access, user_has_expediente_access
+from .permissions import is_admin, is_asociacion, is_informatica, user_has_asociacion_access, user_has_expediente_access
 
 
 class AdminRequiredMixin(LoginRequiredMixin):
@@ -43,6 +43,17 @@ def admin_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
         if not is_admin(request.user):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
+def informatica_required(view_func):
+    @login_required
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not is_informatica(request.user):
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
 

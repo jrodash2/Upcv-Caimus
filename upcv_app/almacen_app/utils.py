@@ -1,9 +1,11 @@
 
 from functools import wraps
 from django.http import HttpResponseForbidden
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.core.exceptions import PermissionDenied
+from asociaciones_app.permissions import is_informatica
 
 def reservar_lineas(cantidad, form1h_instance):
     contador_global, _ = ContadorDetalleFactura.objects.get_or_create(id=1)
@@ -31,11 +33,24 @@ def reservar_lineas(cantidad, form1h_instance):
     return lineas_reservadas
 
 
+def informatica_required(view_func):
+    @login_required
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not is_informatica(request.user):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
+
 def grupo_requerido(*nombres_grupos):
     def decorador(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
-            if request.user.is_authenticated and request.user.groups.filter(name__in=nombres_grupos).exists():
+            if request.user.is_authenticated and any(
+                request.user.groups.filter(name__iexact=nombre_grupo).exists()
+                for nombre_grupo in nombres_grupos
+            ):
                 return view_func(request, *args, **kwargs)
             # Redirigir a la vista de acceso denegado
             return redirect(reverse('almacen:acceso_denegado'))

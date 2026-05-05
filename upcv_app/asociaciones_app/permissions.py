@@ -6,16 +6,35 @@ from django.db.models import QuerySet
 from .models import Asociacion, AsociacionUsuario, ExpedienteCAIMUS, ItemChecklistCAIMUS
 
 
+def is_informatica(user) -> bool:
+    return (
+        user.is_authenticated
+        and user.groups.filter(name__iexact="Informatica").exists()
+    )
+
+
+def is_admin_operativo(user) -> bool:
+    return (
+        user.is_authenticated
+        and (
+            user.groups.filter(name__iexact="Administrador").exists()
+            or user.groups.filter(name__iexact="Informatica").exists()
+        )
+    )
+
+
+def can_manage_config(user) -> bool:
+    return is_informatica(user)
+
+
 def is_admin(user) -> bool:
-    if not user.is_authenticated:
-        return False
-    return user.groups.filter(name="Administrador").exists() or user.is_superuser
+    return is_admin_operativo(user)
 
 
 def is_asociacion(user) -> bool:
     if not user.is_authenticated:
         return False
-    return user.groups.filter(name="Asociacion").exists()
+    return user.groups.filter(name__iexact="Asociacion").exists()
 
 
 def get_asociaciones_usuario(user) -> QuerySet[Asociacion]:

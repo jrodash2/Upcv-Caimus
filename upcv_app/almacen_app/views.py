@@ -28,7 +28,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 import json
 from django.contrib.auth.models import Group
-from .utils import grupo_requerido
+from .utils import grupo_requerido, informatica_required
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction
@@ -58,8 +58,7 @@ from openpyxl.styles import Alignment, Font
 import re
 
 
-@login_required
-@grupo_requerido('Informatica')
+@informatica_required
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -76,8 +75,7 @@ def editar_institucion(request):
 
 
 
-@login_required
-@grupo_requerido('Informatica')
+@informatica_required
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -109,8 +107,7 @@ def user_create(request):
     users = User.objects.all()
     return render(request, 'almacen/user_form_create.html', {'form': form, 'users': users})
 
-@login_required
-@grupo_requerido('Informatica')
+@informatica_required
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
     try:
@@ -150,8 +147,7 @@ def user_edit(request, user_id):
 
 
 
-@login_required
-@grupo_requerido('Informatica')
+@informatica_required
 def perfil_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
     try:
@@ -169,8 +165,7 @@ def perfil_edit(request, user_id):
     
     return render(request, 'almacen/perfil_edit.html', {'form': form, 'user': user})
 
-@login_required
-@grupo_requerido('Informatica')
+@informatica_required
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -190,7 +185,10 @@ import json
 @login_required
 @grupo_requerido('Administrador', 'Almacen', 'Informatica')
 def dahsboard(request):
-    if request.user.groups.filter(name='Administrador').exists():
+    if (
+        request.user.groups.filter(name__iexact='Administrador').exists()
+        or request.user.groups.filter(name__iexact='Informatica').exists()
+    ):
         return redirect('asociaciones:inicio')
     return render(request, 'almacen/dashboard.html')
 
@@ -221,17 +219,15 @@ def signin(request):
             # Si el usuario es encontrado, se inicia sesión
             auth_login(request, user)
             
-            # Ahora verificamos los grupos
-            for g in user.groups.all():
-                print(g.name)
-                if g.name == 'Administrador':
-                    return redirect('almacen:dahsboard')
-                elif g.name == 'Asociacion':
-                    return redirect('asociaciones:mis_asociaciones')
-                elif g.name == 'Almacen':
-                    return redirect('almacen:dahsboard')
-                elif g.name == 'Informatica':
-                    return redirect('almacen:dahsboard')
+            if (
+                user.groups.filter(name__iexact="Administrador").exists()
+                or user.groups.filter(name__iexact="Informatica").exists()
+            ):
+                return redirect("almacen:dahsboard")
+            elif user.groups.filter(name__iexact="Asociacion").exists():
+                return redirect("asociaciones:mis_asociaciones")
+            elif user.groups.filter(name__iexact="Almacen").exists():
+                return redirect("almacen:dahsboard")
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('dahsboard')
         else:
