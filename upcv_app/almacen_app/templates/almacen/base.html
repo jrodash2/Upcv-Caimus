@@ -250,7 +250,7 @@
 {% if user.is_authenticated %}
 
 
-  {# Mostrar "Configuración" solo a Administradores #}
+  {# Mostrar opciones administrativas de asociaciones solo a Administradores #}
   {% if es_administrador %}
     <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
                     <svg >
@@ -283,6 +283,20 @@
       </ul>
     </li>
 
+  {% endif %}
+
+
+  {# Mostrar "Configuración" solo al grupo Informatica #}
+  {% if es_informatica %}
+    <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
+                    <svg >
+                      <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                    </svg>
+                    <svg class="fill-icon">
+                      <use href="../assets/svg/icon-sprite.svg#fill-home"></use>
+                    </svg><span>Dashboard</span></a>
+                </li>
+
     <li class="sidebar-list"><i class="fa fa-thumb-tack"></i>
       <a class="sidebar-link sidebar-title" href="#">
         <svg class="stroke-icon">
@@ -294,9 +308,7 @@
         <span>Configuración</span>
       </a>
       <ul class="sidebar-submenu">
-       
         <li><a href="{% url 'almacen:user_create' %}">Usuarios</a></li>
-
         <li><a href="{% url 'almacen:editar_institucion' %}">Institución</a></li>
         <li><a href="#">Manuales</a></li>
       </ul>
@@ -304,7 +316,7 @@
   {% endif %}
 
   
-  {# Mostrar "Configuración" solo a Almacen #}
+  {# Mostrar opciones de almacén solo a Almacen #}
   {% if es_almacen %}
     <li class="sidebar-list" ><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'almacen:dahsboard' %}">
                     <svg >

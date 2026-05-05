@@ -59,7 +59,7 @@ import re
 
 
 @login_required
-@grupo_requerido('Administrador')
+@grupo_requerido('Informatica')
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -77,7 +77,7 @@ def editar_institucion(request):
 
 
 @login_required
-@grupo_requerido('Administrador', 'Almacen')
+@grupo_requerido('Informatica')
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -110,7 +110,7 @@ def user_create(request):
     return render(request, 'almacen/user_form_create.html', {'form': form, 'users': users})
 
 @login_required
-@grupo_requerido('Administrador', 'Almacen')
+@grupo_requerido('Informatica')
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
     try:
@@ -151,7 +151,7 @@ def user_edit(request, user_id):
 
 
 @login_required
-@grupo_requerido('Administrador', 'Almacen')
+@grupo_requerido('Informatica')
 def perfil_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
     try:
@@ -170,7 +170,7 @@ def perfil_edit(request, user_id):
     return render(request, 'almacen/perfil_edit.html', {'form': form, 'user': user})
 
 @login_required
-@grupo_requerido('Administrador', 'Almacen')
+@grupo_requerido('Informatica')
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -188,7 +188,7 @@ from django.db.models import Count, Q, Sum
 import json
 
 @login_required
-@grupo_requerido('Administrador', 'Almacen')
+@grupo_requerido('Administrador', 'Almacen', 'Informatica')
 def dahsboard(request):
     if request.user.groups.filter(name='Administrador').exists():
         return redirect('asociaciones:inicio')
@@ -229,6 +229,8 @@ def signin(request):
                 elif g.name == 'Asociacion':
                     return redirect('asociaciones:mis_asociaciones')
                 elif g.name == 'Almacen':
+                    return redirect('almacen:dahsboard')
+                elif g.name == 'Informatica':
                     return redirect('almacen:dahsboard')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('dahsboard')
