@@ -136,7 +136,7 @@
           <div class="card-body d-grid gap-2">
             <a class="btn btn-outline-primary" href="{% url 'asociaciones:mis_asociaciones' %}">Ir a Mis asociaciones</a>
             {% if es_admin_dashboard %}
-              {% if es_superadmin %}
+              {% if puede_ver_configuracion %}
                 <a class="btn btn-outline-secondary" href="{% url 'asociaciones:anios_list' %}">Ver años</a>
                 <a class="btn btn-outline-secondary" href="{% url 'asociaciones:asignaciones_list' %}">Ver asignaciones</a>
               {% endif %}

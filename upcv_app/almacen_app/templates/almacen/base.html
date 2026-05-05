@@ -277,7 +277,7 @@
       </a>
       <ul class="sidebar-submenu">
 
-        {% if es_superadmin %}
+        {% if puede_ver_configuracion %}
         <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
         <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
         {% endif %}
@@ -285,7 +285,7 @@
       </ul>
     </li>
 
-    {% if es_superadmin %}
+    {% if puede_ver_configuracion %}
     <li class="sidebar-list"><i class="fa fa-thumb-tack"></i>
       <a class="sidebar-link sidebar-title" href="#">
         <svg class="stroke-icon">

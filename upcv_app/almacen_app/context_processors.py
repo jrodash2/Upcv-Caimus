@@ -20,10 +20,15 @@ def frase_del_dia(request):
 def grupo_usuario(request):
     if not request.user.is_authenticated:
         return {}
+    es_superadmin = request.user.is_authenticated and (
+        request.user.is_superuser
+        or request.user.groups.filter(name__iexact='Superadmin').exists()
+    )
     return {
         'es_asociacion': request.user.groups.filter(name='Asociacion').exists(),
         'es_administrador': request.user.groups.filter(name='Administrador').exists(),
-        'es_superadmin': request.user.is_superuser or request.user.groups.filter(name__iexact='Superadmin').exists(),
+        'es_superadmin': es_superadmin,
+        'puede_ver_configuracion': es_superadmin,
         'es_almacen': request.user.groups.filter(name='Almacen').exists(),
     }
 
