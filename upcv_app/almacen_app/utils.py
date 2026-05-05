@@ -35,9 +35,7 @@ def grupo_requerido(*nombres_grupos):
     def decorador(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
-            if request.user.is_authenticated and (
-                request.user.groups.filter(name__in=nombres_grupos).exists() or request.user.is_superuser
-            ):
+            if request.user.is_authenticated and request.user.groups.filter(name__in=nombres_grupos).exists():
                 return view_func(request, *args, **kwargs)
             # Redirigir a la vista de acceso denegado
             return redirect(reverse('almacen:acceso_denegado'))
