@@ -273,10 +273,8 @@
         <span>Asociaciones</span>
       </a>
       <ul class="sidebar-submenu">
-        {% if es_informatica %}
-          <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
-          <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
-        {% endif %}
+        <li><a href="{% url 'asociaciones:anios_list' %}">Años</a></li>
+        <li><a href="{% url 'asociaciones:asignaciones_list' %}">Asignaciones</a></li>
         <li><a href="{% url 'asociaciones:bandeja_revision' %}">Bandeja de revisión</a></li>
       </ul>
     </li>

@@ -13,12 +13,19 @@ def is_informatica(user) -> bool:
     )
 
 
+def is_administrador(user) -> bool:
+    return (
+        user.is_authenticated
+        and user.groups.filter(name__iexact="Administrador").exists()
+    )
+
+
 def is_admin_operativo(user) -> bool:
     return (
         user.is_authenticated
         and (
-            user.groups.filter(name__iexact="Administrador").exists()
-            or user.groups.filter(name__iexact="Informatica").exists()
+            is_administrador(user)
+            or is_informatica(user)
         )
     )
 
