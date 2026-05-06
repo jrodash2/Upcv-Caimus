@@ -34,6 +34,10 @@ class AsociacionesTests(TestCase):
         self.admin_user = User.objects.create_user(username="admin", password="pass123")
         self.admin_user.groups.add(self.admin_group)
 
+        self.informatica_group, _ = Group.objects.get_or_create(name="Informatica")
+        self.informatica_user = User.objects.create_user(username="informatica", password="pass123")
+        self.informatica_user.groups.add(self.informatica_group)
+
         self.asociacion_group, _ = Group.objects.get_or_create(name="Asociacion")
         self.user = User.objects.create_user(username="user1", password="pass123")
         self.user.groups.add(self.asociacion_group)
@@ -173,6 +177,51 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 403)
         response = client.get(reverse("asociaciones:expediente_revision", args=[expediente.pk]))
         self.assertEqual(response.status_code, 403)
+
+    def test_administrador_puede_acceder_vistas_operativas_por_url_directa(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="admin", password="pass123")
+
+        rutas = [
+            reverse("asociaciones:inicio"),
+            reverse("asociaciones:dashboard"),
+            reverse("asociaciones:anios_list"),
+            reverse("asociaciones:anio_checklist", args=[self.anio.pk]),
+            reverse("asociaciones:anio_informes_config", args=[self.anio.pk]),
+            reverse("asociaciones:asociacion_list", args=[self.anio.pk]),
+            reverse("asociaciones:asociacion_usuarios", args=[self.asociacion.pk]),
+            reverse("asociaciones:asignaciones_list"),
+            reverse("asociaciones:bandeja_revision"),
+            reverse("asociaciones:expediente_revision", args=[expediente.pk]),
+        ]
+
+        for ruta in rutas:
+            with self.subTest(ruta=ruta):
+                response = client.get(ruta)
+                self.assertEqual(response.status_code, 200)
+
+    def test_administrador_no_ve_menu_configuracion(self):
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:anios_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Dashboard")
+        self.assertContains(response, "Asociaciones")
+        self.assertContains(response, "Años")
+        self.assertContains(response, "Asignaciones")
+        self.assertNotContains(response, "Configuración")
+
+    def test_informatica_ve_menu_configuracion(self):
+        client = Client()
+        client.login(username="informatica", password="pass123")
+        response = client.get(reverse("asociaciones:anios_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Configuración")
+        self.assertContains(response, "Usuarios")
+        self.assertContains(response, "Institución")
 
     def test_asociacion_puede_ver_mis_asociaciones(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
