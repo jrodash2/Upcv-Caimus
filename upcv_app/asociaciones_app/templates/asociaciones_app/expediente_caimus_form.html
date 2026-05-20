@@ -47,9 +47,11 @@
 
           <div class="card card-soft section-panel mt-4">
             <div class="card-header d-flex justify-content-between align-items-center">
+              
               <div>
                 <h5>Checklist</h5>
                 <p class="text-muted mb-0">Completa los documentos requeridos para el expediente CAIMUS.</p>
+                
               </div>
               <div class="d-flex gap-2 flex-wrap align-items-center">
                 <span class="badge bg-secondary">{{ progress.done }}/{{ progress.total }}</span>
@@ -60,6 +62,9 @@
             </div>
             <div class="card-body">
               <div class="accordion checklist-accordion" id="accordionChecklist">
+                <p>
+Los archivos a cargar no deben exceder los 5 MB de tamaño. Asimismo, para evitar errores en la subida, el nombre del archivo no debe contener tildes, 
+caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar únicamente letras, números, guiones y guiones bajos.</p>
                 {% for item_form in formset %}
                   <div class="accordion-item checklist-item-card" data-item="{{ item_form.instance.numero }}">
                     <h2 class="accordion-header" id="headingChecklist{{ item_form.instance.id }}">
