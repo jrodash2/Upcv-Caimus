@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from calendar import month_name
+from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -65,6 +66,13 @@ from .permissions import (
     user_has_asociacion_access,
     user_has_expediente_access,
 )
+
+ALLOWED_EXPEDIENTE_ITEM_EXTENSIONS = {".pdf", ".xls", ".xlsx"}
+ALLOWED_EXPEDIENTE_ITEM_CONTENT_TYPES = {
+    "application/pdf",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 from .utils import obtener_entradas_bandeja_admin, resumen_dashboard_admin
 @asociacion_required
 def dashboard(request):
@@ -730,11 +738,16 @@ def item_upload(request, expediente_id, item_id):
     item = get_object_or_404(expediente.items, pk=item_id)
     archivo = request.FILES.get("pdf")
     if not archivo:
-        messages.error(request, "Debe seleccionar un archivo PDF.")
+        messages.error(request, "Debe seleccionar un archivo válido (PDF, XLS o XLSX).")
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
-    if archivo.content_type != "application/pdf":
-        messages.error(request, "El archivo debe ser un PDF válido.")
+    extension = Path(archivo.name).suffix.lower()
+    if extension not in ALLOWED_EXPEDIENTE_ITEM_EXTENSIONS:
+        messages.error(request, "Formato no permitido. Formatos permitidos: PDF, XLS y XLSX.")
+        return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
+
+    if archivo.content_type and archivo.content_type not in ALLOWED_EXPEDIENTE_ITEM_CONTENT_TYPES:
+        messages.error(request, "Tipo de archivo no válido. Formatos permitidos: PDF, XLS y XLSX.")
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
     item.pdf = archivo
