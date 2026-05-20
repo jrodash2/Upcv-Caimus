@@ -151,6 +151,31 @@ class AsociacionesTests(TestCase):
         self.assertTrue(item.pdf.name.endswith("test2.pdf"))
         self.assertEqual(item.observaciones, "Obs")
 
+    def test_subir_excel_xlsy_xlsx_permitido(self):
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.user)
+        item = expediente.items.create(numero=1, seccion=1, titulo="Doc", hint="")
+        client = Client()
+        client.login(username="user1", password="pass123")
+
+        archivo_xls = SimpleUploadedFile("presupuesto.xls", b"excel-binario", content_type="application/vnd.ms-excel")
+        response_xls = client.post(reverse("asociaciones:item_upload", args=[expediente.pk, item.pk]), {"pdf": archivo_xls})
+        self.assertEqual(response_xls.status_code, 302)
+        item.refresh_from_db()
+        self.assertTrue(item.pdf.name.endswith("presupuesto.xls"))
+        self.assertTrue(item.entregado)
+
+        archivo_xlsx = SimpleUploadedFile(
+            "presupuesto.xlsx",
+            b"excel-openxml",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response_xlsx = client.post(reverse("asociaciones:item_upload", args=[expediente.pk, item.pk]), {"pdf": archivo_xlsx})
+        self.assertEqual(response_xlsx.status_code, 302)
+        item.refresh_from_db()
+        self.assertTrue(item.pdf.name.endswith("presupuesto.xlsx"))
+        self.assertTrue(item.entregado)
+
     def test_guardar_observacion_bloqueada(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.user)

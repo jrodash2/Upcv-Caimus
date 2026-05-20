@@ -10,6 +10,7 @@ from django.db import models, transaction
 
 
 PDF_VALIDATOR = FileExtensionValidator(["pdf"])
+EXPEDIENTE_ITEM_FILE_VALIDATOR = FileExtensionValidator(["pdf", "xls", "xlsx"])
 XLSX_VALIDATOR = FileExtensionValidator(["xlsx"])
 
 
@@ -259,7 +260,7 @@ class ItemChecklistCAIMUS(models.Model):
         upload_to="caimus/%Y/",
         blank=True,
         null=True,
-        validators=[PDF_VALIDATOR, validate_pdf_size],
+        validators=[EXPEDIENTE_ITEM_FILE_VALIDATOR, validate_pdf_size],
     )
     observaciones = models.TextField(blank=True)
     estado_item = models.CharField(max_length=20, choices=ESTADOS_ITEM, default=ESTADO_BORRADOR)
