@@ -78,6 +78,13 @@
                             </span>
                             {% if item_form.instance.pdf %}
                               <span class="summary-status badge accessible-badge bg-success rounded-pill"><i data-feather="check-circle" aria-hidden="true"></i>Subido</span>
+                              {% with file_name=item_form.instance.pdf.name|lower %}
+                                {% if file_name|slice:"-4:" == ".pdf" %}
+                                  <span class="summary-status badge accessible-badge bg-danger rounded-pill"><i data-feather="file-text" aria-hidden="true"></i>PDF</span>
+                                {% else %}
+                                  <span class="summary-status badge accessible-badge bg-success rounded-pill"><i data-feather="file" aria-hidden="true"></i>Excel</span>
+                                {% endif %}
+                              {% endwith %}
                             {% else %}
                               <span class="summary-status badge accessible-badge bg-warning text-dark rounded-pill"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
                             {% endif %}
@@ -97,9 +104,17 @@
                         {% endif %}
                         <div class="d-flex gap-2 flex-wrap align-items-center mb-3">
                           {% if item_form.instance.pdf %}
-                            <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-primary btn-sm" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver PDF</a>
+                            <span class="text-muted small">{{ item_form.instance.pdf.name|cut:"caimus/" }}</span>
+                            {% with file_name=item_form.instance.pdf.name|lower %}
+                              {% if file_name|slice:"-4:" == ".pdf" %}
+                                <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-primary btn-sm" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver archivo</a>
+                                <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-secondary btn-sm" download><i data-feather="download" aria-hidden="true"></i>Descargar PDF</a>
+                              {% else %}
+                                <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-success btn-sm" download><i data-feather="download" aria-hidden="true"></i>Descargar Excel</a>
+                              {% endif %}
+                            {% endwith %}
                           {% endif %}
-                          <input type="file" class="form-control file-input" data-item-id="{{ item_form.instance.id }}" accept="application/pdf">
+                          <input type="file" class="form-control file-input" data-item-id="{{ item_form.instance.id }}" accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
                           <button type="button" class="btn btn-primary btn-sm upload-btn" data-upload-url="{% url 'asociaciones:item_upload' expediente.id item_form.instance.id %}">
                             <i data-feather="upload" aria-hidden="true"></i>{% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
                           </button>
@@ -344,11 +359,17 @@
       const card = button.closest('.checklist-item-card');
       const input = card.querySelector('.file-input');
       if (!input.files.length) {
-        notify('Debe seleccionar un archivo PDF.', 'warning');
+        notify('Debe seleccionar un archivo válido. Formatos permitidos: PDF, XLS y XLSX.', 'warning');
+        return;
+      }
+      const file = input.files[0];
+      const extension = file.name.split('.').pop().toLowerCase();
+      if (!['pdf', 'xls', 'xlsx'].includes(extension)) {
+        notify('Formato no permitido. Formatos permitidos: PDF, XLS y XLSX.', 'warning');
         return;
       }
       const formData = new FormData();
-      formData.append('pdf', input.files[0]);
+      formData.append('pdf', file);
       const response = await fetch(button.dataset.uploadUrl, {
         method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
