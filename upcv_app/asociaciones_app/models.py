@@ -112,6 +112,9 @@ class Asociacion(models.Model):
     anio = models.ForeignKey(Anio, on_delete=models.CASCADE, related_name="asociaciones")
     nombre = models.CharField(max_length=255)
     codigo = models.SlugField(max_length=80)
+    nombre_representante_legal = models.CharField(max_length=255, blank=True, null=True)
+    dpi_representante_legal = models.CharField(max_length=20, blank=True, null=True)
+    acuerdo_gubernativo = models.CharField(max_length=255, blank=True, null=True)
     activo = models.BooleanField(default=True)
 
     class Meta:
