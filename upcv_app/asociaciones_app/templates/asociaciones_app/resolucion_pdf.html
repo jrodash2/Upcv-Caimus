@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  {% load static %}
   <style>
     @page { size: letter; margin: 2.1cm 2cm; }
     body { font-family: Arial, sans-serif; font-size: 12px; color: #111; line-height: 1.45; }
@@ -16,11 +17,19 @@
     .col-check { width: 12%; text-align: center; font-weight: 700; }
     .nota { margin-top: 16px; font-size: 11px; }
     .pdf-footer {
-      margin-top: 70px;
-      padding-top: 10px;
+      margin-top: 130px;
+      padding-top: 15px;
       width: 100%;
       font-family: Arial, sans-serif;
       color: #08245c;
+    }
+    .header-logo {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .header-logo img {
+      height: 70px;
+      width: auto;
     }
     .footer-line {
       width: 100%;
@@ -80,6 +89,9 @@
   </style>
 </head>
 <body>
+  <div class="header-logo">
+    <img src="{% static 'assets/images/logo/upcv2.png' %}" alt="Logo Institucional">
+  </div>
   <div class="titulo">CONSTANCIA DE EXPEDIENTE DIGITAL</div>
   <div class="expediente-no">Expediente No. {{ resolucion.correlativo }}</div>
 
