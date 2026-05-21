@@ -58,7 +58,8 @@ class AsociacionForm(forms.ModelForm):
         }
 
     def clean_dpi_representante_legal(self):
-        dpi = (self.cleaned_data.get("dpi_representante_legal") or "").strip()
+        dpi_raw = (self.cleaned_data.get("dpi_representante_legal") or "").strip()
+        dpi = dpi_raw.replace(" ", "")
         if dpi and not all(char.isdigit() or char == "-" for char in dpi):
             raise ValidationError(_("El DPI solo puede contener números y guiones."))
         return dpi
