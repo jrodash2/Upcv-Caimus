@@ -34,10 +34,8 @@
             <div class="card-header"><h5>Datos generales</h5></div>
             <div class="card-body">
               <div class="row">
-                <div class="col-md-6">{{ form.institucion.label_tag }} {{ form.institucion }}</div>
-                <div class="col-md-6">{{ form.representante_legal.label_tag }} {{ form.representante_legal }}</div>
-                <div class="col-md-6 mt-2">{{ form.obs_general.label_tag }} {{ form.obs_general }}</div>
-                <div class="col-md-6 mt-2">{{ form.recomendaciones.label_tag }} {{ form.recomendaciones }}</div>
+                <div class="col-md-6">{{ form.obs_general.label_tag }} {{ form.obs_general }}</div>
+                <div class="col-md-6">{{ form.recomendaciones.label_tag }} {{ form.recomendaciones }}</div>
               </div>
               <div class="mt-3 d-flex gap-2 flex-wrap">
                 <button class="btn btn-primary" type="submit" name="save_all" value="1">Guardar datos generales</button>
@@ -110,6 +108,34 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
                         <div class="d-flex gap-2 flex-wrap align-items-center mb-3">
                           {% if item_form.instance.pdf %}
                             <span class="text-muted small">{{ item_form.instance.pdf.name|cut:"caimus/" }}</span>
+                            {% with file_name=item_form.instance.pdf.name|lower %}
+                              {% if file_name|slice:"-4:" == ".pdf" %}
+                                <span class="badge accessible-badge bg-danger rounded-pill"><i data-feather="file-text" aria-hidden="true"></i>PDF</span>
+                              {% else %}
+                                <span class="badge accessible-badge bg-success rounded-pill"><i data-feather="file" aria-hidden="true"></i>Excel</span>
+                              {% endif %}
+                            {% endwith %}
+                            <div class="w-100 small text-muted mt-1">
+                              <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <span>
+                                  <i data-feather="clock" aria-hidden="true"></i>
+                                  {% if item_form.instance.fue_actualizado %}Actualizado:{% else %}Subido:{% endif %}
+                                  {{ item_form.instance.fecha_actualizacion|date:"d/m/Y h:i A" }}
+                                </span>
+                                {% if item_form.instance.subido_por %}
+                                  <span>
+                                    <i data-feather="user" aria-hidden="true"></i>
+                                    Por: {{ item_form.instance.subido_por.get_full_name|default:item_form.instance.subido_por.username }}
+                                  </span>
+                                {% endif %}
+                              </div>
+                              {% if item_form.instance.observacion_revision and item_form.instance.fecha_observacion and item_form.instance.fecha_actualizacion > item_form.instance.fecha_observacion %}
+                                <div class="mt-1 text-info">
+                                  <i data-feather="alert-triangle" aria-hidden="true"></i>
+                                  Archivo actualizado después de observación administrativa.
+                                </div>
+                              {% endif %}
+                            </div>
                             {% with file_name=item_form.instance.pdf.name|lower %}
                               {% if file_name|slice:"-4:" == ".pdf" %}
                                 <a href="{{ item_form.instance.pdf.url }}" class="btn btn-outline-primary btn-sm" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver archivo</a>
