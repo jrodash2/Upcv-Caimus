@@ -11,6 +11,16 @@
           <div class="card-body">
             <h5>{{ asociacion.nombre }}</h5>
             <p class="text-muted">{{ asociacion.anio.anio }} - {{ asociacion.codigo }}</p>
+            <div class="card border-light mb-3">
+              <div class="card-body py-2">
+                <div class="small text-muted mb-1"><i data-feather="user" aria-hidden="true"></i> Representante legal</div>
+                <div class="fw-semibold mb-2">{{ asociacion.nombre_representante_legal|default:"Sin registro" }}</div>
+                <div class="small text-muted mb-1"><i data-feather="credit-card" aria-hidden="true"></i> DPI representante legal</div>
+                <div class="fw-semibold mb-2">{{ asociacion.dpi_representante_legal|default:"Sin registro" }}</div>
+                <div class="small text-muted mb-1"><i data-feather="file-text" aria-hidden="true"></i> Acuerdo gubernativo</div>
+                <div class="fw-semibold">{{ asociacion.acuerdo_gubernativo|default:"Sin registro" }}</div>
+              </div>
+            </div>
             {% if asociacion.notificaciones_pendientes %}
             <div class="alert alert-light-warning d-flex justify-content-between align-items-center py-2 px-3 mb-3">
               <span class="fw-semibold">
