@@ -23,6 +23,18 @@
               {{ form.codigo }}
             </div>
             <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.nombre_representante_legal.id_for_label }}">{{ form.nombre_representante_legal.label }}</label>
+              {{ form.nombre_representante_legal }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.dpi_representante_legal.id_for_label }}">{{ form.dpi_representante_legal.label }}</label>
+              {{ form.dpi_representante_legal }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.acuerdo_gubernativo.id_for_label }}">{{ form.acuerdo_gubernativo.label }}</label>
+              {{ form.acuerdo_gubernativo }}
+            </div>
+            <div class="col-md-4 mb-3">
               <div class="form-check mt-4">
                 {{ form.activo }}
                 <label class="form-check-label" for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label>
