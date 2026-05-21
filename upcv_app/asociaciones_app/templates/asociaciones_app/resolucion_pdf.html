@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   {% load static %}
   <style>
-    @page { size: letter; margin: 2.1cm 2cm; }
-    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; line-height: 1.45; }
+    @page { size: 8.5in 13in; margin: 1.5cm 1.8cm 1.5cm 1.8cm; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; line-height: 1.45; padding-bottom: 4.2cm; }
     .titulo { text-align: center; font-weight: 700; font-size: 18px; margin: 0 0 18px 0; letter-spacing: .5px; }
     .expediente-no { text-align: right; margin-bottom: 14px; font-weight: 600; }
     p { margin: 0 0 10px 0; text-align: justify; }
@@ -17,7 +17,11 @@
     .col-check { width: 12%; text-align: center; font-weight: 700; }
     .nota { margin-top: 16px; font-size: 11px; }
     .pdf-footer {
-      margin-top: 130px;
+      position: fixed;
+      bottom: 0.8cm;
+      left: 1.8cm;
+      right: 1.8cm;
+      margin-top: 0;
       padding-top: 15px;
       width: 100%;
       font-family: Arial, sans-serif;
@@ -90,7 +94,9 @@
 </head>
 <body>
   <div class="header-logo">
-    <img src="{% static 'assets/images/logo/upcv2.png' %}" alt="Logo Institucional">
+    {% if logo_secundario_url %}
+      <img src="{{ logo_secundario_url }}" alt="Logo Institucional Secundario">
+    {% endif %}
   </div>
   <div class="titulo">CONSTANCIA DE EXPEDIENTE DIGITAL</div>
   <div class="expediente-no">Expediente No. {{ resolucion.correlativo }}</div>

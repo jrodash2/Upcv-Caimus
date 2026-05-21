@@ -18,6 +18,7 @@ from django.utils import timezone
 from weasyprint import HTML
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
+from almacen_app.models import Institucion
 
 from .forms import (
     AnioForm,
@@ -1384,6 +1385,11 @@ def resolucion_pdf(request, pk):
         11: "noviembre",
         12: "diciembre",
     }
+    institucion = Institucion.objects.first()
+    logo_secundario_url = None
+    if institucion and institucion.logo2:
+        logo_secundario_url = request.build_absolute_uri(institucion.logo2.url)
+
     html = render_to_string(
         "asociaciones_app/resolucion_pdf.html",
         {
@@ -1392,6 +1398,7 @@ def resolucion_pdf(request, pk):
             "items": expediente.items.filter(activo=True).order_by("numero"),
             "fecha_constancia": fecha_constancia,
             "mes_constancia": meses_es.get(fecha_constancia.month) if fecha_constancia else "",
+            "logo_secundario_url": logo_secundario_url,
         },
         request=request,
     )
