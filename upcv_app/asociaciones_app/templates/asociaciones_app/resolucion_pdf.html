@@ -4,8 +4,14 @@
   <meta charset="utf-8">
   {% load static %}
   <style>
-    @page { size: 8.5in 13in; margin: 1.5cm 1.8cm 1.5cm 1.8cm; }
-    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; line-height: 1.45; padding-bottom: 4.2cm; }
+    @page {
+      size: 8.5in 13in;
+      margin-top: 0.7cm;
+      margin-right: 1.2cm;
+      margin-bottom: 0.7cm;
+      margin-left: 1.2cm;
+    }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; line-height: 1.45; padding-bottom: 3.2cm; }
     .titulo { text-align: center; font-weight: 700; font-size: 18px; margin: 0 0 18px 0; letter-spacing: .5px; }
     .expediente-no { text-align: right; margin-bottom: 14px; font-weight: 600; }
     p { margin: 0 0 10px 0; text-align: justify; }
@@ -18,23 +24,23 @@
     .nota { margin-top: 16px; font-size: 11px; }
     .pdf-footer {
       position: fixed;
-      bottom: 0.8cm;
-      left: 1.8cm;
-      right: 1.8cm;
-      width: auto;
-      margin: 0 auto;
-      padding-top: 15px;
-      text-align: center;
+      bottom: 0.2cm;
+      left: 1.2cm;
+      right: 1.2cm;
+      padding: 0;
+      margin: 0;
       box-sizing: border-box;
       font-family: Arial, sans-serif;
       color: #08245c;
     }
     .header-logo {
       width: 100%;
-      margin-bottom: 10px;
+      margin-top: 0;
+      padding-top: 0;
+      margin-bottom: 6px;
     }
     .header-logo img {
-      height: 70px;
+      height: 55px;
       width: auto;
     }
     .footer-line {
@@ -42,20 +48,20 @@
       height: 8px;
       background: #003b73;
       position: relative;
-      margin: 0 auto 14px auto;
+      margin-bottom: 10px;
     }
     .footer-bandera {
-      width: 135px;
-      margin: 0 auto;
+      position: absolute;
+      left: 55px;
       top: 0;
-      height: 8px;
+      height: 7px;
       white-space: nowrap;
     }
     .bandera-azul,
     .bandera-blanco {
       display: inline-block;
       width: 45px;
-      height: 8px;
+      height: 7px;
       vertical-align: top;
     }
     .bandera-azul { background: #00a3e0; }
@@ -64,8 +70,6 @@
       display: table;
       width: 100%;
       table-layout: fixed;
-      text-align: center;
-      margin: 0 auto;
       font-weight: 700;
       font-size: 9px;
       color: #08245c;
