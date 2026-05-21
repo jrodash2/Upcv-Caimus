@@ -43,10 +43,20 @@
       height: 55px;
       width: auto;
     }
-    .footer-bandera {
-      width: 180px;
+    .footer-line {
+      width: 100%;
       height: 8px;
+      background: #003b73;
+      position: relative;
       margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .footer-bandera {
+      position: absolute;
+      left: 70px;
+      top: 0;
+      height: 8px;
+      z-index: 2;
       white-space: nowrap;
     }
     .bandera-celeste,
@@ -156,8 +166,10 @@
   </p>
 
   <footer class="pdf-footer">
-    <div class="footer-bandera">
-      <span class="bandera-celeste"></span><span class="bandera-blanco"></span><span class="bandera-celeste"></span>
+    <div class="footer-line">
+      <div class="footer-bandera">
+        <span class="bandera-celeste"></span><span class="bandera-blanco"></span><span class="bandera-celeste"></span>
+      </div>
     </div>
     <div class="footer-info">
       <div class="footer-item">
