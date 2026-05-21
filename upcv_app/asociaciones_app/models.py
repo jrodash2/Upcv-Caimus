@@ -112,6 +112,9 @@ class Asociacion(models.Model):
     anio = models.ForeignKey(Anio, on_delete=models.CASCADE, related_name="asociaciones")
     nombre = models.CharField(max_length=255)
     codigo = models.SlugField(max_length=80)
+    nombre_representante_legal = models.CharField(max_length=255, blank=True, null=True)
+    dpi_representante_legal = models.CharField(max_length=20, blank=True, null=True)
+    acuerdo_gubernativo = models.CharField(max_length=255, blank=True, null=True)
     activo = models.BooleanField(default=True)
 
     class Meta:
@@ -262,6 +265,15 @@ class ItemChecklistCAIMUS(models.Model):
         null=True,
         validators=[EXPEDIENTE_ITEM_FILE_VALIDATOR, validate_pdf_size],
     )
+    fecha_carga = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True, null=True, blank=True)
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items_caimus_subidos",
+    )
     observaciones = models.TextField(blank=True)
     estado_item = models.CharField(max_length=20, choices=ESTADOS_ITEM, default=ESTADO_BORRADOR)
     aprobado_por = models.ForeignKey(
@@ -301,6 +313,18 @@ class ItemChecklistCAIMUS(models.Model):
 
     def __str__(self) -> str:
         return f"{self.numero}. {self.titulo}"
+
+    @property
+    def fue_actualizado(self) -> bool:
+        if not self.fecha_carga or not self.fecha_actualizacion:
+            return False
+        return self.fecha_actualizacion > self.fecha_carga
+
+    @property
+    def fecha_observacion(self):
+        if self.observacion_revision:
+            return self.fecha_rechazo or self.fecha_aprobacion
+        return None
 
 
 class ExpedienteEstadoHistorial(models.Model):

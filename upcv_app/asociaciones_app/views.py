@@ -751,6 +751,7 @@ def item_upload(request, expediente_id, item_id):
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
     item.pdf = archivo
+    item.subido_por = request.user
     try:
         item.full_clean()
     except ValidationError as exc:
@@ -1368,12 +1369,29 @@ def resolucion_pdf(request, pk):
             },
         )
 
+    fecha_constancia = expediente.aprobado_en or resolucion.fecha_emision or expediente.actualizado_en
+    meses_es = {
+        1: "enero",
+        2: "febrero",
+        3: "marzo",
+        4: "abril",
+        5: "mayo",
+        6: "junio",
+        7: "julio",
+        8: "agosto",
+        9: "septiembre",
+        10: "octubre",
+        11: "noviembre",
+        12: "diciembre",
+    }
     html = render_to_string(
         "asociaciones_app/resolucion_pdf.html",
         {
             "expediente": expediente,
             "resolucion": resolucion,
-            "items": expediente.items.all(),
+            "items": expediente.items.filter(activo=True).order_by("numero"),
+            "fecha_constancia": fecha_constancia,
+            "mes_constancia": meses_es.get(fecha_constancia.month) if fecha_constancia else "",
         },
         request=request,
     )
@@ -1381,7 +1399,7 @@ def resolucion_pdf(request, pk):
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
 
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f"inline; filename=Resolucion-{resolucion.correlativo}.pdf"
+    response["Content-Disposition"] = f"inline; filename=Constancia-{resolucion.correlativo}.pdf"
     return response
 
 
