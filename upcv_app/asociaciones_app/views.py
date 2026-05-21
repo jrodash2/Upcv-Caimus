@@ -751,6 +751,7 @@ def item_upload(request, expediente_id, item_id):
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
     item.pdf = archivo
+    item.subido_por = request.user
     try:
         item.full_clean()
     except ValidationError as exc:
