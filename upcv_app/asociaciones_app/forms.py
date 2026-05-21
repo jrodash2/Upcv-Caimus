@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from django import forms
 from django.contrib.auth import get_user_model
-from django.forms import inlineformset_factory
 from django.core.exceptions import ValidationError
+from django.forms import inlineformset_factory
+from django.utils.translation import gettext_lazy as _
 
 from .models import (
     Anio,
@@ -31,16 +32,37 @@ class AnioForm(forms.ModelForm):
 class AsociacionForm(forms.ModelForm):
     class Meta:
         model = Asociacion
-        fields = ["anio", "nombre", "codigo", "activo"]
+        fields = [
+            "anio",
+            "nombre",
+            "codigo",
+            "nombre_representante_legal",
+            "dpi_representante_legal",
+            "acuerdo_gubernativo",
+            "activo",
+        ]
         labels = {
-            "anio": "Año"
+            "anio": "Año",
+            "nombre_representante_legal": "Nombre representante legal",
+            "dpi_representante_legal": "DPI representante legal",
+            "acuerdo_gubernativo": "Acuerdo gubernativo",
         }
         widgets = {
             "anio": forms.Select(attrs={"class": "form-select"}),
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "codigo": forms.TextInput(attrs={"class": "form-control"}),
+            "nombre_representante_legal": forms.TextInput(attrs={"class": "form-control"}),
+            "dpi_representante_legal": forms.TextInput(attrs={"class": "form-control", "placeholder": "0000 00000 0000"}),
+            "acuerdo_gubernativo": forms.TextInput(attrs={"class": "form-control"}),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def clean_dpi_representante_legal(self):
+        dpi_raw = (self.cleaned_data.get("dpi_representante_legal") or "").strip()
+        dpi = dpi_raw.replace(" ", "")
+        if dpi and not all(char.isdigit() or char == "-" for char in dpi):
+            raise ValidationError(_("El DPI solo puede contener números y guiones."))
+        return dpi
 
 
 class AsociacionUsuarioForm(forms.ModelForm):
@@ -77,10 +99,8 @@ class AsociacionUsuarioForm(forms.ModelForm):
 class ExpedienteCAIMUSForm(forms.ModelForm):
     class Meta:
         model = ExpedienteCAIMUS
-        fields = ["institucion", "representante_legal", "obs_general", "recomendaciones"]
+        fields = ["obs_general", "recomendaciones"]
         widgets = {
-            "institucion": forms.TextInput(attrs={"class": "form-control"}),
-            "representante_legal": forms.TextInput(attrs={"class": "form-control"}),
             "obs_general": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
             "recomendaciones": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
         }
