@@ -43,6 +43,8 @@
               <tr>
                 <th class="col-nombre-asociacion">Nombre</th>
                 <th>Código</th>
+                <th>Representante legal</th>
+                <th>Acuerdo gubernativo</th>
                 <th>Activo</th>
                 <th>Acciones</th>
               </tr>
@@ -56,6 +58,8 @@
                   </div>
                 </td>
                 <td>{{ asociacion.codigo }}</td>
+                <td>{{ asociacion.nombre_representante_legal|default:"—" }}</td>
+                <td>{{ asociacion.acuerdo_gubernativo|default:"—" }}</td>
                 <td>{% if asociacion.activo %}Sí{% else %}No{% endif %}</td>
                 <td>
                   <div class="d-flex gap-2 flex-wrap">
@@ -67,7 +71,7 @@
                 </td>
               </tr>
               {% empty %}
-              <tr><td colspan="4">No hay asociaciones registradas.</td></tr>
+              <tr><td colspan="6">No hay asociaciones registradas.</td></tr>
               {% endfor %}
             </tbody>
           </table>
