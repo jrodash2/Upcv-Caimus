@@ -99,10 +99,8 @@ class AsociacionUsuarioForm(forms.ModelForm):
 class ExpedienteCAIMUSForm(forms.ModelForm):
     class Meta:
         model = ExpedienteCAIMUS
-        fields = ["institucion", "representante_legal", "obs_general", "recomendaciones"]
+        fields = ["obs_general", "recomendaciones"]
         widgets = {
-            "institucion": forms.TextInput(attrs={"class": "form-control"}),
-            "representante_legal": forms.TextInput(attrs={"class": "form-control"}),
             "obs_general": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
             "recomendaciones": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
         }

@@ -34,10 +34,8 @@
             <div class="card-header"><h5>Datos generales</h5></div>
             <div class="card-body">
               <div class="row">
-                <div class="col-md-6">{{ form.institucion.label_tag }} {{ form.institucion }}</div>
-                <div class="col-md-6">{{ form.representante_legal.label_tag }} {{ form.representante_legal }}</div>
-                <div class="col-md-6 mt-2">{{ form.obs_general.label_tag }} {{ form.obs_general }}</div>
-                <div class="col-md-6 mt-2">{{ form.recomendaciones.label_tag }} {{ form.recomendaciones }}</div>
+                <div class="col-md-6">{{ form.obs_general.label_tag }} {{ form.obs_general }}</div>
+                <div class="col-md-6">{{ form.recomendaciones.label_tag }} {{ form.recomendaciones }}</div>
               </div>
               <div class="mt-3 d-flex gap-2 flex-wrap">
                 <button class="btn btn-primary" type="submit" name="save_all" value="1">Guardar datos generales</button>
