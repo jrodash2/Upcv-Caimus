@@ -15,6 +15,54 @@
     .col-no { width: 10%; text-align: center; }
     .col-check { width: 12%; text-align: center; font-weight: 700; }
     .nota { margin-top: 16px; font-size: 11px; }
+    .pdf-footer {
+      margin-top: 35px;
+      width: 100%;
+      font-family: Arial, sans-serif;
+      color: #08245c;
+    }
+    .footer-line {
+      position: relative;
+      height: 10px;
+      background: #062b55;
+      margin-bottom: 16px;
+    }
+    .footer-block {
+      display: inline-block;
+      height: 10px;
+      width: 42px;
+      vertical-align: top;
+    }
+    .block-dark {
+      background: #062b55;
+      margin-left: 45px;
+    }
+    .block-blue { background: #0089c9; }
+    .block-white { background: #ffffff; }
+    .footer-info {
+      display: table;
+      width: 100%;
+      text-align: center;
+      font-weight: 700;
+      font-size: 12px;
+      color: #08245c;
+    }
+    .footer-item {
+      display: table-cell;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .footer-icon {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      border: 2px solid #08245c;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 10px;
+      margin-right: 6px;
+    }
   </style>
 </head>
 <body>
@@ -69,5 +117,28 @@
     Se hace saber que esta constancia no valida el contenido de la documentación presentada, la cual queda sujeta a la
     revisión y validación de las autoridades previo a la suscripción del Convenio de mérito.
   </p>
+
+  <footer class="pdf-footer">
+    <div class="footer-line">
+      <span class="footer-block block-dark"></span>
+      <span class="footer-block block-blue"></span>
+      <span class="footer-block block-white"></span>
+      <span class="footer-block block-blue"></span>
+    </div>
+    <div class="footer-info">
+      <div class="footer-item">
+        <span class="footer-icon">☎</span>
+        <span>+502 2412 - 8800</span>
+      </div>
+      <div class="footer-item">
+        <span class="footer-icon">W</span>
+        <span>www.upcv.gob.gt</span>
+      </div>
+      <div class="footer-item">
+        <span class="footer-icon">U</span>
+        <span>Vía 4, 1-61, zona 4, Ciudad de Guatemala</span>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
