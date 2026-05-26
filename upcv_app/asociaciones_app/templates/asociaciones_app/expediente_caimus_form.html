@@ -152,41 +152,22 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
                         </div>
                         {% with tl=item_form.instance.process_timeline %}
                           <div class="caimus-process-timeline">
-                            <div class="caimus-step {% if tl.has_upload %}active completed{% else %}pending{% endif %}">
-                              <span class="caimus-step-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
-                                data-bs-html="true"
-                                data-bs-content="<strong>Archivo subido</strong><br>{% if tl.first_upload %}{{ tl.first_upload.creado_en|date:'d/m/Y h:i A' }}{% elif item_form.instance.pdf %}Archivo disponible{% else %}Pendiente{% endif %}{% if item_form.instance.subido_por %}<br>Usuario: {{ item_form.instance.subido_por.get_full_name|default:item_form.instance.subido_por.username }}{% endif %}{% if tl.first_upload and tl.first_upload.descripcion %}<br>{{ tl.first_upload.descripcion|striptags|truncatechars:100|escape }}{% endif %}{% if tl.first_upload and tl.first_upload.archivo %}<br>Archivo adjunto disponible{% elif item_form.instance.pdf %}<br>Archivo adjunto disponible{% endif %}">1</span>
-                              <div class="caimus-step-title">Subido</div>
-                              <div class="caimus-step-subtitle">{% if tl.has_upload %}Archivo cargado{% else %}Pendiente{% endif %}</div>
-                            </div>
-                            <div class="caimus-step-line {% if tl.has_revision or tl.has_update_after_obs or tl.final_state != 'pending' %}completed{% endif %}"></div>
-                            <div class="caimus-step {% if tl.has_revision %}warning completed{% else %}pending{% endif %}">
-                              <span class="caimus-step-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
-                                data-bs-html="true"
-                                data-bs-content="<strong>Observación / Revisión</strong><br>{% if tl.last_obs %}{{ tl.last_obs.creado_en|date:'d/m/Y h:i A' }}{% else %}Pendiente{% endif %}{% if tl.last_obs and tl.last_obs.usuario %}<br>Usuario: {{ tl.last_obs.usuario.get_full_name|default:tl.last_obs.usuario.username }}{% endif %}{% if tl.last_obs and tl.last_obs.descripcion %}<br>{{ tl.last_obs.descripcion|striptags|truncatechars:120|escape }}{% endif %}">2</span>
-                              <div class="caimus-step-title">Revisión</div>
-                              <div class="caimus-step-subtitle">{% if tl.last_obs %}Con observación{% elif tl.has_revision %}En revisión{% else %}Pendiente{% endif %}</div>
-                            </div>
-                            {% if tl.has_update_after_obs %}
-                              <div class="caimus-step-line {% if tl.final_state != 'pending' %}completed{% endif %}"></div>
-                              <div class="caimus-step completed">
-                                <span class="caimus-step-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
+                            {% for step in tl.steps %}
+                              <div class="caimus-step {{ step.estado }}">
+                                <span class="caimus-step-circle"
+                                  data-bs-toggle="popover"
+                                  data-bs-trigger="click"
+                                  data-bs-placement="top"
                                   data-bs-html="true"
-                                  data-bs-content="<strong>Archivo actualizado</strong><br>{{ tl.last_update.creado_en|date:'d/m/Y h:i A' }}{% if tl.last_update.usuario %}<br>Usuario: {{ tl.last_update.usuario.get_full_name|default:tl.last_update.usuario.username }}{% endif %}{% if tl.last_update.descripcion %}<br>{{ tl.last_update.descripcion|striptags|truncatechars:120|escape }}{% endif %}{% if tl.last_update.archivo %}<br>Archivo adjunto disponible{% endif %}">3</span>
-                                <div class="caimus-step-title">Actualizado</div>
-                                <div class="caimus-step-subtitle">Re-subida aplicada</div>
+                                  data-bs-title="{{ step.titulo }}"
+                                  data-bs-content="{{ step.popover_html }}">{{ step.numero }}</span>
+                                <div class="caimus-step-title">{{ step.titulo }}</div>
+                                <div class="caimus-step-subtitle">{{ step.subtitulo }}</div>
                               </div>
-                            {% endif %}
-                            <div class="caimus-step-line {% if tl.final_state != 'pending' %}completed{% endif %}"></div>
-                            <div class="caimus-step {% if tl.final_state == 'success' %}success completed{% elif tl.final_state == 'danger' %}danger completed{% else %}pending{% endif %}">
-                              <span class="caimus-step-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
-                                data-bs-html="true"
-                                data-bs-content="<strong>{% if tl.final_state == 'success' %}Aprobado{% elif tl.final_state == 'danger' %}Rechazado{% else %}Pendiente{% endif %}</strong><br>{% if tl.approved %}{{ tl.approved.creado_en|date:'d/m/Y h:i A' }}{% elif tl.rejected %}{{ tl.rejected.creado_en|date:'d/m/Y h:i A' }}{% else %}Sin resolución final{% endif %}{% if tl.approved and tl.approved.usuario %}<br>Usuario: {{ tl.approved.usuario.get_full_name|default:tl.approved.usuario.username }}{% elif tl.rejected and tl.rejected.usuario %}<br>Usuario: {{ tl.rejected.usuario.get_full_name|default:tl.rejected.usuario.username }}{% endif %}{% if tl.rejected and tl.rejected.descripcion %}<br>{{ tl.rejected.descripcion|striptags|truncatechars:120|escape }}{% endif %}">
-                                {% if tl.final_state == 'success' %}✓{% elif tl.final_state == 'danger' %}✕{% else %}4{% endif %}
-                              </span>
-                              <div class="caimus-step-title">{{ tl.final_label }}</div>
-                              <div class="caimus-step-subtitle">{% if tl.final_state == 'success' %}Documento aprobado{% elif tl.final_state == 'danger' %}Documento rechazado{% else %}Pendiente de decisión{% endif %}</div>
-                            </div>
+                              {% if not forloop.last %}
+                                <div class="caimus-step-line {% if 'pending' not in step.estado %}completed{% endif %}"></div>
+                              {% endif %}
+                            {% endfor %}
                           </div>
                           {% if item_form.instance.pdf %}
                             <div class="d-flex flex-wrap gap-2 mb-2">
@@ -557,8 +538,18 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
     });
   });
 
-  document.querySelectorAll('[data-bs-toggle="popover"]').forEach((el) => {
-    new bootstrap.Popover(el, { sanitize: true });
+  const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+  popoverTriggerList.forEach((el) => {
+    new bootstrap.Popover(el, { html: true, trigger: 'click', sanitize: false });
+  });
+  document.addEventListener('click', function (e) {
+    popoverTriggerList.forEach(function (el) {
+      const popover = bootstrap.Popover.getInstance(el);
+      const openPopover = document.querySelector('.popover');
+      if (popover && !el.contains(e.target) && !(openPopover && openPopover.contains(e.target))) {
+        popover.hide();
+      }
+    });
   });
 </script>
 {% endblock %}
