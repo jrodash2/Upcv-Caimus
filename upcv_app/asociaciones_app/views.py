@@ -1390,7 +1390,7 @@ def resolucion_pdf(request, pk):
     logo_secundario_url = None
     if institucion and institucion.logo2:
         logo_secundario_url = request.build_absolute_uri(institucion.logo2.url)
-    footer_image_url = request.build_absolute_uri(static("assets/images/footer_caimgus.png"))
+    footer_image_url = request.build_absolute_uri(static("assets/images/pie.png"))
 
     html = render_to_string(
         "asociaciones_app/resolucion_pdf.html",
