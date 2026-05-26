@@ -153,22 +153,53 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
                         {% with tl=item_form.instance.process_timeline %}
                           <div class="caimus-process-timeline">
                             {% for step in tl.steps %}
-                              <div class="caimus-step {{ step.estado }}">
-                                <span class="caimus-step-circle"
-                                  data-bs-toggle="popover"
-                                  data-bs-trigger="click"
-                                  data-bs-placement="top"
-                                  data-bs-html="true"
-                                  data-bs-title="{{ step.titulo }}"
-                                  data-bs-content="{{ step.popover_html }}">{{ step.numero }}</span>
+                              <div class="caimus-step {% if step.estado == 'completed' %}completed{% elif step.estado == 'warning' %}warning{% elif step.estado == 'success' %}success{% elif step.estado == 'danger' %}danger{% else %}pending{% endif %}">
+                                <button type="button"
+                                  class="caimus-step-circle"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#timelineModal{{ item_form.instance.id }}_{{ forloop.counter }}">
+                                  {{ forloop.counter }}
+                                </button>
                                 <div class="caimus-step-title">{{ step.titulo }}</div>
                                 <div class="caimus-step-subtitle">{{ step.subtitulo }}</div>
                               </div>
                               {% if not forloop.last %}
-                                <div class="caimus-step-line {% if 'pending' not in step.estado %}completed{% endif %}"></div>
+                                <div class="caimus-step-line {% if step.completado %}completed{% endif %}"></div>
                               {% endif %}
                             {% endfor %}
                           </div>
+                          {% for step in tl.steps %}
+                            <div class="modal fade" id="timelineModal{{ item_form.instance.id }}_{{ forloop.counter }}" tabindex="-1" aria-hidden="true">
+                              <div class="modal-dialog modal-dialog-centered modal-sm">
+                                <div class="modal-content rounded-3">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title">{{ step.titulo }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <p class="mb-1"><strong>Fecha:</strong> {{ step.fecha }}</p>
+                                    <p class="mb-1"><strong>Usuario:</strong> {{ step.usuario }}</p>
+                                    {% if step.descripcion %}
+                                      <div class="alert alert-light border py-2 px-3 mb-2">{{ step.descripcion }}</div>
+                                    {% endif %}
+                                    {% if step.archivos %}
+                                      <h6 class="mb-2">Archivos adjuntos</h6>
+                                      {% for archivo in step.archivos %}
+                                        <div class="mb-2">
+                                          {% if archivo.fecha %}
+                                            <div class="small text-muted mb-1">{{ archivo.fecha }}</div>
+                                          {% endif %}
+                                          <a href="{{ archivo.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                                            Ver archivo adjunto {{ forloop.counter }}
+                                          </a>
+                                        </div>
+                                      {% endfor %}
+                                    {% endif %}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          {% endfor %}
                           {% if item_form.instance.pdf %}
                             <div class="d-flex flex-wrap gap-2 mb-2">
                               <a href="{{ item_form.instance.pdf.url }}" target="_blank" rel="noopener" class="btn btn-xs btn-outline-primary">Ver archivo actual</a>
@@ -538,18 +569,5 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
     });
   });
 
-  const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-  popoverTriggerList.forEach((el) => {
-    new bootstrap.Popover(el, { html: true, trigger: 'click', sanitize: false });
-  });
-  document.addEventListener('click', function (e) {
-    popoverTriggerList.forEach(function (el) {
-      const popover = bootstrap.Popover.getInstance(el);
-      const openPopover = document.querySelector('.popover');
-      if (popover && !el.contains(e.target) && !(openPopover && openPopover.contains(e.target))) {
-        popover.hide();
-      }
-    });
-  });
 </script>
 {% endblock %}
