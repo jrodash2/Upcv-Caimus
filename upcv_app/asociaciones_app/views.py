@@ -13,6 +13,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from weasyprint import HTML
@@ -1389,6 +1390,7 @@ def resolucion_pdf(request, pk):
     logo_secundario_url = None
     if institucion and institucion.logo2:
         logo_secundario_url = request.build_absolute_uri(institucion.logo2.url)
+    footer_image_url = request.build_absolute_uri(static("assets/images/footer_caimgus.png"))
 
     html = render_to_string(
         "asociaciones_app/resolucion_pdf.html",
@@ -1399,6 +1401,7 @@ def resolucion_pdf(request, pk):
             "fecha_constancia": fecha_constancia,
             "mes_constancia": meses_es.get(fecha_constancia.month) if fecha_constancia else "",
             "logo_secundario_url": logo_secundario_url,
+            "footer_image_url": footer_image_url,
         },
         request=request,
     )
