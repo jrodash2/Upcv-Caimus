@@ -168,35 +168,65 @@
   padding-top: 0.75rem;
 }
 
-.timeline-row {
-  display: flex;
-  gap: 0.65rem;
+.timeline-riho {
   position: relative;
-  padding: 0.35rem 0 0.55rem;
+  padding-left: 42px;
 }
 
-.timeline-row:not(:last-child)::before {
+.timeline-riho::before {
   content: "";
   position: absolute;
-  left: 0.24rem;
-  top: 1.1rem;
-  width: 1px;
-  height: calc(100% - 0.25rem);
-  background: rgba(108, 117, 125, 0.35);
+  left: 15px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: #e5ecf6;
 }
 
-.timeline-dot {
-  width: 0.52rem;
-  height: 0.52rem;
+.timeline-riho-item {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.timeline-riho-dot {
+  position: absolute;
+  left: -42px;
+  top: 10px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  margin-top: 0.36rem;
-  flex-shrink: 0;
-  background: #6c757d;
+  border: 2px solid #0d6efd;
+  color: #0d6efd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s ease-in-out;
+  z-index: 2;
 }
 
-.timeline-dot.archivo_subido, .timeline-badge.archivo_subido { background-color: #0d6efd; color: #fff; }
-.timeline-dot.archivo_actualizado, .timeline-badge.archivo_actualizado { background-color: #4dabf7; color: #fff; }
-.timeline-dot.observacion_admin, .timeline-badge.observacion_admin { background-color: #ffc107; color: #212529; }
-.timeline-dot.aprobado, .timeline-badge.aprobado { background-color: #198754; color: #fff; }
-.timeline-dot.rechazado, .timeline-badge.rechazado { background-color: #dc3545; color: #fff; }
-.timeline-dot.en_revision, .timeline-badge.en_revision { background-color: #0dcaf0; color: #212529; }
+.timeline-riho-dot:hover { transform: scale(1.12); box-shadow: 0 8px 18px rgba(0,0,0,.16); }
+.timeline-riho-card { transition: all .2s ease-in-out; }
+.timeline-riho-card:hover { transform: translateY(-2px); }
+
+.timeline-aprobado .timeline-riho-dot { border-color: #198754; color: #198754; background: #eaf8f0 !important; }
+.timeline-rechazado .timeline-riho-dot { border-color: #dc3545; color: #dc3545; background: #fff1f0 !important; }
+.timeline-observacion_admin .timeline-riho-dot { border-color: #ffc107; color: #9a6700; background: #fff7e0 !important; }
+.timeline-archivo_actualizado .timeline-riho-dot { border-color: #0dcaf0; color: #087990; background: #e8fbff !important; }
+.timeline-archivo_subido .timeline-riho-dot { border-color: #0d6efd; color: #0d6efd; background: #eef4ff !important; }
+.timeline-en_revision .timeline-riho-dot { border-color: #6c757d; color: #6c757d; background: #f5f6f8 !important; }
+
+.timeline-badge-aprobado { background: #198754; color: #fff; }
+.timeline-badge-rechazado { background: #dc3545; color: #fff; }
+.timeline-badge-observacion_admin { background: #ffc107; color: #111; }
+.timeline-badge-archivo_actualizado { background: #0dcaf0; color: #083344; }
+.timeline-badge-archivo_subido { background: #0d6efd; color: #fff; }
+.timeline-badge-en_revision { background: #6c757d; color: #fff; }
+
+@media (max-width: 575.98px) {
+  .timeline-riho { padding-left: 34px; }
+  .timeline-riho-dot { left: -34px; width: 26px; height: 26px; top: 12px; font-size: 11px; }
+  .timeline-riho::before { left: 12px; }
+}
