@@ -178,6 +178,48 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
                             Rechazado por: {{ item_form.instance.rechazado_por.get_full_name|default:item_form.instance.rechazado_por.username }}
                           {% endif %}
                         </small>
+                        <div class="item-timeline mt-3">
+                          <h6 class="mb-2">Línea de tiempo</h6>
+                          {% for evento in item_form.instance.historial.all %}
+                            <div class="timeline-row">
+                              <div class="timeline-dot {{ evento.accion|lower }}" aria-hidden="true"></div>
+                              <div class="timeline-content">
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                  <strong>{{ evento.get_accion_display }}</strong>
+                                  <span class="badge accessible-badge timeline-badge {{ evento.accion|lower }}">{{ evento.accion|cut:"_" }}</span>
+                                </div>
+                                <div class="text-muted small">
+                                  {{ evento.creado_en|date:"d/m/Y h:i A" }}
+                                  {% if evento.usuario %}
+                                    — {{ evento.usuario.get_full_name|default:evento.usuario.username }}
+                                  {% endif %}
+                                </div>
+                                {% if evento.descripcion %}
+                                  <div class="small">{{ evento.descripcion }}</div>
+                                {% endif %}
+                                {% if evento.archivo %}
+                                  <div class="small mt-1">
+                                    <a href="{{ evento.archivo.url }}" target="_blank" rel="noopener">Archivo adjunto</a>
+                                  </div>
+                                {% endif %}
+                              </div>
+                            </div>
+                          {% empty %}
+                            {% if item_form.instance.pdf %}
+                              <div class="timeline-row">
+                                <div class="timeline-dot archivo_subido" aria-hidden="true"></div>
+                                <div class="timeline-content">
+                                  <strong>Archivo cargado previamente</strong>
+                                  <div class="text-muted small">
+                                    {{ item_form.instance.fecha_actualizacion|date:"d/m/Y h:i A" }}
+                                  </div>
+                                </div>
+                              </div>
+                            {% else %}
+                              <p class="text-muted mb-0">Aún no hay acciones registradas para este ítem.</p>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
                         <button type="button" class="btn btn-primary btn-sm save-obs-btn" data-obs-url="{% url 'asociaciones:item_observacion' expediente.id item_form.instance.id %}">
                           <i data-feather="save" aria-hidden="true"></i>Guardar observación
                         </button>
