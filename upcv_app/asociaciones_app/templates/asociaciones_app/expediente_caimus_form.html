@@ -150,6 +150,77 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
                             <i data-feather="upload" aria-hidden="true"></i>{% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
                           </button>
                         </div>
+                        <div class="history-wheel-wrapper">
+                          <div class="history-wheel-track">
+                            {% for evento in item_form.instance.historial.all %}
+                              <div class="history-wheel-item history-{{ evento.accion|lower }}">
+                                <button type="button"
+                                        class="history-wheel-dot"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#historialModal{{ item_form.instance.id }}_{{ evento.id }}">
+                                  {% if evento.accion == "APROBADO" %}✓
+                                  {% elif evento.accion == "RECHAZADO" %}×
+                                  {% elif evento.accion == "OBSERVACION_ADMIN" %}!
+                                  {% elif evento.accion == "ARCHIVO_ACTUALIZADO" %}↻
+                                  {% elif evento.accion == "ARCHIVO_SUBIDO" %}↑
+                                  {% else %}•{% endif %}
+                                </button>
+                                <div class="history-wheel-title">{{ evento.get_accion_display }}</div>
+                                <div class="history-wheel-date">{{ evento.creado_en|date:"d/m H:i" }}</div>
+                              </div>
+                              {% if not forloop.last %}
+                                <div class="history-wheel-line"></div>
+                              {% endif %}
+
+                              <div class="modal fade timeline-modal {% if evento.accion == 'ARCHIVO_SUBIDO' %}timeline-modal-subido{% elif evento.accion == 'ARCHIVO_ACTUALIZADO' %}timeline-modal-actualizado{% elif evento.accion == 'OBSERVACION_ADMIN' %}timeline-modal-observacion{% elif evento.accion == 'APROBADO' %}timeline-modal-aprobado{% elif evento.accion == 'RECHAZADO' %}timeline-modal-rechazado{% endif %}" id="historialModal{{ item_form.instance.id }}_{{ evento.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                  <div class="modal-content border-0 shadow-lg rounded-4">
+                                    <div class="timeline-modal-header">
+                                      <div class="timeline-modal-icon bg-white bg-opacity-25">
+                                        {% if evento.accion == "APROBADO" %}✓
+                                        {% elif evento.accion == "RECHAZADO" %}×
+                                        {% elif evento.accion == "OBSERVACION_ADMIN" %}!
+                                        {% elif evento.accion == "ARCHIVO_ACTUALIZADO" %}↻
+                                        {% elif evento.accion == "ARCHIVO_SUBIDO" %}↑
+                                        {% else %}•{% endif %}
+                                      </div>
+                                      <h5 class="mb-0">{{ evento.get_accion_display }}</h5>
+                                      <small>{{ evento.creado_en|date:"d/m/Y h:i A" }}</small>
+                                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <div class="timeline-modal-body">
+                                      {% if evento.usuario %}
+                                        <div class="timeline-detail-row">
+                                          <span class="timeline-detail-label">Usuario</span>
+                                          <span class="timeline-detail-value">{{ evento.usuario.get_full_name|default:evento.usuario.username }}</span>
+                                        </div>
+                                      {% endif %}
+                                      <div class="timeline-detail-row">
+                                        <span class="timeline-detail-label">Fecha</span>
+                                        <span class="timeline-detail-value">{{ evento.creado_en|date:"d/m/Y h:i A" }}</span>
+                                      </div>
+                                      {% if evento.descripcion %}
+                                        <div class="timeline-description-box">{{ evento.descripcion }}</div>
+                                      {% endif %}
+                                      {% if evento.archivo %}
+                                        <div class="timeline-modal-action">
+                                          <a href="{{ evento.archivo.url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm px-4">Ver archivo adjunto</a>
+                                        </div>
+                                      {% endif %}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            {% empty %}
+                              <div class="text-muted small">Aún no hay acciones registradas.</div>
+                            {% endfor %}
+                          </div>
+                        </div>
+                          {% if item_form.instance.pdf %}
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                              <a href="{{ item_form.instance.pdf.url }}" target="_blank" rel="noopener" class="btn btn-xs btn-outline-primary">Ver archivo actual</a>
+                            </div>
+                          {% endif %}
                         <div class="mb-2">
                           {{ item_form.observaciones.label_tag }}
                           {{ item_form.observaciones }}
@@ -457,5 +528,6 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
       }
     });
   });
+
 </script>
 {% endblock %}
