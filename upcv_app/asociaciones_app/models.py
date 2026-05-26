@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
+from django.utils.html import escape, format_html, format_html_join
 
 
 PDF_VALIDATOR = FileExtensionValidator(["pdf"])
@@ -325,6 +326,121 @@ class ItemChecklistCAIMUS(models.Model):
         if self.observacion_revision:
             return self.fecha_rechazo or self.fecha_aprobacion
         return None
+
+    def process_timeline(self):
+        historial = list(self.historial.all())
+        first_upload = next((h for h in historial if h.accion == "ARCHIVO_SUBIDO"), None)
+        last_update = next((h for h in reversed(historial) if h.accion == "ARCHIVO_ACTUALIZADO"), None)
+        last_obs = next((h for h in reversed(historial) if h.accion == "OBSERVACION_ADMIN"), None)
+        approved = next((h for h in reversed(historial) if h.accion == "APROBADO"), None)
+        rejected = next((h for h in reversed(historial) if h.accion == "RECHAZADO"), None)
+
+        has_upload = bool(self.pdf) or first_upload is not None or last_update is not None
+        has_revision = bool(last_obs) or self.estado_item in [self.ESTADO_APROBADO, self.ESTADO_RECHAZADO]
+        has_update_after_obs = bool(
+            last_update and last_obs and last_update.creado_en >= last_obs.creado_en
+        )
+        final_label = "Aprobado" if self.estado_item == self.ESTADO_APROBADO else ("Rechazado" if self.estado_item == self.ESTADO_RECHAZADO else "Pendiente")
+        final_state = "success" if self.estado_item == self.ESTADO_APROBADO else ("danger" if self.estado_item == self.ESTADO_RECHAZADO else "pending")
+
+        def _usuario(evento):
+            if not evento or not evento.usuario:
+                return "Sistema"
+            return evento.usuario.get_full_name() or evento.usuario.username
+
+        def _evento_popover(evento, titulo):
+            if not evento:
+                return format_html('<div class="timeline-popover-content"><div>Pendiente.</div></div>')
+            archivo_html = (
+                format_html(
+                    '<a href="{}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Ver archivo adjunto</a>',
+                    evento.archivo.url,
+                )
+                if evento.archivo
+                else ""
+            )
+            return format_html(
+                '<div class="timeline-popover-content"><div><strong>Acción:</strong> {}</div>'
+                '<div><strong>Fecha:</strong> {}</div><div><strong>Usuario:</strong> {}</div>{}'
+                '<div class="mt-1">{}</div></div>',
+                escape(titulo),
+                evento.creado_en.strftime("%d/%m/%Y %I:%M %p"),
+                escape(_usuario(evento)),
+                archivo_html,
+                escape(evento.descripcion or ""),
+            )
+
+        update_events = [h for h in historial if h.accion == "ARCHIVO_ACTUALIZADO"]
+        updates_popover = format_html('<div class="timeline-popover-content"><div>Pendiente.</div></div>')
+        if update_events and last_update:
+            updates_html = format_html_join(
+                "",
+                "<li>{} — <a href='{}' target='_blank'>Ver archivo</a></li>",
+                ((ev.creado_en.strftime("%d/%m/%Y %I:%M %p"), ev.archivo.url) for ev in update_events if ev.archivo),
+            )
+            updates_popover = format_html(
+                '<div class="timeline-popover-content"><div><strong>Acción:</strong> Archivo actualizado</div>'
+                '<div><strong>Fecha:</strong> {}</div><div><strong>Usuario:</strong> {}</div><div class="mt-1">{}</div>'
+                '<div class="mt-2"><strong>Archivos actualizados</strong><ul class="list-unstyled mb-0">{}</ul></div></div>',
+                last_update.creado_en.strftime("%d/%m/%Y %I:%M %p"),
+                escape(_usuario(last_update)),
+                escape(last_update.descripcion or ""),
+                updates_html,
+            )
+
+        steps = [
+            {"titulo": "Subido", "subtitulo": "Archivo cargado" if has_upload else "Pendiente", "estado": "active completed" if has_upload else "pending", "popover_html": _evento_popover(first_upload, "Archivo subido"), "numero": "1"},
+            {"titulo": "Revisión", "subtitulo": "Con observación" if last_obs else ("En revisión" if has_revision else "Pendiente"), "estado": "warning completed" if has_revision else "pending", "popover_html": _evento_popover(last_obs, "Observación / Revisión"), "numero": "2"},
+        ]
+        if has_update_after_obs:
+            steps.append({"titulo": "Actualizado", "subtitulo": "Re-subida aplicada", "estado": "completed", "popover_html": updates_popover, "numero": "3"})
+        steps.append({"titulo": final_label, "subtitulo": "Documento aprobado" if final_state == "success" else ("Documento rechazado" if final_state == "danger" else "Pendiente de decisión"), "estado": "success completed" if final_state == "success" else ("danger completed" if final_state == "danger" else "pending"), "popover_html": _evento_popover(approved or rejected, final_label), "numero": "4"})
+
+        return {
+            "has_upload": has_upload,
+            "has_revision": has_revision,
+            "has_update_after_obs": has_update_after_obs,
+            "final_label": final_label,
+            "final_state": final_state,
+            "first_upload": first_upload,
+            "last_update": last_update,
+            "last_obs": last_obs,
+            "approved": approved,
+            "rejected": rejected,
+            "steps": steps,
+        }
+
+
+class HistorialItemExpediente(models.Model):
+    ACCION_ARCHIVO_SUBIDO = "ARCHIVO_SUBIDO"
+    ACCION_ARCHIVO_ACTUALIZADO = "ARCHIVO_ACTUALIZADO"
+    ACCION_OBSERVACION_ADMIN = "OBSERVACION_ADMIN"
+    ACCION_APROBADO = "APROBADO"
+    ACCION_RECHAZADO = "RECHAZADO"
+    ACCION_EN_REVISION = "EN_REVISION"
+    ACCIONES = [
+        (ACCION_ARCHIVO_SUBIDO, "Archivo subido"),
+        (ACCION_ARCHIVO_ACTUALIZADO, "Archivo actualizado"),
+        (ACCION_OBSERVACION_ADMIN, "Observación de revisión"),
+        (ACCION_APROBADO, "Aprobado"),
+        (ACCION_RECHAZADO, "Rechazado"),
+        (ACCION_EN_REVISION, "En revisión"),
+    ]
+
+    item = models.ForeignKey(ItemChecklistCAIMUS, on_delete=models.CASCADE, related_name="historial")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    accion = models.CharField(max_length=50, choices=ACCIONES)
+    descripcion = models.TextField(blank=True, null=True)
+    archivo = models.FileField(upload_to="expedientes/historial/%Y/", blank=True, null=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Historial de ítem de expediente"
+        verbose_name_plural = "Historial de ítems de expediente"
+        ordering = ["creado_en"]
+
+    def __str__(self) -> str:
+        return f"{self.item_id} - {self.accion}"
 
 
 class ExpedienteEstadoHistorial(models.Model):
