@@ -327,6 +327,38 @@ class ItemChecklistCAIMUS(models.Model):
         return None
 
 
+class HistorialItemExpediente(models.Model):
+    ACCION_ARCHIVO_SUBIDO = "ARCHIVO_SUBIDO"
+    ACCION_ARCHIVO_ACTUALIZADO = "ARCHIVO_ACTUALIZADO"
+    ACCION_OBSERVACION_ADMIN = "OBSERVACION_ADMIN"
+    ACCION_APROBADO = "APROBADO"
+    ACCION_RECHAZADO = "RECHAZADO"
+    ACCION_EN_REVISION = "EN_REVISION"
+    ACCIONES = [
+        (ACCION_ARCHIVO_SUBIDO, "Archivo subido"),
+        (ACCION_ARCHIVO_ACTUALIZADO, "Archivo actualizado"),
+        (ACCION_OBSERVACION_ADMIN, "Observación de revisión"),
+        (ACCION_APROBADO, "Aprobado"),
+        (ACCION_RECHAZADO, "Rechazado"),
+        (ACCION_EN_REVISION, "En revisión"),
+    ]
+
+    item = models.ForeignKey(ItemChecklistCAIMUS, on_delete=models.CASCADE, related_name="historial")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    accion = models.CharField(max_length=50, choices=ACCIONES)
+    descripcion = models.TextField(blank=True, null=True)
+    archivo = models.FileField(upload_to="expedientes/historial/%Y/", blank=True, null=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Historial de ítem de expediente"
+        verbose_name_plural = "Historial de ítems de expediente"
+        ordering = ["creado_en"]
+
+    def __str__(self) -> str:
+        return f"{self.item_id} - {self.accion}"
+
+
 class ExpedienteEstadoHistorial(models.Model):
     expediente = models.ForeignKey(ExpedienteCAIMUS, on_delete=models.CASCADE, related_name="historial_estados")
     estado_anterior = models.CharField(max_length=20, choices=ExpedienteCAIMUS.ESTADOS)
