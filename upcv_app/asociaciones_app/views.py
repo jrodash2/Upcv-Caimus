@@ -39,6 +39,7 @@ from .models import (
     ExpedienteEstadoHistorial,
     InformeEstadoHistorial,
     InformeMensual,
+    HistorialItemExpediente,
     ItemChecklistCAIMUS,
     ConfiguracionInformeAnio,
     NotificacionAdmin,
@@ -640,7 +641,12 @@ def expediente_caimus(request, pk):
         formset = ItemChecklistFormSet(instance=expediente, queryset=expediente.items.filter(activo=True).order_by("numero"))
 
     progress = expediente.progress_stats()
-    items_revision_timeline = expediente.items.filter(activo=True).select_related("aprobado_por", "rechazado_por").order_by("numero")
+    items_revision_timeline = (
+        expediente.items.filter(activo=True)
+        .select_related("aprobado_por", "rechazado_por")
+        .prefetch_related("historial", "historial__usuario")
+        .order_by("numero")
+    )
     expediente_completo = expediente_esta_completo(expediente)
     todos_items_aprobados = expediente_items_100_aprobados(expediente)
     estado_aprobado_valido = expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and todos_items_aprobados
@@ -752,6 +758,7 @@ def item_upload(request, expediente_id, item_id):
         messages.error(request, "Tipo de archivo no válido. Formatos permitidos: PDF, XLS y XLSX.")
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
+    tenia_archivo = bool(item.pdf)
     item.pdf = archivo
     item.subido_por = request.user
     try:
@@ -760,6 +767,21 @@ def item_upload(request, expediente_id, item_id):
         messages.error(request, "; ".join(exc.messages))
         return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
     item.save()
+    HistorialItemExpediente.objects.create(
+        item=item,
+        usuario=request.user,
+        accion=(
+            HistorialItemExpediente.ACCION_ARCHIVO_ACTUALIZADO
+            if tenia_archivo
+            else HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO
+        ),
+        descripcion=(
+            "El usuario actualizó o reemplazó el archivo del documento."
+            if tenia_archivo
+            else "El usuario cargó el archivo del documento."
+        ),
+        archivo=item.pdf,
+    )
     messages.success(request, "Archivo subido correctamente.")
     return redirect("asociaciones:expediente_caimus", pk=expediente.asociacion.pk)
 
@@ -795,6 +817,7 @@ def item_revision_estado(request, expediente_id, item_id):
     accion = request.POST.get("accion")
     observacion_revision = (request.POST.get("observacion_revision") or "").strip()
     ahora = timezone.now()
+    observacion_cambio = observacion_revision != (item.observacion_revision or "").strip()
     if accion == "aprobar":
         item.estado_item = item.ESTADO_APROBADO
         item.aprobado_por = request.user
@@ -803,6 +826,19 @@ def item_revision_estado(request, expediente_id, item_id):
         item.fecha_rechazo = None
         item.observacion_revision = observacion_revision
         item.save(update_fields=["estado_item", "aprobado_por", "fecha_aprobacion", "rechazado_por", "fecha_rechazo", "observacion_revision"])
+        if observacion_revision and observacion_cambio:
+            HistorialItemExpediente.objects.create(
+                item=item,
+                usuario=request.user,
+                accion=HistorialItemExpediente.ACCION_OBSERVACION_ADMIN,
+                descripcion=observacion_revision,
+            )
+        HistorialItemExpediente.objects.create(
+            item=item,
+            usuario=request.user,
+            accion=HistorialItemExpediente.ACCION_APROBADO,
+            descripcion="El documento fue aprobado.",
+        )
         crear_notificacion_asociacion(
             asociacion=expediente.asociacion,
             titulo="Documento aprobado",
@@ -819,6 +855,19 @@ def item_revision_estado(request, expediente_id, item_id):
         item.fecha_aprobacion = None
         item.observacion_revision = observacion_revision
         item.save(update_fields=["estado_item", "rechazado_por", "fecha_rechazo", "aprobado_por", "fecha_aprobacion", "observacion_revision"])
+        if observacion_revision and observacion_cambio:
+            HistorialItemExpediente.objects.create(
+                item=item,
+                usuario=request.user,
+                accion=HistorialItemExpediente.ACCION_OBSERVACION_ADMIN,
+                descripcion=observacion_revision,
+            )
+        HistorialItemExpediente.objects.create(
+            item=item,
+            usuario=request.user,
+            accion=HistorialItemExpediente.ACCION_RECHAZADO,
+            descripcion=observacion_revision or "El documento fue rechazado.",
+        )
         crear_notificacion_asociacion(
             asociacion=expediente.asociacion,
             titulo="Documento rechazado",

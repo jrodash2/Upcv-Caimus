@@ -326,6 +326,67 @@ class ItemChecklistCAIMUS(models.Model):
             return self.fecha_rechazo or self.fecha_aprobacion
         return None
 
+    def process_timeline(self):
+        historial = list(self.historial.all())
+        first_upload = next((h for h in historial if h.accion == "ARCHIVO_SUBIDO"), None)
+        last_update = next((h for h in reversed(historial) if h.accion == "ARCHIVO_ACTUALIZADO"), None)
+        last_obs = next((h for h in reversed(historial) if h.accion == "OBSERVACION_ADMIN"), None)
+        approved = next((h for h in reversed(historial) if h.accion == "APROBADO"), None)
+        rejected = next((h for h in reversed(historial) if h.accion == "RECHAZADO"), None)
+
+        has_upload = bool(self.pdf) or first_upload is not None or last_update is not None
+        has_revision = bool(last_obs) or self.estado_item in [self.ESTADO_APROBADO, self.ESTADO_RECHAZADO]
+        has_update_after_obs = bool(
+            last_update and last_obs and last_update.creado_en >= last_obs.creado_en
+        )
+        final_label = "Aprobado" if self.estado_item == self.ESTADO_APROBADO else ("Rechazado" if self.estado_item == self.ESTADO_RECHAZADO else "Pendiente")
+        final_state = "success" if self.estado_item == self.ESTADO_APROBADO else ("danger" if self.estado_item == self.ESTADO_RECHAZADO else "pending")
+
+        return {
+            "has_upload": has_upload,
+            "has_revision": has_revision,
+            "has_update_after_obs": has_update_after_obs,
+            "final_label": final_label,
+            "final_state": final_state,
+            "first_upload": first_upload,
+            "last_update": last_update,
+            "last_obs": last_obs,
+            "approved": approved,
+            "rejected": rejected,
+        }
+
+
+class HistorialItemExpediente(models.Model):
+    ACCION_ARCHIVO_SUBIDO = "ARCHIVO_SUBIDO"
+    ACCION_ARCHIVO_ACTUALIZADO = "ARCHIVO_ACTUALIZADO"
+    ACCION_OBSERVACION_ADMIN = "OBSERVACION_ADMIN"
+    ACCION_APROBADO = "APROBADO"
+    ACCION_RECHAZADO = "RECHAZADO"
+    ACCION_EN_REVISION = "EN_REVISION"
+    ACCIONES = [
+        (ACCION_ARCHIVO_SUBIDO, "Archivo subido"),
+        (ACCION_ARCHIVO_ACTUALIZADO, "Archivo actualizado"),
+        (ACCION_OBSERVACION_ADMIN, "Observación de revisión"),
+        (ACCION_APROBADO, "Aprobado"),
+        (ACCION_RECHAZADO, "Rechazado"),
+        (ACCION_EN_REVISION, "En revisión"),
+    ]
+
+    item = models.ForeignKey(ItemChecklistCAIMUS, on_delete=models.CASCADE, related_name="historial")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    accion = models.CharField(max_length=50, choices=ACCIONES)
+    descripcion = models.TextField(blank=True, null=True)
+    archivo = models.FileField(upload_to="expedientes/historial/%Y/", blank=True, null=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Historial de ítem de expediente"
+        verbose_name_plural = "Historial de ítems de expediente"
+        ordering = ["creado_en"]
+
+    def __str__(self) -> str:
+        return f"{self.item_id} - {self.accion}"
+
 
 class ExpedienteEstadoHistorial(models.Model):
     expediente = models.ForeignKey(ExpedienteCAIMUS, on_delete=models.CASCADE, related_name="historial_estados")

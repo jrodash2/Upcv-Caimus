@@ -162,3 +162,100 @@
     justify-content: space-between;
   }
 }
+
+.item-timeline {
+  border-top: 1px dashed rgba(108, 117, 125, 0.3);
+  padding-top: 0.75rem;
+}
+
+.caimus-process-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  width: 100%;
+  overflow-x: auto;
+  padding: 14px 4px 10px;
+}
+
+.caimus-step {
+  min-width: 130px;
+  text-align: center;
+  position: relative;
+  color: #7a8190;
+}
+
+.caimus-step-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid #d8dbe3;
+  background: #fff;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .08);
+  cursor: pointer;
+  transition: all .2s ease-in-out;
+}
+
+.caimus-step-circle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .16);
+}
+
+.caimus-step.pending .caimus-step-circle {
+  color: #7a8190;
+}
+
+.caimus-step.active .caimus-step-circle,
+.caimus-step.completed .caimus-step-circle {
+  background: #007f83;
+  border-color: #007f83;
+  color: #fff;
+}
+
+.caimus-step.warning .caimus-step-circle {
+  background: #f8b400;
+  border-color: #f8b400;
+  color: #111;
+}
+
+.caimus-step.success .caimus-step-circle {
+  background: #00a65a;
+  border-color: #00a65a;
+  color: #fff;
+}
+
+.caimus-step.danger .caimus-step-circle {
+  background: #ff5f57;
+  border-color: #ff5f57;
+  color: #fff;
+}
+
+.caimus-step-line {
+  height: 2px;
+  min-width: 70px;
+  border-top: 2px dashed #c8ced8;
+  margin-top: 21px;
+}
+
+.caimus-step-line.completed {
+  border-color: #007f83;
+}
+
+.caimus-step-title {
+  margin-top: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #102a43;
+  white-space: nowrap;
+}
+
+.caimus-step-subtitle {
+  font-size: 12px;
+  color: #7a8190;
+  white-space: nowrap;
+}
