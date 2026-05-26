@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
+from django.utils.html import escape, format_html, format_html_join
 
 
 PDF_VALIDATOR = FileExtensionValidator(["pdf"])
