@@ -168,45 +168,94 @@
   padding-top: 0.75rem;
 }
 
-.item-process-timeline {
+.caimus-process-timeline {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 12px 0 8px;
+  align-items: flex-start;
+  gap: 0;
+  width: 100%;
   overflow-x: auto;
-  padding: 6px 2px;
+  padding: 14px 4px 10px;
 }
 
-.process-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 70px;
-  font-size: 11px;
-  color: #6c757d;
+.caimus-step {
+  min-width: 130px;
+  text-align: center;
+  position: relative;
+  color: #7a8190;
 }
 
-.process-dot {
-  width: 26px;
-  height: 26px;
+.caimus-step-circle {
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  border: 2px solid #ced4da;
+  border: 2px solid #d8dbe3;
   background: #fff;
-  color: #6c757d;
-  display: flex;
+  color: transparent;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  margin-bottom: 4px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .08);
   cursor: pointer;
   transition: all .2s ease-in-out;
 }
-.process-dot:hover { transform: scale(1.08); }
-.process-label { white-space: nowrap; font-weight: 600; }
-.process-line { height: 2px; min-width: 36px; background: #dee2e6; margin-bottom: 18px; }
-.process-step.completed .process-dot { background: #0d6efd; border-color: #0d6efd; color: #fff; }
-.process-line.completed { background: #0d6efd; }
-.process-step.success .process-dot { background: #198754; border-color: #198754; color: #fff; }
-.process-step.danger .process-dot { background: #dc3545; border-color: #dc3545; color: #fff; }
-.process-step.warning .process-dot { background: #ffc107; border-color: #ffc107; color: #111; }
+
+.caimus-step-circle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .16);
+}
+
+.caimus-step.pending .caimus-step-circle {
+  color: #7a8190;
+}
+
+.caimus-step.active .caimus-step-circle,
+.caimus-step.completed .caimus-step-circle {
+  background: #007f83;
+  border-color: #007f83;
+  color: #fff;
+}
+
+.caimus-step.warning .caimus-step-circle {
+  background: #f8b400;
+  border-color: #f8b400;
+  color: #111;
+}
+
+.caimus-step.success .caimus-step-circle {
+  background: #00a65a;
+  border-color: #00a65a;
+  color: #fff;
+}
+
+.caimus-step.danger .caimus-step-circle {
+  background: #ff5f57;
+  border-color: #ff5f57;
+  color: #fff;
+}
+
+.caimus-step-line {
+  height: 2px;
+  min-width: 70px;
+  border-top: 2px dashed #c8ced8;
+  margin-top: 21px;
+}
+
+.caimus-step-line.completed {
+  border-color: #007f83;
+}
+
+.caimus-step-title {
+  margin-top: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #102a43;
+  white-space: nowrap;
+}
+
+.caimus-step-subtitle {
+  font-size: 12px;
+  color: #7a8190;
+  white-space: nowrap;
+}
