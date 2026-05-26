@@ -150,6 +150,42 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
                             <i data-feather="upload" aria-hidden="true"></i>{% if item_form.instance.pdf %}Re-subir archivo{% else %}Subir archivo{% endif %}
                           </button>
                         </div>
+                        {% with tl=item_form.instance.process_timeline %}
+                          <div class="item-process-timeline">
+                            <div class="process-step {% if tl.has_upload %}completed{% endif %}">
+                              <span class="process-dot" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
+                                data-bs-content="{% if tl.first_upload %}Subido el {{ tl.first_upload.creado_en|date:'d/m/Y h:i A' }}{% elif item_form.instance.pdf %}Archivo disponible{% else %}Pendiente de subida{% endif %}{% if item_form.instance.subido_por %} por {{ item_form.instance.subido_por.get_full_name|default:item_form.instance.subido_por.username }}{% endif %}">1</span>
+                              <span class="process-label">Subido</span>
+                            </div>
+                            <div class="process-line {% if tl.has_revision or tl.has_update_after_obs or tl.final_state != 'pending' %}completed{% endif %}"></div>
+                            <div class="process-step {% if tl.has_revision %}warning{% endif %}">
+                              <span class="process-dot" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
+                                data-bs-content="{% if tl.last_obs %}Observación: {{ tl.last_obs.descripcion|striptags|truncatechars:120|escape }}{% else %}Pendiente de revisión{% endif %}">2</span>
+                              <span class="process-label">{% if tl.last_obs %}Observación{% else %}Revisión{% endif %}</span>
+                            </div>
+                            {% if tl.has_update_after_obs %}
+                              <div class="process-line {% if tl.final_state != 'pending' %}completed{% endif %}"></div>
+                              <div class="process-step completed">
+                                <span class="process-dot" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
+                                  data-bs-content="Actualizado el {{ tl.last_update.creado_en|date:'d/m/Y h:i A' }}{% if tl.last_update.usuario %} por {{ tl.last_update.usuario.get_full_name|default:tl.last_update.usuario.username }}{% endif %}{% if tl.last_update.archivo %}. Archivo adjunto disponible{% endif %}">3</span>
+                                <span class="process-label">Actualizado</span>
+                              </div>
+                            {% endif %}
+                            <div class="process-line {% if tl.final_state != 'pending' %}completed{% endif %}"></div>
+                            <div class="process-step {% if tl.final_state == 'success' %}success{% elif tl.final_state == 'danger' %}danger{% endif %}">
+                              <span class="process-dot" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top"
+                                data-bs-content="{% if tl.approved %}Aprobado el {{ tl.approved.creado_en|date:'d/m/Y h:i A' }}{% elif tl.rejected %}Rechazado el {{ tl.rejected.creado_en|date:'d/m/Y h:i A' }}{% else %}Pendiente de decisión{% endif %}{% if tl.rejected and tl.rejected.descripcion %}. {{ tl.rejected.descripcion|striptags|truncatechars:120|escape }}{% endif %}">
+                                {% if tl.final_state == 'success' %}✓{% elif tl.final_state == 'danger' %}✕{% else %}4{% endif %}
+                              </span>
+                              <span class="process-label">{{ tl.final_label }}</span>
+                            </div>
+                          </div>
+                          {% if item_form.instance.pdf %}
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                              <a href="{{ item_form.instance.pdf.url }}" target="_blank" rel="noopener" class="btn btn-xs btn-outline-primary">Ver archivo actual</a>
+                            </div>
+                          {% endif %}
+                        {% endwith %}
                         <div class="mb-2">
                           {{ item_form.observaciones.label_tag }}
                           {{ item_form.observaciones }}
@@ -456,6 +492,10 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
         notify('No se pudo actualizar el estado del ítem.', 'danger');
       }
     });
+  });
+
+  document.querySelectorAll('[data-bs-toggle="popover"]').forEach((el) => {
+    new bootstrap.Popover(el, { sanitize: true });
   });
 </script>
 {% endblock %}
