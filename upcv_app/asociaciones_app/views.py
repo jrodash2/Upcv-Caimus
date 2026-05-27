@@ -810,42 +810,50 @@ def _nombre_usuario(user):
 
 
 def construir_timeline_eventos_visibles_item(item):
-    historial_ordenado = list(item.historial.all().order_by("creado_en", "id"))
-    evento_inicial = next(
-        (evento for evento in historial_ordenado if evento.accion == HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO),
-        None,
+    historial_ordenado = list(item.historial.select_related("usuario").all().order_by("creado_en", "id"))
+    evento_inicial = next((e for e in historial_ordenado if e.accion == HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO), None)
+    primer_evento = historial_ordenado[0] if historial_ordenado else None
+
+    usuario_inicio = (
+        (evento_inicial.usuario if evento_inicial and evento_inicial.usuario else None)
+        or getattr(item, "subido_por", None)
+        or (primer_evento.usuario if primer_evento and primer_evento.usuario else None)
     )
+    fecha_inicio = (
+        (evento_inicial.creado_en if evento_inicial else None)
+        or getattr(item, "fecha_carga", None)
+        or (primer_evento.creado_en if primer_evento else None)
+        or getattr(item, "fecha_actualizacion", None)
+    )
+    archivo_inicio = (
+        (evento_inicial.archivo if evento_inicial and evento_inicial.archivo else None)
+        or getattr(item, "archivo", None)
+        or getattr(item, "pdf", None)
+    )
+
     tiene_rechazo = any(evento.accion == HistorialItemExpediente.ACCION_RECHAZADO for evento in historial_ordenado)
     observaciones_admin = [e for e in historial_ordenado if e.accion == HistorialItemExpediente.ACCION_OBSERVACION_ADMIN]
     observacion_rechazo = observaciones_admin[-1].descripcion if observaciones_admin else ""
 
-    eventos_visibles = []
-    if evento_inicial:
-        evento_inicial.timeline_accion = "INICIO"
-        evento_inicial.timeline_titulo = "Inicio"
-        evento_inicial.timeline_subtitulo = "Carga inicial"
-        evento_inicial.timeline_descripcion = "Carga inicial del documento"
-        eventos_visibles.append(evento_inicial)
-    else:
-        fecha_fallback = item.fecha_carga or item.fecha_actualizacion
-        eventos_visibles.append(
-            {
-                "id": f"inicio-fallback-{item.id}",
-                "accion": "INICIO",
-                "timeline_accion": "INICIO",
-                "timeline_titulo": "Inicio",
-                "timeline_subtitulo": "Carga inicial",
-                "timeline_descripcion": "Registro inicial generado con datos actuales.",
-                "creado_en": fecha_fallback,
-                "usuario": item.subido_por,
-                "archivo": item.pdf,
-                "es_fallback": True,
-            }
-        )
+    eventos_visibles = [{
+        "id": f"inicio-{item.id}",
+        "accion": "INICIO",
+        "timeline_accion": "INICIO",
+        "timeline_titulo": "Inicio",
+        "timeline_subtitulo": "Carga inicial",
+        "timeline_descripcion": (
+            "Inicio del proceso con la primera carga del documento."
+            if evento_inicial
+            else "Registro inicial generado con datos actuales."
+        ),
+        "creado_en": fecha_inicio,
+        "fecha": fecha_inicio,
+        "usuario": usuario_inicio,
+        "archivo": archivo_inicio,
+        "es_fallback": not bool(evento_inicial),
+    }]
 
     for evento in historial_ordenado:
-        if evento_inicial and evento.id == evento_inicial.id:
-            continue
         if tiene_rechazo and evento.accion == HistorialItemExpediente.ACCION_OBSERVACION_ADMIN:
             continue
         if evento.accion == HistorialItemExpediente.ACCION_RECHAZADO:
