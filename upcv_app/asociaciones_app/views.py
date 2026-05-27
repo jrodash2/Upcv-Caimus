@@ -647,6 +647,10 @@ def expediente_caimus(request, pk):
         .prefetch_related("historial", "historial__usuario")
         .order_by("numero")
     )
+    for form_item in formset.forms:
+        form_item.instance.timeline_eventos_visibles = construir_timeline_eventos_visibles_item(form_item.instance)
+    for item_timeline in items_revision_timeline:
+        item_timeline.timeline_eventos_visibles = construir_timeline_eventos_visibles_item(item_timeline)
     expediente_completo = expediente_esta_completo(expediente)
     todos_items_aprobados = expediente_items_100_aprobados(expediente)
     estado_aprobado_valido = expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and todos_items_aprobados
@@ -803,6 +807,52 @@ def _nombre_usuario(user):
     if not user:
         return ""
     return user.get_full_name() or user.username
+
+
+def construir_timeline_eventos_visibles_item(item):
+    historial_ordenado = list(item.historial.all().order_by("creado_en", "id"))
+    evento_inicial = next(
+        (evento for evento in historial_ordenado if evento.accion == HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO),
+        None,
+    )
+    tiene_rechazo = any(evento.accion == HistorialItemExpediente.ACCION_RECHAZADO for evento in historial_ordenado)
+    observaciones_admin = [e for e in historial_ordenado if e.accion == HistorialItemExpediente.ACCION_OBSERVACION_ADMIN]
+    observacion_rechazo = observaciones_admin[-1].descripcion if observaciones_admin else ""
+
+    eventos_visibles = []
+    if evento_inicial:
+        evento_inicial.timeline_accion = "INICIO"
+        evento_inicial.timeline_titulo = "Inicio"
+        evento_inicial.timeline_subtitulo = "Carga inicial"
+        evento_inicial.timeline_descripcion = "Carga inicial del documento"
+        eventos_visibles.append(evento_inicial)
+    else:
+        fecha_fallback = item.fecha_carga or item.fecha_actualizacion
+        eventos_visibles.append(
+            {
+                "id": f"inicio-fallback-{item.id}",
+                "accion": "INICIO",
+                "timeline_accion": "INICIO",
+                "timeline_titulo": "Inicio",
+                "timeline_subtitulo": "Carga inicial",
+                "timeline_descripcion": "Registro inicial generado con datos actuales.",
+                "creado_en": fecha_fallback,
+                "usuario": item.subido_por,
+                "archivo": item.pdf,
+                "es_fallback": True,
+            }
+        )
+
+    for evento in historial_ordenado:
+        if evento_inicial and evento.id == evento_inicial.id:
+            continue
+        if tiene_rechazo and evento.accion == HistorialItemExpediente.ACCION_OBSERVACION_ADMIN:
+            continue
+        if evento.accion == HistorialItemExpediente.ACCION_RECHAZADO:
+            evento.observacion_admin_modal = observacion_rechazo
+        eventos_visibles.append(evento)
+
+    return eventos_visibles
 
 
 @asociacion_required
