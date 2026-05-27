@@ -235,6 +235,12 @@
   color: #0d6efd;
 }
 
+.history-inicio .history-wheel-dot {
+  background: #e7f1ff;
+  border-color: #0b5ed7;
+  color: #0b5ed7;
+}
+
 .history-archivo_actualizado .history-wheel-dot {
   background: #e8fbff;
   border-color: #0dcaf0;
