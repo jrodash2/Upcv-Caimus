@@ -813,6 +813,10 @@ def construir_timeline_eventos_visibles_item(item):
     historial_ordenado = list(item.historial.select_related("usuario").all().order_by("creado_en", "id"))
     evento_inicial = next((e for e in historial_ordenado if e.accion == HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO), None)
     primer_evento = historial_ordenado[0] if historial_ordenado else None
+    archivo_item = getattr(item, "archivo", None) or getattr(item, "pdf", None)
+
+    if not archivo_item and not historial_ordenado:
+        return []
 
     usuario_inicio = (
         (evento_inicial.usuario if evento_inicial and evento_inicial.usuario else None)
@@ -835,25 +839,41 @@ def construir_timeline_eventos_visibles_item(item):
     observaciones_admin = [e for e in historial_ordenado if e.accion == HistorialItemExpediente.ACCION_OBSERVACION_ADMIN]
     observacion_rechazo = observaciones_admin[-1].descripcion if observaciones_admin else ""
 
-    eventos_visibles = [{
-        "id": f"inicio-{item.id}",
-        "accion": "INICIO",
-        "timeline_accion": "INICIO",
-        "timeline_titulo": "Inicio",
-        "timeline_subtitulo": "Carga inicial",
-        "timeline_descripcion": (
-            "Inicio del proceso con la primera carga del documento."
-            if evento_inicial
-            else "Registro inicial generado con datos actuales."
-        ),
-        "creado_en": fecha_inicio,
-        "fecha": fecha_inicio,
-        "usuario": usuario_inicio,
-        "archivo": archivo_inicio,
-        "es_fallback": not bool(evento_inicial),
-    }]
+    eventos_visibles = []
+    if evento_inicial:
+        eventos_visibles.append({
+            "id": f"inicio-{item.id}",
+            "evento_id": evento_inicial.id,
+            "accion": "INICIO",
+            "timeline_accion": "INICIO",
+            "timeline_titulo": "Inicio",
+            "timeline_subtitulo": "Carga inicial",
+            "timeline_descripcion": evento_inicial.descripcion or "Inicio del proceso con la primera carga del documento.",
+            "creado_en": evento_inicial.creado_en,
+            "fecha": evento_inicial.creado_en,
+            "usuario": evento_inicial.usuario,
+            "archivo": evento_inicial.archivo,
+            "es_fallback": False,
+        })
+    elif archivo_item:
+        eventos_visibles.append({
+            "id": f"inicio-fallback-{item.id}",
+            "evento_id": f"fallback-{item.id}",
+            "accion": "INICIO",
+            "timeline_accion": "INICIO",
+            "timeline_titulo": "Inicio",
+            "timeline_subtitulo": "Carga inicial",
+            "timeline_descripcion": "Inicio del proceso con archivo existente.",
+            "creado_en": fecha_inicio,
+            "fecha": fecha_inicio,
+            "usuario": usuario_inicio,
+            "archivo": archivo_inicio,
+            "es_fallback": True,
+        })
 
     for evento in historial_ordenado:
+        if evento_inicial and evento.id == evento_inicial.id:
+            continue
         if tiene_rechazo and evento.accion == HistorialItemExpediente.ACCION_OBSERVACION_ADMIN:
             continue
         if evento.accion == HistorialItemExpediente.ACCION_RECHAZADO:
