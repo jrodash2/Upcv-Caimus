@@ -23,19 +23,31 @@
     .estado { padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; font-weight: 700; }
     .valida { background: #dcfce7; color: #166534; }
     .invalida { background: #fee2e2; color: #991b1b; }
-    .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; margin: 0 0 16px 0; }
-    .label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
-    .value { font-weight: 600; margin-top: 2px; }
+    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 45px; margin: 18px 0; }
+    .info-item { margin: 0; padding: 0; }
+    .info-label { display: block; font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; line-height: 1.1; }
+    .info-value { display: block; font-size: 14px; font-weight: 700; color: #111827; line-height: 1.15; margin-bottom: 6px; }
+    .info-value.fecha { font-size: 13px; }
+    .info-value.codigo { word-break: break-all; font-size: 11px; line-height: 1.2; }
+    .info-value.representante { font-size: 13px; font-weight: 600; }
+    .badge { display: inline-block; padding: .28em .58em; border-radius: .35rem; color: #fff; font-size: 11px; font-weight: 700; line-height: 1; vertical-align: baseline; }
+    .bg-success { background-color: #198754; }
+    .bg-danger { background-color: #dc3545; }
     .revisores { margin-top: 18px; }
     .departamento { margin-bottom: 12px; }
     .departamento-title { color: #08245c; font-weight: 700; margin-bottom: 6px; }
     .texto-final { margin-top: 22px; }
     .firmas-grid { display: table; width: 100%; margin-top: 50px; table-layout: fixed; }
-    .firma-box { display: table-cell; text-align: center; vertical-align: bottom; font-size: 12px; padding: 0 10px; }
-    .firma-img { max-height: 55px; max-width: 150px; object-fit: contain; margin-bottom: 4px; }
-    .firma-line { border-top: 1px solid #000; margin: 55px 20px 8px; }
+    .firma-box { display: table-cell; text-align: center; vertical-align: bottom; position: relative; padding: 10px 8px; min-height: 150px; overflow: visible; }
+    .firma-contenido { position: relative; min-height: 135px; max-width: 210px; margin: 0 auto; }
+    .firma-img { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); max-width: 190px; max-height: 95px; width: auto; height: auto; object-fit: contain; z-index: 2; opacity: 0.9; }
+    .firma-texto { position: relative; z-index: 1; padding-top: 48px; font-size: 12px; line-height: 1.25; color: #111; }
+    .firma-texto strong { display: block; font-size: 12px; font-weight: 700; }
+    .firma-cargo, .firma-departamento { font-size: 10px; }
+    .firma-box.sin-firma .firma-texto { padding-top: 45px; border-top: 1px solid #000; }
+    .firma-box.con-firma .firma-texto { padding-top: 48px; }
     .sin-firmas { text-align: center; color: #6b7280; margin-top: 40px; }
-    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
+    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px; } .info-grid { grid-template-columns: 1fr; gap: 6px; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } .firma-img { max-width: 150px; max-height: 80px; } .firma-box { min-height: 135px; } }
     @media print {
       body { background: #fff; }
       .page-shell { box-shadow: none; margin: 0; padding: 0; max-width: none; min-height: auto; overflow: hidden; }
@@ -60,17 +72,17 @@
     {% endif %}
 
     {% if expediente %}
-      <section class="meta">
-        <div><div class="label">Número de expediente</div><div class="value">{% if expediente.resolucion %}{{ expediente.resolucion.correlativo }}{% else %}Sin correlativo emitido{% endif %}</div></div>
-        <div><div class="label">Asociación</div><div class="value">{{ expediente.asociacion.nombre }}</div></div>
-        <div><div class="label">Año</div><div class="value">{{ expediente.asociacion.anio.anio }}</div></div>
-        <div><div class="label">Código</div><div class="value">{{ codigo_validacion }}</div></div>
-        <div><div class="label">Estado</div><div class="value">{{ expediente.get_estado_display }}</div></div>
-        <div><div class="label">Fecha de aprobación</div><div class="value">{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No registrada" }}</div></div>
-        <div><div class="label">Fecha de consulta</div><div class="value">{{ fecha_consulta|date:"d/m/Y h:i A" }}</div></div>
-        <div><div class="label">Representante legal</div><div class="value">{{ expediente.asociacion.nombre_representante_legal|default:"No registrado" }}</div></div>
-        <div><div class="label">DPI representante legal</div><div class="value">{{ expediente.asociacion.dpi_representante_legal|default:"No registrado" }}</div></div>
-        <div><div class="label">Acuerdo gubernativo</div><div class="value">{{ expediente.asociacion.acuerdo_gubernativo|default:"No registrado" }}</div></div>
+      <section class="info-grid">
+        <div class="info-item"><span class="info-label">Número de expediente</span><span class="info-value">{% if expediente.resolucion %}{{ expediente.resolucion.correlativo }}{% else %}Sin correlativo emitido{% endif %}</span></div>
+        <div class="info-item"><span class="info-label">Asociación</span><span class="info-value">{{ expediente.asociacion.nombre }}</span></div>
+        <div class="info-item"><span class="info-label">Año</span><span class="info-value">{{ expediente.asociacion.anio.anio }}</span></div>
+        <div class="info-item"><span class="info-label">Código</span><span class="info-value codigo">{{ codigo_validacion }}</span></div>
+        <div class="info-item"><span class="info-label">Estado</span><span class="info-value">{% if constancia_valida %}<span class="badge bg-success">{{ expediente.get_estado_display }}</span>{% else %}<span class="badge bg-danger">{{ expediente.get_estado_display }}</span>{% endif %}</span></div>
+        <div class="info-item"><span class="info-label">Fecha de aprobación</span><span class="info-value fecha">{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No registrada" }}</span></div>
+        <div class="info-item"><span class="info-label">Fecha de consulta</span><span class="info-value fecha">{{ fecha_consulta|date:"d/m/Y h:i A" }}</span></div>
+        <div class="info-item"><span class="info-label">Representante legal</span><span class="info-value representante">{{ expediente.asociacion.nombre_representante_legal|default:"No registrado" }}</span></div>
+        <div class="info-item"><span class="info-label">DPI representante legal</span><span class="info-value representante">{{ expediente.asociacion.dpi_representante_legal|default:"No registrado" }}</span></div>
+        <div class="info-item"><span class="info-label">Acuerdo gubernativo</span><span class="info-value representante">{{ expediente.asociacion.acuerdo_gubernativo|default:"No registrado" }}</span></div>
       </section>
 
       <p>
@@ -105,16 +117,18 @@
       {% if firmas %}
         <div class="firmas-grid">
           {% for firma in firmas %}
-            <div class="firma-box">
-              {% if firma.firma_png %}
-                <img src="{{ firma.firma_png.url }}" class="firma-img" alt="Firma de {{ firma.nombre }}">
-              {% else %}
-                <div class="firma-line"></div>
-              {% endif %}
-              <div>{{ firma.profesion|default:"" }}</div>
-              <strong>{{ firma.nombre }}</strong>
-<div style="font-size: 10px;">{{ firma.cargo }}</div>
-
+            <div class="firma-box {% if firma.firma_png %}con-firma{% else %}sin-firma{% endif %}">
+              <div class="firma-contenido">
+                {% if firma.firma_png %}
+                  <img src="{{ firma.firma_png.url }}" class="firma-img" alt="Firma de {{ firma.nombre }}">
+                {% endif %}
+                <div class="firma-texto">
+                  <div>{{ firma.profesion|default:"" }}</div>
+                  <strong>{{ firma.nombre }}</strong>
+                  <div class="firma-cargo">{{ firma.cargo }}</div>
+                  <div class="firma-departamento">{{ firma.departamento }}</div>
+                </div>
+              </div>
             </div>
           {% endfor %}
         </div>
