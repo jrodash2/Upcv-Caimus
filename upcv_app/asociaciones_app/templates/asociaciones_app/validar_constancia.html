@@ -13,11 +13,11 @@
       margin-left: 1.2cm;
     }
     body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111; font-size: 14px; line-height: 1.45; padding-bottom: 3.2cm; }
-    .page-shell { max-width: 8.5in; min-height: 13in; margin: 28px auto; background: #fff; padding: 0.7cm 1.2cm 3.2cm 1.2cm; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); box-sizing: border-box; position: relative; }
+    .page-shell { max-width: 8.5in; min-height: 13in; margin: 28px auto; background: #fff; padding: 0.7cm 1.2cm; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); box-sizing: border-box; position: relative; overflow: hidden; }
     .header-logo { width: 100%; margin-top: 0; padding-top: 0; margin-bottom: 6px; }
     .header-logo img { height: 55px; width: auto; }
-    .pdf-footer { position: fixed; bottom: 0.2cm; left: 1.2cm; right: 1.2cm; text-align: center; }
-    .pdf-footer img { width: 100%; height: auto; display: block; }
+    .revision-footer-img { width: 100%; margin-top: 32px; overflow: hidden; }
+    .revision-footer-img img { display: block; width: 100%; max-width: 100%; height: auto; object-fit: contain; }
     .titulo { text-align: center; font-weight: 700; font-size: 18px; margin: 0 0 18px 0; letter-spacing: .5px; text-transform: uppercase; color: #111; }
     p { margin: 0 0 10px 0; text-align: justify; }
     .estado { padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; font-weight: 700; }
@@ -35,8 +35,13 @@
     .firma-img { max-height: 55px; max-width: 150px; object-fit: contain; margin-bottom: 4px; }
     .firma-line { border-top: 1px solid #000; margin: 55px 20px 8px; }
     .sin-firmas { text-align: center; color: #6b7280; margin-top: 40px; }
-    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px 24px 3.2cm 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
-    @media print { body { background: #fff; } .page-shell { box-shadow: none; margin: 0; padding: 0; max-width: none; min-height: auto; } }
+    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
+    @media print {
+      body { background: #fff; }
+      .page-shell { box-shadow: none; margin: 0; padding: 0; max-width: none; min-height: auto; overflow: hidden; }
+      .revision-footer-img { margin-top: 28px; page-break-inside: avoid; }
+      .revision-footer-img img { width: 100%; max-width: 100%; height: auto; }
+    }
   </style>
 </head>
 <body>
@@ -117,9 +122,9 @@
         <div class="sin-firmas">No hay firmas activas configuradas para esta constancia.</div>
       {% endif %}
     {% endif %}
-    <footer class="pdf-footer">
-      <img src="{{ footer_image_url }}" alt="Footer institucional">
-    </footer>
+    <div class="revision-footer-img">
+      <img src="{{ footer_image_url }}" alt="Pie de página institucional">
+    </div>
   </main>
 </body>
 </html>
