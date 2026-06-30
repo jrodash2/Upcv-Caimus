@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CONSTANCIA DE REVISIÓN DE EXPEDIENTE DIGITAL</title>
+  <style>
+    @page {
+      size: 8.5in 13in;
+      margin-top: 0.7cm;
+      margin-right: 1.2cm;
+      margin-bottom: 0.7cm;
+      margin-left: 1.2cm;
+    }
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111; font-size: 14px; line-height: 1.45; padding-bottom: 3.2cm; }
+    .page-shell { max-width: 8.5in; min-height: 13in; margin: 28px auto; background: #fff; padding: 0.7cm 1.2cm; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); box-sizing: border-box; position: relative; overflow: hidden; }
+    .header-logo { width: 100%; margin-top: 0; padding-top: 0; margin-bottom: 6px; }
+    .header-logo img { height: 55px; width: auto; }
+    .revision-footer-img { width: 100%; margin-top: 32px; overflow: hidden; }
+    .revision-footer-img img { display: block; width: 100%; max-width: 100%; height: auto; object-fit: contain; }
+    .titulo { text-align: center; font-weight: 700; font-size: 18px; margin: 0 0 18px 0; letter-spacing: .5px; text-transform: uppercase; color: #111; }
+    p { margin: 0 0 10px 0; text-align: justify; }
+    .estado { padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; font-weight: 700; }
+    .valida { background: #dcfce7; color: #166534; }
+    .invalida { background: #fee2e2; color: #991b1b; }
+    .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; margin: 0 0 16px 0; }
+    .label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
+    .value { font-weight: 600; margin-top: 2px; }
+    .revisores { margin-top: 18px; }
+    .departamento { margin-bottom: 12px; }
+    .departamento-title { color: #08245c; font-weight: 700; margin-bottom: 6px; }
+    .texto-final { margin-top: 22px; }
+    .firmas-grid { display: table; width: 100%; margin-top: 50px; table-layout: fixed; }
+    .firma-box { display: table-cell; text-align: center; vertical-align: bottom; font-size: 12px; padding: 0 10px; }
+    .firma-img { max-height: 55px; max-width: 150px; object-fit: contain; margin-bottom: 4px; }
+    .firma-line { border-top: 1px solid #000; margin: 55px 20px 8px; }
+    .sin-firmas { text-align: center; color: #6b7280; margin-top: 40px; }
+    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
+    @media print {
+      body { background: #fff; }
+      .page-shell { box-shadow: none; margin: 0; padding: 0; max-width: none; min-height: auto; overflow: hidden; }
+      .revision-footer-img { margin-top: 28px; page-break-inside: avoid; }
+      .revision-footer-img img { width: 100%; max-width: 100%; height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <div class="header-logo">
+      {% if logo_secundario_url %}
+        <img src="{{ logo_secundario_url }}" alt="Logo Institucional Secundario">
+      {% endif %}
+    </div>
+    <h1 class="titulo">CONSTANCIA DE REVISIÓN DE EXPEDIENTE DIGITAL</h1>
+
+    {% if constancia_valida %}
+      <div class="estado valida">Constancia válida. El expediente se encuentra aprobado.</div>
+    {% else %}
+      <div class="estado invalida">{{ mensaje|default:"Constancia no válida para aprobación. El expediente no se encuentra aprobado." }}</div>
+    {% endif %}
+
+    {% if expediente %}
+      <section class="meta">
+        <div><div class="label">Número de expediente</div><div class="value">{% if expediente.resolucion %}{{ expediente.resolucion.correlativo }}{% else %}Sin correlativo emitido{% endif %}</div></div>
+        <div><div class="label">Asociación</div><div class="value">{{ expediente.asociacion.nombre }}</div></div>
+        <div><div class="label">Año</div><div class="value">{{ expediente.asociacion.anio.anio }}</div></div>
+        <div><div class="label">Código</div><div class="value">{{ codigo_validacion }}</div></div>
+        <div><div class="label">Estado</div><div class="value">{{ expediente.get_estado_display }}</div></div>
+        <div><div class="label">Fecha de aprobación</div><div class="value">{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No registrada" }}</div></div>
+        <div><div class="label">Fecha de consulta</div><div class="value">{{ fecha_consulta|date:"d/m/Y h:i A" }}</div></div>
+        <div><div class="label">Representante legal</div><div class="value">{{ expediente.asociacion.nombre_representante_legal|default:"No registrado" }}</div></div>
+        <div><div class="label">DPI representante legal</div><div class="value">{{ expediente.asociacion.dpi_representante_legal|default:"No registrado" }}</div></div>
+        <div><div class="label">Acuerdo gubernativo</div><div class="value">{{ expediente.asociacion.acuerdo_gubernativo|default:"No registrado" }}</div></div>
+      </section>
+
+      <p>
+        Por este medio se hace constar que en cumplimiento a lo instruido en las literales a), b) y d) del artículo 5 del
+        Acuerdo Ministerial 114-2026 del Ministerio de Gobernación, Normativo Interno que Regula el Procedimiento de
+        Transferencia, Ejecución y Liquidación de las Asignaciones Especiales para el Ejercicio Fiscal 2026, en el que se
+        establece que esta Unidad, como entidad ejecutora, es responsable de administrar la Plataforma de Apoyo para el
+        Seguimiento del Trámite del Expediente Digital, las siguientes personas verificaron que se cumplan con todos los
+        requisitos establecidos en el Artículo 3 del Acuerdo arriba identificado:
+      </p>
+
+      <section class="revisores" aria-label="Personas revisoras por departamento">
+        {% for departamento in departamentos %}
+          <div class="departamento">
+            <div class="departamento-title">{{ forloop.counter }}. {{ departamento.nombre }}</div>
+            {% for revisor in departamento.revisores.all %}
+              <p>{{ forloop.parentloop.counter }}.{{ forloop.counter }}. {{ revisor.usuario.get_full_name|default:revisor.usuario.username }}</p>
+            {% empty %}
+              <p class="text-muted">No hay revisores activos configurados.</p>
+            {% endfor %}
+          </div>
+        {% empty %}
+          <p class="text-muted">No hay departamentos activos configurados.</p>
+        {% endfor %}
+      </section>
+
+      <p class="texto-final">
+        Quienes prestan sus servicios técnicos y profesionales en el Departamento de Planificación Estratégica y Gestión
+        por Resultados, Departamento Administrativo Financiero y Sección de Asesoría Jurídica.
+      </p>
+
+      {% if firmas %}
+        <div class="firmas-grid">
+          {% for firma in firmas %}
+            <div class="firma-box">
+              {% if firma.firma_png %}
+                <img src="{{ firma.firma_png.url }}" class="firma-img" alt="Firma de {{ firma.nombre }}">
+              {% else %}
+                <div class="firma-line"></div>
+              {% endif %}
+              <div>{{ firma.profesion|default:"" }}</div>
+              <strong>{{ firma.nombre }}</strong>
+              <div>{{ firma.cargo }}</div>
+              <div>{{ firma.departamento }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="sin-firmas">No hay firmas activas configuradas para esta constancia.</div>
+      {% endif %}
+    {% endif %}
+    <div class="revision-footer-img">
+      <img src="{{ footer_image_url }}" alt="Pie de página institucional">
+    </div>
+  </main>
+</body>
+</html>

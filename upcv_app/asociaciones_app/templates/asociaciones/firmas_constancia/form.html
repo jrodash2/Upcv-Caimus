@@ -1,0 +1,71 @@
+{% extends "almacen/base.html" %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-header">
+        <h4>{{ titulo }}</h4>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label>Nombre</label>
+              {{ form.nombre }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label>Profesión</label>
+              {{ form.profesion }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label>Cargo</label>
+              {{ form.cargo }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label>Departamento</label>
+              {{ form.departamento }}
+            </div>
+
+            <div class="col-md-3 mb-3">
+              <label>Orden</label>
+              {{ form.orden }}
+            </div>
+
+            <div class="col-md-3 mb-3 d-flex align-items-center">
+              <div class="form-check mt-4">
+                {{ form.activo }}
+                <label class="form-check-label">Activo</label>
+              </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label>Firma PNG</label>
+              {{ form.firma_png }}
+              <small class="text-muted d-block mt-1">Subir únicamente imagen PNG de la firma. Tamaño máximo 2 MB.</small>
+              {% if firma and firma.firma_png %}
+                <div class="mt-2">
+                  <img src="{{ firma.firma_png.url }}" alt="Firma actual" style="max-height: 70px; max-width: 180px; object-fit: contain;">
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="text-end">
+            <a href="{% url 'asociaciones:firmas_constancia_list' %}" class="btn btn-light">
+              Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+              {{ accion }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
