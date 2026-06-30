@@ -1,0 +1,52 @@
+{% extends 'almacen/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><h4>{{ titulo }}</h4></div>
+
+    <div class="card">
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+            {{ form.nombre }}
+            {{ form.nombre.errors }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.profesion.id_for_label }}">{{ form.profesion.label }}</label>
+            {{ form.profesion }}
+            {{ form.profesion.errors }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.cargo.id_for_label }}">{{ form.cargo.label }}</label>
+            {{ form.cargo }}
+            {{ form.cargo.errors }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.departamento.id_for_label }}">{{ form.departamento.label }}</label>
+            {{ form.departamento }}
+            {{ form.departamento.errors }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="{{ form.orden.id_for_label }}">{{ form.orden.label }}</label>
+            {{ form.orden }}
+            {{ form.orden.errors }}
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+              {{ form.activo }}
+              <label class="form-check-label" for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label>
+            </div>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Guardar</button>
+            <a class="btn btn-light" href="{% url 'asociaciones:firmas_constancia_list' %}">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

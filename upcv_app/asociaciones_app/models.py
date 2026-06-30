@@ -393,6 +393,23 @@ class ResolucionExpediente(models.Model):
         return self.correlativo
 
 
+class FirmaConstancia(models.Model):
+    nombre = models.CharField(max_length=255)
+    profesion = models.CharField(max_length=100, blank=True, null=True)
+    cargo = models.CharField(max_length=255)
+    departamento = models.CharField(max_length=255)
+    orden = models.PositiveIntegerField(default=1)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Firma de constancia"
+        verbose_name_plural = "Firmas de constancia"
+        ordering = ["orden", "nombre"]
+
+    def __str__(self) -> str:
+        return f"{self.nombre} - {self.cargo}"
+
+
 def sincronizar_checklist_expediente(expediente: ExpedienteCAIMUS) -> None:
     plantilla_qs = expediente.asociacion.anio.checklist_items.filter(activo=True).order_by("numero")
     if not plantilla_qs.exists():

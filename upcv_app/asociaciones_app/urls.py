@@ -30,6 +30,7 @@ urlpatterns = [
     path("<int:pk>/informes/", views.informes_mensuales, name="informes_mensuales"),
     path("expedientes/<int:pk>/revision/", views.expediente_revision, name="expediente_revision"),
     path("expedientes/<int:pk>/resolucion/pdf/", views.resolucion_pdf, name="resolucion_pdf"),
+    path("constancias/validar/<path:codigo>/", views.validar_constancia_expediente, name="validar_constancia_expediente"),
     path(
         "expedientes/<int:expediente_id>/items/<int:item_id>/upload/",
         views.item_upload,
@@ -89,4 +90,9 @@ urlpatterns = [
     path("bandeja-revision/<int:pk>/atender/", views.bandeja_marcar_atendida, name="bandeja_marcar_atendida"),
     path("alertas-admin/<int:pk>/revisar/", views.alerta_admin_revisar, name="alerta_admin_revisar"),
     path("asignaciones/", views.asignaciones_list, name="asignaciones_list"),
+    path("configuracion/firmas-constancia/", views.firmas_constancia_list, name="firmas_constancia_list"),
+    path("configuracion/firmas-constancia/nueva/", views.firma_constancia_create, name="firma_constancia_create"),
+    path("configuracion/firmas-constancia/<int:pk>/editar/", views.firma_constancia_edit, name="firma_constancia_edit"),
+    path("configuracion/firmas-constancia/<int:pk>/toggle/", views.firma_constancia_toggle, name="firma_constancia_toggle"),
+    path("configuracion/firmas-constancia/<int:pk>/eliminar/", views.firma_constancia_delete, name="firma_constancia_delete"),
 ]

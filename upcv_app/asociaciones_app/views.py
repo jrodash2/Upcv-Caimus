@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import base64
 from calendar import month_name
+from io import BytesIO
 from pathlib import Path
+
+import qrcode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
+from django.core.signing import BadSignature, Signer
 from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
@@ -27,6 +32,7 @@ from .forms import (
     AsociacionUsuarioForm,
     ChecklistAnioItemFormSet,
     ExpedienteCAIMUSForm,
+    FirmaConstanciaForm,
     ItemChecklistFormSet,
     RevisionExpedienteForm,
 )
@@ -40,6 +46,7 @@ from .models import (
     InformeEstadoHistorial,
     InformeMensual,
     HistorialItemExpediente,
+    FirmaConstancia,
     ItemChecklistCAIMUS,
     ConfiguracionInformeAnio,
     NotificacionAdmin,
@@ -65,6 +72,7 @@ from .permissions import (
     get_asociaciones_usuario,
     is_admin,
     is_asociacion,
+    is_informatica,
     user_can_download_resolucion,
     user_has_asociacion_access,
     user_has_expediente_access,
@@ -77,6 +85,19 @@ ALLOWED_EXPEDIENTE_ITEM_CONTENT_TYPES = {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 from .utils import obtener_entradas_bandeja_admin, resumen_dashboard_admin
+
+
+def _generar_qr_validacion_base64(validacion_url):
+    qr = qrcode.QRCode(box_size=4, border=2)
+    qr.add_data(validacion_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{qr_base64}"
+
+
 @asociacion_required
 def dashboard(request):
     if is_admin(request.user):
@@ -1518,6 +1539,16 @@ def resolucion_pdf(request, pk):
     if institucion and institucion.logo2:
         logo_secundario_url = request.build_absolute_uri(institucion.logo2.url)
     footer_image_url = request.build_absolute_uri(static("assets/images/pie.png"))
+    fecha_descarga = timezone.localtime(timezone.now())
+    signer = Signer()
+    codigo_validacion = signer.sign(str(expediente.id))
+    validacion_url = request.build_absolute_uri(
+        reverse(
+            "asociaciones:validar_constancia_expediente",
+            args=[codigo_validacion],
+        )
+    )
+    qr_validacion = _generar_qr_validacion_base64(validacion_url)
 
     html = render_to_string(
         "asociaciones_app/resolucion_pdf.html",
@@ -1529,6 +1560,9 @@ def resolucion_pdf(request, pk):
             "mes_constancia": meses_es.get(fecha_constancia.month) if fecha_constancia else "",
             "logo_secundario_url": logo_secundario_url,
             "footer_image_url": footer_image_url,
+            "fecha_descarga": fecha_descarga,
+            "validacion_url": validacion_url,
+            "qr_validacion": qr_validacion,
         },
         request=request,
     )
@@ -1538,6 +1572,148 @@ def resolucion_pdf(request, pk):
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f"inline; filename=Constancia-{resolucion.correlativo}.pdf"
     return response
+
+
+def validar_constancia_expediente(request, codigo):
+    signer = Signer()
+    try:
+        expediente_id = signer.unsign(codigo)
+    except BadSignature:
+        return render(
+            request,
+            "asociaciones_app/validar_constancia.html",
+            {
+                "constancia_valida": False,
+                "mensaje": "Código de validación inválido.",
+                "fecha_consulta": timezone.localtime(timezone.now()),
+            },
+        )
+
+    expediente = get_object_or_404(
+        ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio", "aprobado_por"),
+        id=expediente_id,
+    )
+
+    items = expediente.items.select_related("aprobado_por", "rechazado_por").filter(activo=True).order_by("numero")
+    constancia_valida = expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO
+
+    revisores = []
+    for item in items:
+        if item.aprobado_por:
+            revisores.append(item.aprobado_por)
+        if item.rechazado_por:
+            revisores.append(item.rechazado_por)
+
+    acciones_revision = [
+        HistorialItemExpediente.ACCION_APROBADO,
+        HistorialItemExpediente.ACCION_RECHAZADO,
+        HistorialItemExpediente.ACCION_OBSERVACION_ADMIN,
+    ]
+    usuarios_historial = (
+        HistorialItemExpediente.objects.filter(item__expediente=expediente, accion__in=acciones_revision)
+        .select_related("usuario")
+        .order_by("creado_en")
+    )
+    for entrada in usuarios_historial:
+        if entrada.usuario:
+            revisores.append(entrada.usuario)
+
+    if expediente.aprobado_por:
+        revisores.append(expediente.aprobado_por)
+
+    revisores_unicos = []
+    ids = set()
+    for usuario in revisores:
+        if usuario and usuario.id not in ids:
+            revisores_unicos.append(usuario)
+            ids.add(usuario.id)
+
+    return render(
+        request,
+        "asociaciones_app/validar_constancia.html",
+        {
+            "expediente": expediente,
+            "items": items if constancia_valida else [],
+            "revisores": revisores_unicos if constancia_valida else [],
+            "firmas": FirmaConstancia.objects.filter(activo=True).order_by("orden", "nombre") if constancia_valida else [],
+            "constancia_valida": constancia_valida,
+            "fecha_consulta": timezone.localtime(timezone.now()),
+            "codigo_validacion": codigo,
+        },
+    )
+
+
+def informatica_required(view_func):
+    @login_required
+    def _wrapped_view(request, *args, **kwargs):
+        if not is_informatica(request.user):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
+
+
+@informatica_required
+def firmas_constancia_list(request):
+    firmas = FirmaConstancia.objects.order_by("orden", "nombre")
+    return render(request, "asociaciones_app/firmas_constancia_list.html", {"firmas": firmas})
+
+
+@informatica_required
+def firma_constancia_create(request):
+    if request.method == "POST":
+        form = FirmaConstanciaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Firma de constancia creada correctamente.")
+            return redirect("asociaciones:firmas_constancia_list")
+    else:
+        form = FirmaConstanciaForm()
+
+    return render(
+        request,
+        "asociaciones_app/firma_constancia_form.html",
+        {"form": form, "titulo": "Crear firma de constancia"},
+    )
+
+
+@informatica_required
+def firma_constancia_edit(request, pk):
+    firma = get_object_or_404(FirmaConstancia, pk=pk)
+    if request.method == "POST":
+        form = FirmaConstanciaForm(request.POST, instance=firma)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Firma de constancia actualizada correctamente.")
+            return redirect("asociaciones:firmas_constancia_list")
+    else:
+        form = FirmaConstanciaForm(instance=firma)
+
+    return render(
+        request,
+        "asociaciones_app/firma_constancia_form.html",
+        {"form": form, "firma": firma, "titulo": "Editar firma de constancia"},
+    )
+
+
+@informatica_required
+@require_POST
+def firma_constancia_toggle(request, pk):
+    firma = get_object_or_404(FirmaConstancia, pk=pk)
+    firma.activo = not firma.activo
+    firma.save(update_fields=["activo"])
+    estado = "activada" if firma.activo else "desactivada"
+    messages.success(request, f"Firma {estado} correctamente.")
+    return redirect("asociaciones:firmas_constancia_list")
+
+
+@informatica_required
+@require_POST
+def firma_constancia_delete(request, pk):
+    firma = get_object_or_404(FirmaConstancia, pk=pk)
+    firma.delete()
+    messages.success(request, "Firma eliminada correctamente.")
+    return redirect("asociaciones:firmas_constancia_list")
 
 
 @login_required
