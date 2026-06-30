@@ -5,33 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CONSTANCIA DE REVISIÓN DE EXPEDIENTE DIGITAL</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #1f2937; }
-    .container { max-width: 980px; margin: 28px auto; background: #fff; padding: 36px; border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); }
-    h1 { color: #08245c; font-size: 24px; text-align: center; margin: 0 0 24px; text-transform: uppercase; }
-    h2 { color: #08245c; font-size: 18px; margin-top: 28px; }
-    p { font-size: 15px; line-height: 1.7; text-align: justify; }
-    .estado { padding: 12px 16px; border-radius: 8px; margin-bottom: 22px; font-weight: 700; }
+    @page {
+      size: 8.5in 13in;
+      margin-top: 0.7cm;
+      margin-right: 1.2cm;
+      margin-bottom: 0.7cm;
+      margin-left: 1.2cm;
+    }
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111; font-size: 14px; line-height: 1.45; padding-bottom: 3.2cm; }
+    .page-shell { max-width: 8.5in; min-height: 13in; margin: 28px auto; background: #fff; padding: 0.7cm 1.2cm 3.2cm 1.2cm; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); box-sizing: border-box; position: relative; }
+    .header-logo { width: 100%; margin-top: 0; padding-top: 0; margin-bottom: 6px; }
+    .header-logo img { height: 55px; width: auto; }
+    .pdf-footer { position: fixed; bottom: 0.2cm; left: 1.2cm; right: 1.2cm; text-align: center; }
+    .pdf-footer img { width: 100%; height: auto; display: block; }
+    .titulo { text-align: center; font-weight: 700; font-size: 18px; margin: 0 0 18px 0; letter-spacing: .5px; text-transform: uppercase; color: #111; }
+    p { margin: 0 0 10px 0; text-align: justify; }
+    .estado { padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; font-weight: 700; }
     .valida { background: #dcfce7; color: #166534; }
     .invalida { background: #fee2e2; color: #991b1b; }
-    .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin: 20px 0; }
-    .label { font-size: 12px; color: #6b7280; text-transform: uppercase; }
+    .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; margin: 0 0 16px 0; }
+    .label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
     .value { font-weight: 600; margin-top: 2px; }
     .revisores { margin-top: 18px; }
-    .departamento { margin-bottom: 18px; }
+    .departamento { margin-bottom: 12px; }
     .departamento-title { color: #08245c; font-weight: 700; margin-bottom: 6px; }
-    .departamento ol { margin-top: 4px; }
     .texto-final { margin-top: 22px; }
     .firmas-grid { display: table; width: 100%; margin-top: 50px; table-layout: fixed; }
     .firma-box { display: table-cell; text-align: center; vertical-align: bottom; font-size: 12px; padding: 0 10px; }
     .firma-img { max-height: 55px; max-width: 150px; object-fit: contain; margin-bottom: 4px; }
     .firma-line { border-top: 1px solid #000; margin: 55px 20px 8px; }
     .sin-firmas { text-align: center; color: #6b7280; margin-top: 40px; }
-    @media (max-width: 700px) { .container { margin: 0; border-radius: 0; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
+    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px 24px 3.2cm 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
+    @media print { body { background: #fff; } .page-shell { box-shadow: none; margin: 0; padding: 0; max-width: none; min-height: auto; } }
   </style>
 </head>
 <body>
-  <main class="container">
-    <h1>CONSTANCIA DE REVISIÓN DE EXPEDIENTE DIGITAL</h1>
+  <main class="page-shell">
+    <div class="header-logo">
+      {% if logo_secundario_url %}
+        <img src="{{ logo_secundario_url }}" alt="Logo Institucional Secundario">
+      {% endif %}
+    </div>
+    <h1 class="titulo">CONSTANCIA DE REVISIÓN DE EXPEDIENTE DIGITAL</h1>
 
     {% if constancia_valida %}
       <div class="estado valida">Constancia válida. El expediente se encuentra aprobado.</div>
@@ -102,6 +117,9 @@
         <div class="sin-firmas">No hay firmas activas configuradas para esta constancia.</div>
       {% endif %}
     {% endif %}
+    <footer class="pdf-footer">
+      <img src="{{ footer_image_url }}" alt="Footer institucional">
+    </footer>
   </main>
 </body>
 </html>

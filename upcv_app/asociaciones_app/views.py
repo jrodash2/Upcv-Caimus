@@ -103,6 +103,18 @@ def _generar_qr_validacion_base64(validacion_url):
     return f"data:image/png;base64,{qr_base64}"
 
 
+def _contexto_institucional_constancia(request):
+    institucion = Institucion.objects.first()
+    logo_secundario_url = None
+    if institucion and institucion.logo2:
+        logo_secundario_url = request.build_absolute_uri(institucion.logo2.url)
+    return {
+        "institucion": institucion,
+        "logo_secundario_url": logo_secundario_url,
+        "footer_image_url": request.build_absolute_uri(static("assets/images/pie.png")),
+    }
+
+
 @asociacion_required
 def dashboard(request):
     if is_admin(request.user):
@@ -1584,15 +1596,13 @@ def validar_constancia_expediente(request, codigo):
     try:
         expediente_id = signer.unsign(codigo)
     except BadSignature:
-        return render(
-            request,
-            "asociaciones_app/validar_constancia.html",
-            {
-                "constancia_valida": False,
-                "mensaje": "Código de validación inválido.",
-                "fecha_consulta": timezone.localtime(timezone.now()),
-            },
-        )
+        context = {
+            "constancia_valida": False,
+            "mensaje": "Código de validación inválido.",
+            "fecha_consulta": timezone.localtime(timezone.now()),
+        }
+        context.update(_contexto_institucional_constancia(request))
+        return render(request, "asociaciones_app/validar_constancia.html", context)
 
     expediente = get_object_or_404(
         ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio", "aprobado_por"),
@@ -1633,31 +1643,29 @@ def validar_constancia_expediente(request, codigo):
             revisores_unicos.append(usuario)
             ids.add(usuario.id)
 
-    return render(
-        request,
-        "asociaciones_app/validar_constancia.html",
-        {
-            "expediente": expediente,
-            "items": items if constancia_valida else [],
-            "revisores": revisores_unicos if constancia_valida else [],
-            "departamentos": DepartamentoConstancia.objects.filter(activo=True)
-            .prefetch_related(
-                Prefetch(
-                    "revisores",
-                    queryset=RevisorConstancia.objects.filter(activo=True)
-                    .select_related("usuario")
-                    .prefetch_related("usuario__groups")
-                    .order_by("orden", "usuario__first_name"),
-                )
+    context = {
+        "expediente": expediente,
+        "items": items if constancia_valida else [],
+        "revisores": revisores_unicos if constancia_valida else [],
+        "departamentos": DepartamentoConstancia.objects.filter(activo=True)
+        .prefetch_related(
+            Prefetch(
+                "revisores",
+                queryset=RevisorConstancia.objects.filter(activo=True)
+                .select_related("usuario")
+                .prefetch_related("usuario__groups")
+                .order_by("orden", "usuario__first_name"),
             )
-            .order_by("orden", "nombre")
-            if constancia_valida else [],
-            "firmas": FirmaConstancia.objects.filter(activo=True).order_by("orden", "nombre") if constancia_valida else [],
-            "constancia_valida": constancia_valida,
-            "fecha_consulta": timezone.localtime(timezone.now()),
-            "codigo_validacion": codigo,
-        },
-    )
+        )
+        .order_by("orden", "nombre")
+        if constancia_valida else [],
+        "firmas": FirmaConstancia.objects.filter(activo=True).order_by("orden", "nombre") if constancia_valida else [],
+        "constancia_valida": constancia_valida,
+        "fecha_consulta": timezone.localtime(timezone.now()),
+        "codigo_validacion": codigo,
+    }
+    context.update(_contexto_institucional_constancia(request))
+    return render(request, "asociaciones_app/validar_constancia.html", context)
 
 
 def informatica_required(view_func):
