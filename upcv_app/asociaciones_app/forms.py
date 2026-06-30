@@ -12,6 +12,7 @@ from .models import (
     AsociacionUsuario,
     ChecklistAnioItem,
     ExpedienteCAIMUS,
+    FirmaConstancia,
     ItemChecklistCAIMUS,
 )
 
@@ -93,6 +94,28 @@ class AsociacionUsuarioForm(forms.ModelForm):
             "usuario": forms.Select(attrs={"class": "form-select"}),
             "rol_en_asociacion": forms.TextInput(attrs={"class": "form-control"}),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class FirmaConstanciaForm(forms.ModelForm):
+    class Meta:
+        model = FirmaConstancia
+        fields = ["nombre", "profesion", "cargo", "departamento", "orden", "activo"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "profesion": forms.TextInput(attrs={"class": "form-control"}),
+            "cargo": forms.TextInput(attrs={"class": "form-control"}),
+            "departamento": forms.TextInput(attrs={"class": "form-control"}),
+            "orden": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+        labels = {
+            "nombre": "Nombre",
+            "profesion": "Profesión",
+            "cargo": "Cargo",
+            "departamento": "Departamento",
+            "orden": "Orden",
+            "activo": "Activo",
         }
 
 
