@@ -30,6 +30,7 @@ urlpatterns = [
     path("<int:pk>/informes/", views.informes_mensuales, name="informes_mensuales"),
     path("expedientes/<int:pk>/revision/", views.expediente_revision, name="expediente_revision"),
     path("expedientes/<int:pk>/resolucion/pdf/", views.resolucion_pdf, name="resolucion_pdf"),
+    path("constancias/validar/<path:codigo>/", views.validar_constancia_expediente, name="validar_constancia_expediente"),
     path(
         "expedientes/<int:expediente_id>/items/<int:item_id>/upload/",
         views.item_upload,
