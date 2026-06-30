@@ -31,11 +31,16 @@
     .departamento-title { color: #08245c; font-weight: 700; margin-bottom: 6px; }
     .texto-final { margin-top: 22px; }
     .firmas-grid { display: table; width: 100%; margin-top: 50px; table-layout: fixed; }
-    .firma-box { display: table-cell; text-align: center; vertical-align: bottom; font-size: 12px; padding: 0 10px; }
-    .firma-img { max-height: 55px; max-width: 150px; object-fit: contain; margin-bottom: 4px; }
-    .firma-line { border-top: 1px solid #000; margin: 55px 20px 8px; }
+    .firma-box { display: table-cell; text-align: center; vertical-align: bottom; position: relative; padding: 10px 8px; min-height: 150px; overflow: visible; }
+    .firma-contenido { position: relative; min-height: 135px; max-width: 210px; margin: 0 auto; }
+    .firma-img { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); max-width: 190px; max-height: 95px; width: auto; height: auto; object-fit: contain; z-index: 2; opacity: 0.9; }
+    .firma-texto { position: relative; z-index: 1; padding-top: 48px; font-size: 12px; line-height: 1.25; color: #111; }
+    .firma-texto strong { display: block; font-size: 12px; font-weight: 700; }
+    .firma-cargo, .firma-departamento { font-size: 10px; }
+    .firma-box.sin-firma .firma-texto { padding-top: 45px; border-top: 1px solid #000; }
+    .firma-box.con-firma .firma-texto { padding-top: 48px; }
     .sin-firmas { text-align: center; color: #6b7280; margin-top: 40px; }
-    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
+    @media screen and (max-width: 900px) { .page-shell { margin: 0; max-width: none; min-height: auto; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } .firma-img { max-width: 150px; max-height: 80px; } .firma-box { min-height: 135px; } }
     @media print {
       body { background: #fff; }
       .page-shell { box-shadow: none; margin: 0; padding: 0; max-width: none; min-height: auto; overflow: hidden; }
@@ -105,16 +110,18 @@
       {% if firmas %}
         <div class="firmas-grid">
           {% for firma in firmas %}
-            <div class="firma-box">
-              {% if firma.firma_png %}
-                <img src="{{ firma.firma_png.url }}" class="firma-img" alt="Firma de {{ firma.nombre }}">
-              {% else %}
-                <div class="firma-line"></div>
-              {% endif %}
-              <div>{{ firma.profesion|default:"" }}</div>
-              <strong>{{ firma.nombre }}</strong>
-<div style="font-size: 10px;">{{ firma.cargo }}</div>
-
+            <div class="firma-box {% if firma.firma_png %}con-firma{% else %}sin-firma{% endif %}">
+              <div class="firma-contenido">
+                {% if firma.firma_png %}
+                  <img src="{{ firma.firma_png.url }}" class="firma-img" alt="Firma de {{ firma.nombre }}">
+                {% endif %}
+                <div class="firma-texto">
+                  <div>{{ firma.profesion|default:"" }}</div>
+                  <strong>{{ firma.nombre }}</strong>
+                  <div class="firma-cargo">{{ firma.cargo }}</div>
+                  <div class="firma-departamento">{{ firma.departamento }}</div>
+                </div>
+              </div>
             </div>
           {% endfor %}
         </div>
