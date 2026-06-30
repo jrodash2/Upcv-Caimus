@@ -32,6 +32,7 @@ from .forms import (
     AsociacionUsuarioForm,
     ChecklistAnioItemFormSet,
     ExpedienteCAIMUSForm,
+    FirmaConstanciaForm,
     ItemChecklistFormSet,
     RevisionExpedienteForm,
 )
@@ -45,6 +46,7 @@ from .models import (
     InformeEstadoHistorial,
     InformeMensual,
     HistorialItemExpediente,
+    FirmaConstancia,
     ItemChecklistCAIMUS,
     ConfiguracionInformeAnio,
     NotificacionAdmin,
@@ -70,6 +72,7 @@ from .permissions import (
     get_asociaciones_usuario,
     is_admin,
     is_asociacion,
+    is_informatica,
     user_can_download_resolucion,
     user_has_asociacion_access,
     user_has_expediente_access,
@@ -1632,11 +1635,85 @@ def validar_constancia_expediente(request, codigo):
             "expediente": expediente,
             "items": items if constancia_valida else [],
             "revisores": revisores_unicos if constancia_valida else [],
+            "firmas": FirmaConstancia.objects.filter(activo=True).order_by("orden", "nombre") if constancia_valida else [],
             "constancia_valida": constancia_valida,
             "fecha_consulta": timezone.localtime(timezone.now()),
             "codigo_validacion": codigo,
         },
     )
+
+
+def informatica_required(view_func):
+    @login_required
+    def _wrapped_view(request, *args, **kwargs):
+        if not is_informatica(request.user):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
+
+
+@informatica_required
+def firmas_constancia_list(request):
+    firmas = FirmaConstancia.objects.order_by("orden", "nombre")
+    return render(request, "asociaciones_app/firmas_constancia_list.html", {"firmas": firmas})
+
+
+@informatica_required
+def firma_constancia_create(request):
+    if request.method == "POST":
+        form = FirmaConstanciaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Firma de constancia creada correctamente.")
+            return redirect("asociaciones:firmas_constancia_list")
+    else:
+        form = FirmaConstanciaForm()
+
+    return render(
+        request,
+        "asociaciones_app/firma_constancia_form.html",
+        {"form": form, "titulo": "Crear firma de constancia"},
+    )
+
+
+@informatica_required
+def firma_constancia_edit(request, pk):
+    firma = get_object_or_404(FirmaConstancia, pk=pk)
+    if request.method == "POST":
+        form = FirmaConstanciaForm(request.POST, instance=firma)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Firma de constancia actualizada correctamente.")
+            return redirect("asociaciones:firmas_constancia_list")
+    else:
+        form = FirmaConstanciaForm(instance=firma)
+
+    return render(
+        request,
+        "asociaciones_app/firma_constancia_form.html",
+        {"form": form, "firma": firma, "titulo": "Editar firma de constancia"},
+    )
+
+
+@informatica_required
+@require_POST
+def firma_constancia_toggle(request, pk):
+    firma = get_object_or_404(FirmaConstancia, pk=pk)
+    firma.activo = not firma.activo
+    firma.save(update_fields=["activo"])
+    estado = "activada" if firma.activo else "desactivada"
+    messages.success(request, f"Firma {estado} correctamente.")
+    return redirect("asociaciones:firmas_constancia_list")
+
+
+@informatica_required
+@require_POST
+def firma_constancia_delete(request, pk):
+    firma = get_object_or_404(FirmaConstancia, pk=pk)
+    firma.delete()
+    messages.success(request, "Firma eliminada correctamente.")
+    return redirect("asociaciones:firmas_constancia_list")
 
 
 @login_required

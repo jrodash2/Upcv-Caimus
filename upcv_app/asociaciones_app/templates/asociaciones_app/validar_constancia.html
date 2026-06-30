@@ -6,19 +6,26 @@
   <title>CONSTANCIA DE REVISIÓN DE EXPEDIENTE DIGITAL</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #1f2937; }
-    .container { max-width: 980px; margin: 28px auto; background: #fff; padding: 28px; border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); }
-    h1 { color: #08245c; font-size: 24px; text-align: center; margin: 0 0 22px; }
+    .container { max-width: 980px; margin: 28px auto; background: #fff; padding: 36px; border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); }
+    h1 { color: #08245c; font-size: 24px; text-align: center; margin: 0 0 24px; text-transform: uppercase; }
     h2 { color: #08245c; font-size: 18px; margin-top: 28px; }
-    .estado { padding: 12px 16px; border-radius: 8px; margin-bottom: 18px; font-weight: 700; }
+    p { font-size: 15px; line-height: 1.7; text-align: justify; }
+    .estado { padding: 12px 16px; border-radius: 8px; margin-bottom: 22px; font-weight: 700; }
     .valida { background: #dcfce7; color: #166534; }
     .invalida { background: #fee2e2; color: #991b1b; }
-    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; }
+    .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin: 20px 0; }
     .label { font-size: 12px; color: #6b7280; text-transform: uppercase; }
     .value { font-weight: 600; margin-top: 2px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; vertical-align: top; }
-    th { background: #eef2ff; color: #08245c; }
-    @media (max-width: 700px) { .container { margin: 0; border-radius: 0; } .grid { grid-template-columns: 1fr; } }
+    .revisores { margin-top: 18px; }
+    .departamento { margin-bottom: 18px; }
+    .departamento-title { color: #08245c; font-weight: 700; margin-bottom: 6px; }
+    .departamento ol { margin-top: 4px; }
+    .texto-final { margin-top: 22px; }
+    .firmas-table { width: 100%; border-collapse: separate; border-spacing: 24px 0; margin-top: 60px; text-align: center; }
+    .firma-box { font-size: 13px; line-height: 1.3; vertical-align: top; width: 33.33%; }
+    .firma-line { border-top: 1px solid #000; margin-bottom: 8px; height: 1px; }
+    .sin-firmas { text-align: center; color: #6b7280; margin-top: 40px; }
+    @media (max-width: 700px) { .container { margin: 0; border-radius: 0; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-table, .firmas-table tbody, .firmas-table tr, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
   </style>
 </head>
 <body>
@@ -32,53 +39,76 @@
     {% endif %}
 
     {% if expediente %}
-    <section class="grid">
-      <div><div class="label">Número de expediente</div><div class="value">{% if expediente.resolucion %}{{ expediente.resolucion.correlativo }}{% else %}Sin correlativo emitido{% endif %}</div></div>
-      <div><div class="label">Asociación</div><div class="value">{{ expediente.asociacion.nombre }}</div></div>
-      <div><div class="label">Año</div><div class="value">{{ expediente.asociacion.anio.anio }}</div></div>
-      <div><div class="label">Código</div><div class="value">{{ codigo_validacion }}</div></div>
-      <div><div class="label">Estado</div><div class="value">{{ expediente.get_estado_display }}</div></div>
-      <div><div class="label">Fecha de aprobación</div><div class="value">{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No registrada" }}</div></div>
-      <div><div class="label">Fecha de consulta</div><div class="value">{{ fecha_consulta|date:"d/m/Y h:i A" }}</div></div>
-      <div><div class="label">Representante legal</div><div class="value">{{ expediente.asociacion.nombre_representante_legal|default:"No registrado" }}</div></div>
-      <div><div class="label">DPI representante legal</div><div class="value">{{ expediente.asociacion.dpi_representante_legal|default:"No registrado" }}</div></div>
-      <div><div class="label">Acuerdo gubernativo</div><div class="value">{{ expediente.asociacion.acuerdo_gubernativo|default:"No registrado" }}</div></div>
-    </section>
+      <section class="meta">
+        <div><div class="label">Número de expediente</div><div class="value">{% if expediente.resolucion %}{{ expediente.resolucion.correlativo }}{% else %}Sin correlativo emitido{% endif %}</div></div>
+        <div><div class="label">Asociación</div><div class="value">{{ expediente.asociacion.nombre }}</div></div>
+        <div><div class="label">Año</div><div class="value">{{ expediente.asociacion.anio.anio }}</div></div>
+        <div><div class="label">Código</div><div class="value">{{ codigo_validacion }}</div></div>
+        <div><div class="label">Estado</div><div class="value">{{ expediente.get_estado_display }}</div></div>
+        <div><div class="label">Fecha de aprobación</div><div class="value">{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No registrada" }}</div></div>
+        <div><div class="label">Fecha de consulta</div><div class="value">{{ fecha_consulta|date:"d/m/Y h:i A" }}</div></div>
+        <div><div class="label">Representante legal</div><div class="value">{{ expediente.asociacion.nombre_representante_legal|default:"No registrado" }}</div></div>
+        <div><div class="label">DPI representante legal</div><div class="value">{{ expediente.asociacion.dpi_representante_legal|default:"No registrado" }}</div></div>
+        <div><div class="label">Acuerdo gubernativo</div><div class="value">{{ expediente.asociacion.acuerdo_gubernativo|default:"No registrado" }}</div></div>
+      </section>
 
-    <h2>Encargados de revisión</h2>
-    <ul>
-      {% for usuario in revisores %}
-        <li>{{ usuario.get_full_name|default:usuario.username }}</li>
-      {% empty %}
-        <li>No hay encargados registrados.</li>
-      {% endfor %}
-    </ul>
+      <p>
+        Por este medio se hace constar que en cumplimiento a lo instruido en las literales a), b) y d) del artículo 5 del
+        Acuerdo Ministerial 114-2026 del Ministerio de Gobernación, Normativo Interno que Regula el Procedimiento de
+        Transferencia, Ejecución y Liquidación de las Asignaciones Especiales para el Ejercicio Fiscal 2026, en el que se
+        establece que esta Unidad, como entidad ejecutora, es responsable de administrar la Plataforma de Apoyo para el
+        Seguimiento del Trámite del Expediente Digital, las siguientes personas verificaron que se cumplan con todos los
+        requisitos establecidos en el Artículo 3 del Acuerdo arriba identificado:
+      </p>
 
-    <h2>Documentación revisada</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>No.</th>
-          <th>Documento</th>
-          <th>Estado</th>
-          <th>Revisado por</th>
-          <th>Fecha</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in items %}
-          <tr>
-            <td>{{ item.numero }}</td>
-            <td>{{ item.titulo }}</td>
-            <td>{{ item.get_estado_item_display }}</td>
-            <td>{% if item.aprobado_por %}{{ item.aprobado_por.get_full_name|default:item.aprobado_por.username }}{% elif item.rechazado_por %}{{ item.rechazado_por.get_full_name|default:item.rechazado_por.username }}{% else %}No registrado{% endif %}</td>
-            <td>{% if item.fecha_aprobacion %}{{ item.fecha_aprobacion|date:"d/m/Y h:i A" }}{% elif item.fecha_rechazo %}{{ item.fecha_rechazo|date:"d/m/Y h:i A" }}{% else %}No registrada{% endif %}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5">No hay documentación revisada para mostrar.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+      <section class="revisores" aria-label="Personas revisoras por departamento">
+        <div class="departamento">
+          <div class="departamento-title">Departamento de Planificación Estratégica y Gestión por Resultados</div>
+          <ol>
+            <li>Joseline Zurama López Tobar</li>
+            <li>Samuel León Tol</li>
+          </ol>
+        </div>
+        <div class="departamento">
+          <div class="departamento-title">Departamento Administrativo Financiero</div>
+          <ol>
+            <li>Jeannyfer Dallana Véliz Mayén</li>
+            <li>Juan Carlos Tintilla Olivarez</li>
+            <li>Yeni Maribel Arriola Roque</li>
+          </ol>
+        </div>
+        <div class="departamento">
+          <div class="departamento-title">Sección de Asesoría Jurídica</div>
+          <ol>
+            <li>Oscar Javier Peinado Monroy</li>
+          </ol>
+        </div>
+      </section>
+
+      <p class="texto-final">
+        Quienes prestan sus servicios técnicos y profesionales en el Departamento de Planificación Estratégica y Gestión
+        por Resultados, Departamento Administrativo Financiero y Sección de Asesoría Jurídica.
+      </p>
+
+      {% if firmas %}
+        <table class="firmas-table">
+          <tbody>
+            {% for firma in firmas %}
+              {% if forloop.counter0|divisibleby:3 %}<tr>{% endif %}
+                <td class="firma-box">
+                  <div class="firma-line"></div>
+                  <div>{{ firma.profesion|default:"" }}</div>
+                  <strong>{{ firma.nombre }}</strong>
+                  <div>{{ firma.cargo }}</div>
+                  <div>{{ firma.departamento }}</div>
+                </td>
+              {% if forloop.counter|divisibleby:3 or forloop.last %}</tr>{% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="sin-firmas">No hay firmas activas configuradas para esta constancia.</div>
+      {% endif %}
     {% endif %}
   </main>
 </body>
