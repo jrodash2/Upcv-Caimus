@@ -13,6 +13,13 @@ from django.utils.html import escape, format_html, format_html_join
 PDF_VALIDATOR = FileExtensionValidator(["pdf"])
 EXPEDIENTE_ITEM_FILE_VALIDATOR = FileExtensionValidator(["pdf", "xls", "xlsx"])
 XLSX_VALIDATOR = FileExtensionValidator(["xlsx"])
+PNG_VALIDATOR = FileExtensionValidator(["png"])
+
+
+def validate_png_size(value):
+    max_size = 2 * 1024 * 1024
+    if value.size > max_size:
+        raise ValidationError("La firma PNG excede el tamaño máximo permitido (2 MB).")
 
 
 def validate_pdf_size(value):
@@ -391,6 +398,65 @@ class ResolucionExpediente(models.Model):
 
     def __str__(self) -> str:
         return self.correlativo
+
+
+class FirmaConstancia(models.Model):
+    nombre = models.CharField(max_length=255)
+    profesion = models.CharField(max_length=100, blank=True, null=True)
+    cargo = models.CharField(max_length=255)
+    departamento = models.CharField(max_length=255)
+    orden = models.PositiveIntegerField(default=1)
+    activo = models.BooleanField(default=True)
+    firma_png = models.ImageField(
+        upload_to="firmas_constancia/",
+        blank=True,
+        null=True,
+        help_text="Firma en formato PNG",
+        validators=[PNG_VALIDATOR, validate_png_size],
+    )
+
+    class Meta:
+        verbose_name = "Firma de constancia"
+        verbose_name_plural = "Firmas de constancia"
+        ordering = ["orden", "nombre"]
+
+    def __str__(self) -> str:
+        return f"{self.nombre} - {self.cargo}"
+
+
+class DepartamentoConstancia(models.Model):
+    nombre = models.CharField(max_length=255)
+    orden = models.PositiveIntegerField(default=1)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Departamento de constancia"
+        verbose_name_plural = "Departamentos de constancia"
+        ordering = ["orden", "nombre"]
+
+    def __str__(self) -> str:
+        return self.nombre
+
+
+class RevisorConstancia(models.Model):
+    departamento = models.ForeignKey(DepartamentoConstancia, on_delete=models.CASCADE, related_name="revisores")
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="revisor_constancia",
+    )
+    orden = models.PositiveIntegerField(default=1)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Revisor de constancia"
+        verbose_name_plural = "Revisores de constancia"
+        ordering = ["departamento__orden", "orden", "usuario__first_name"]
+        unique_together = ("departamento", "usuario")
+
+    def __str__(self) -> str:
+        nombre = self.usuario.get_full_name() or self.usuario.username
+        return f"{nombre} - {self.departamento.nombre}"
 
 
 def sincronizar_checklist_expediente(expediente: ExpedienteCAIMUS) -> None:

@@ -13,7 +13,8 @@
     }
     body { font-family: Arial, sans-serif; font-size: 14px; color: #111; line-height: 1.45; padding-bottom: 3.2cm; }
     .titulo { text-align: center; font-weight: 700; font-size: 18px; margin: 0 0 18px 0; letter-spacing: .5px; }
-    .expediente-no { text-align: right; margin-bottom: 14px; font-weight: 600; }
+    .expediente-no { text-align: right; margin-bottom: 2px; font-weight: 600; }
+    .fecha-descarga { text-align: right; margin-bottom: 10px; font-size: 10px; color: #333; }
     p { margin: 0 0 10fpx 0; text-align: justify; }
     .seccion { margin-top: 14px; margin-bottom: 8px; font-weight: 700; }
     table { width: 100%; border-collapse: collapse; margin-top: 6px; margin-bottom: 14px; }
@@ -44,6 +45,37 @@
       height: auto;
       display: block;
     }
+    .validacion-final {
+      width: 100%;
+      margin-top: 14px;
+      border: 0;
+    }
+    .validacion-final td {
+      border: 0;
+      padding: 0;
+      vertical-align: top;
+    }
+    .validacion-url {
+      font-size: 9px;
+      color: #08245c;
+      word-break: break-all;
+    }
+    .qr-validacion {
+      text-align: center;
+      width: 115px;
+      font-size: 8px;
+      color: #08245c;
+    }
+    .qr-validacion img {
+      width: 85px;
+      height: 85px;
+      display: block;
+      margin: 0 auto 4px auto;
+    }
+    .qr-text {
+      font-size: 8px;
+      line-height: 1.2;
+    }
   </style>
 </head>
 <body>
@@ -54,6 +86,7 @@
   </div>
   <div class="titulo">CONSTANCIA DE EXPEDIENTE DIGITAL</div>
   <div class="expediente-no">Expediente No. {{ resolucion.correlativo }}</div>
+  <div class="fecha-descarga">Fecha de descarga: {{ fecha_descarga|date:"d/m/Y h:i A" }}</div>
 
   <p>
     En la ciudad de Guatemala, departamento de Guatemala, por este medio se hace constar que la entidad
@@ -103,6 +136,21 @@
     Se hace saber que esta constancia no valida el contenido de la documentación presentada, la cual queda sujeta a la
     revisión y validación de las autoridades previo a la suscripción del Convenio de mérito.
   </p>
+
+  <table class="validacion-final">
+    <tr>
+      <td>
+        <div class="validacion-url">
+          <strong>URL pública de validación:</strong><br>
+          {{ validacion_url }}
+        </div>
+      </td>
+      <td class="qr-validacion">
+        <img src="{{ qr_validacion }}" alt="Código QR de validación">
+        <div class="qr-text">Escanee para validar esta constancia</div>
+      </td>
+    </tr>
+  </table>
 
   <footer class="pdf-footer">
     <img src="{{ footer_image_url }}" alt="Footer institucional">

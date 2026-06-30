@@ -11,8 +11,11 @@ from .models import (
     Asociacion,
     AsociacionUsuario,
     ChecklistAnioItem,
+    DepartamentoConstancia,
     ExpedienteCAIMUS,
+    FirmaConstancia,
     ItemChecklistCAIMUS,
+    RevisorConstancia,
 )
 
 
@@ -92,6 +95,68 @@ class AsociacionUsuarioForm(forms.ModelForm):
         widgets = {
             "usuario": forms.Select(attrs={"class": "form-select"}),
             "rol_en_asociacion": forms.TextInput(attrs={"class": "form-control"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class FirmaConstanciaForm(forms.ModelForm):
+    class Meta:
+        model = FirmaConstancia
+        fields = ["nombre", "profesion", "cargo", "departamento", "orden", "activo", "firma_png"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "profesion": forms.TextInput(attrs={"class": "form-control"}),
+            "cargo": forms.TextInput(attrs={"class": "form-control"}),
+            "departamento": forms.TextInput(attrs={"class": "form-control"}),
+            "orden": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "firma_png": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/png"}),
+        }
+        labels = {
+            "nombre": "Nombre",
+            "profesion": "Profesión",
+            "cargo": "Cargo",
+            "departamento": "Departamento",
+            "orden": "Orden",
+            "activo": "Activo",
+            "firma_png": "Firma PNG",
+        }
+
+
+class DepartamentoConstanciaForm(forms.ModelForm):
+    class Meta:
+        model = DepartamentoConstancia
+        fields = ["nombre", "orden", "activo"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "orden": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class RevisorConstanciaForm(forms.ModelForm):
+    class UserChoiceField(forms.ModelChoiceField):
+        def label_from_instance(self, obj):
+            nombre = obj.get_full_name() or obj.username
+            grupos = ", ".join(obj.groups.values_list("name", flat=True)) or "Sin grupo"
+            return f"{nombre} ({obj.username}) - {grupos}"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        user_model = get_user_model()
+        self.fields["usuario"] = self.UserChoiceField(
+            queryset=user_model.objects.filter(is_active=True).prefetch_related("groups").order_by("first_name", "last_name", "username"),
+            widget=forms.Select(attrs={"class": "form-select"}),
+            label="Usuario",
+        )
+
+    class Meta:
+        model = RevisorConstancia
+        fields = ["departamento", "usuario", "orden", "activo"]
+        widgets = {
+            "departamento": forms.Select(attrs={"class": "form-select"}),
+            "usuario": forms.Select(attrs={"class": "form-select"}),
+            "orden": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
