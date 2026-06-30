@@ -16,6 +16,7 @@
               <tr>
                 <th>Orden</th>
                 <th>Nombre</th>
+                <th>Firma</th>
                 <th>Profesión</th>
                 <th>Cargo</th>
                 <th>Departamento</th>
@@ -28,6 +29,7 @@
               <tr>
                 <td>{{ firma.orden }}</td>
                 <td>{{ firma.nombre }}</td>
+                <td>{% if firma.firma_png %}<img src="{{ firma.firma_png.url }}" alt="Firma de {{ firma.nombre }}" style="max-height: 42px; max-width: 120px; object-fit: contain;">{% else %}<span class="badge bg-light text-dark">Sin firma</span>{% endif %}</td>
                 <td>{{ firma.profesion|default:"-" }}</td>
                 <td>{{ firma.cargo }}</td>
                 <td>{{ firma.departamento }}</td>

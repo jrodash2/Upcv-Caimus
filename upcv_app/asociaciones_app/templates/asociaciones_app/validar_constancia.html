@@ -21,11 +21,12 @@
     .departamento-title { color: #08245c; font-weight: 700; margin-bottom: 6px; }
     .departamento ol { margin-top: 4px; }
     .texto-final { margin-top: 22px; }
-    .firmas-table { width: 100%; border-collapse: separate; border-spacing: 24px 0; margin-top: 60px; text-align: center; }
-    .firma-box { font-size: 13px; line-height: 1.3; vertical-align: top; width: 33.33%; }
-    .firma-line { border-top: 1px solid #000; margin-bottom: 8px; height: 1px; }
+    .firmas-grid { display: table; width: 100%; margin-top: 50px; table-layout: fixed; }
+    .firma-box { display: table-cell; text-align: center; vertical-align: bottom; font-size: 12px; padding: 0 10px; }
+    .firma-img { max-height: 55px; max-width: 150px; object-fit: contain; margin-bottom: 4px; }
+    .firma-line { border-top: 1px solid #000; margin: 55px 20px 8px; }
     .sin-firmas { text-align: center; color: #6b7280; margin-top: 40px; }
-    @media (max-width: 700px) { .container { margin: 0; border-radius: 0; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-table, .firmas-table tbody, .firmas-table tr, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
+    @media (max-width: 700px) { .container { margin: 0; border-radius: 0; padding: 24px; } .meta { grid-template-columns: 1fr; } .firmas-grid, .firma-box { display: block; width: 100%; margin-bottom: 42px; } }
   </style>
 </head>
 <body>
@@ -62,27 +63,18 @@
       </p>
 
       <section class="revisores" aria-label="Personas revisoras por departamento">
-        <div class="departamento">
-          <div class="departamento-title">Departamento de Planificación Estratégica y Gestión por Resultados</div>
-          <ol>
-            <li>Joseline Zurama López Tobar</li>
-            <li>Samuel León Tol</li>
-          </ol>
-        </div>
-        <div class="departamento">
-          <div class="departamento-title">Departamento Administrativo Financiero</div>
-          <ol>
-            <li>Jeannyfer Dallana Véliz Mayén</li>
-            <li>Juan Carlos Tintilla Olivarez</li>
-            <li>Yeni Maribel Arriola Roque</li>
-          </ol>
-        </div>
-        <div class="departamento">
-          <div class="departamento-title">Sección de Asesoría Jurídica</div>
-          <ol>
-            <li>Oscar Javier Peinado Monroy</li>
-          </ol>
-        </div>
+        {% for departamento in departamentos %}
+          <div class="departamento">
+            <div class="departamento-title">{{ forloop.counter }}. {{ departamento.nombre }}</div>
+            {% for revisor in departamento.revisores.all %}
+              <p>{{ forloop.parentloop.counter }}.{{ forloop.counter }}. {{ revisor.usuario.get_full_name|default:revisor.usuario.username }}</p>
+            {% empty %}
+              <p class="text-muted">No hay revisores activos configurados.</p>
+            {% endfor %}
+          </div>
+        {% empty %}
+          <p class="text-muted">No hay departamentos activos configurados.</p>
+        {% endfor %}
       </section>
 
       <p class="texto-final">
@@ -91,21 +83,21 @@
       </p>
 
       {% if firmas %}
-        <table class="firmas-table">
-          <tbody>
-            {% for firma in firmas %}
-              {% if forloop.counter0|divisibleby:3 %}<tr>{% endif %}
-                <td class="firma-box">
-                  <div class="firma-line"></div>
-                  <div>{{ firma.profesion|default:"" }}</div>
-                  <strong>{{ firma.nombre }}</strong>
-                  <div>{{ firma.cargo }}</div>
-                  <div>{{ firma.departamento }}</div>
-                </td>
-              {% if forloop.counter|divisibleby:3 or forloop.last %}</tr>{% endif %}
-            {% endfor %}
-          </tbody>
-        </table>
+        <div class="firmas-grid">
+          {% for firma in firmas %}
+            <div class="firma-box">
+              {% if firma.firma_png %}
+                <img src="{{ firma.firma_png.url }}" class="firma-img" alt="Firma de {{ firma.nombre }}">
+              {% else %}
+                <div class="firma-line"></div>
+              {% endif %}
+              <div>{{ firma.profesion|default:"" }}</div>
+              <strong>{{ firma.nombre }}</strong>
+              <div>{{ firma.cargo }}</div>
+              <div>{{ firma.departamento }}</div>
+            </div>
+          {% endfor %}
+        </div>
       {% else %}
         <div class="sin-firmas">No hay firmas activas configuradas para esta constancia.</div>
       {% endif %}

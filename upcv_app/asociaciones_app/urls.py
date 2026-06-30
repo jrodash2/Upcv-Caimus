@@ -94,4 +94,12 @@ urlpatterns = [
     path("configuracion/firmas-constancia/crear/", views.firma_constancia_create, name="firma_constancia_create"),
     path("configuracion/firmas-constancia/<int:pk>/editar/", views.firma_constancia_update, name="firma_constancia_update"),
     path("configuracion/firmas-constancia/<int:pk>/estado/", views.firma_constancia_toggle, name="firma_constancia_toggle"),
+    path("configuracion/departamentos-constancia/", views.departamentos_constancia_list, name="departamentos_constancia_list"),
+    path("configuracion/departamentos-constancia/crear/", views.departamento_constancia_create, name="departamento_constancia_create"),
+    path("configuracion/departamentos-constancia/<int:pk>/editar/", views.departamento_constancia_update, name="departamento_constancia_update"),
+    path("configuracion/departamentos-constancia/<int:pk>/estado/", views.departamento_constancia_toggle, name="departamento_constancia_toggle"),
+    path("configuracion/revisores-constancia/", views.revisores_constancia_list, name="revisores_constancia_list"),
+    path("configuracion/revisores-constancia/crear/", views.revisor_constancia_create, name="revisor_constancia_create"),
+    path("configuracion/revisores-constancia/<int:pk>/editar/", views.revisor_constancia_update, name="revisor_constancia_update"),
+    path("configuracion/revisores-constancia/<int:pk>/estado/", views.revisor_constancia_toggle, name="revisor_constancia_toggle"),
 ]

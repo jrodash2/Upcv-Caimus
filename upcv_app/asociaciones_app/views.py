@@ -14,7 +14,7 @@ from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.core.signing import BadSignature, Signer
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
@@ -32,15 +32,18 @@ from .forms import (
     AsociacionForm,
     AsociacionUsuarioForm,
     ChecklistAnioItemFormSet,
+    DepartamentoConstanciaForm,
     ExpedienteCAIMUSForm,
     FirmaConstanciaForm,
     ItemChecklistFormSet,
+    RevisorConstanciaForm,
     RevisionExpedienteForm,
 )
 from .models import (
     Anio,
     Asociacion,
     AsociacionUsuario,
+    DepartamentoConstancia,
     EntradaRevisionAdmin,
     ExpedienteCAIMUS,
     ExpedienteEstadoHistorial,
@@ -54,6 +57,7 @@ from .models import (
     NotificacionAsociacion,
     ResolucionInformeMensual,
     ResolucionExpediente,
+    RevisorConstancia,
     crear_notificacion_asociacion,
     crear_notificacion_admin,
     crear_entrada_revision_admin,
@@ -1636,6 +1640,18 @@ def validar_constancia_expediente(request, codigo):
             "expediente": expediente,
             "items": items if constancia_valida else [],
             "revisores": revisores_unicos if constancia_valida else [],
+            "departamentos": DepartamentoConstancia.objects.filter(activo=True)
+            .prefetch_related(
+                Prefetch(
+                    "revisores",
+                    queryset=RevisorConstancia.objects.filter(activo=True)
+                    .select_related("usuario")
+                    .prefetch_related("usuario__groups")
+                    .order_by("orden", "usuario__first_name"),
+                )
+            )
+            .order_by("orden", "nombre")
+            if constancia_valida else [],
             "firmas": FirmaConstancia.objects.filter(activo=True).order_by("orden", "nombre") if constancia_valida else [],
             "constancia_valida": constancia_valida,
             "fecha_consulta": timezone.localtime(timezone.now()),
@@ -1664,7 +1680,7 @@ def firmas_constancia_list(request):
 @informatica_required
 def firma_constancia_create(request):
     if request.method == "POST":
-        form = FirmaConstanciaForm(request.POST)
+        form = FirmaConstanciaForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             messages.success(request, "Firma creada correctamente.")
@@ -1683,7 +1699,7 @@ def firma_constancia_create(request):
 def firma_constancia_update(request, pk):
     firma = get_object_or_404(FirmaConstancia, pk=pk)
     if request.method == "POST":
-        form = FirmaConstanciaForm(request.POST, instance=firma)
+        form = FirmaConstanciaForm(request.POST, request.FILES, instance=firma)
         if form.is_valid():
             form.save()
             messages.success(request, "Firma actualizada correctamente.")
@@ -1705,6 +1721,112 @@ def firma_constancia_toggle(request, pk):
     firma.save(update_fields=["activo"])
     messages.success(request, "Estado de la firma actualizado correctamente.")
     return redirect("asociaciones:firmas_constancia_list")
+
+
+@informatica_required
+def departamentos_constancia_list(request):
+    departamentos = DepartamentoConstancia.objects.order_by("orden", "nombre")
+    return render(request, "asociaciones/departamentos_constancia/list.html", {"departamentos": departamentos})
+
+
+@informatica_required
+def departamento_constancia_create(request):
+    if request.method == "POST":
+        form = DepartamentoConstanciaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Departamento creado correctamente.")
+            return redirect("asociaciones:departamentos_constancia_list")
+    else:
+        form = DepartamentoConstanciaForm()
+
+    return render(
+        request,
+        "asociaciones/departamentos_constancia/form.html",
+        {"form": form, "titulo": "Nuevo departamento de constancia", "accion": "Crear"},
+    )
+
+
+@informatica_required
+def departamento_constancia_update(request, pk):
+    departamento = get_object_or_404(DepartamentoConstancia, pk=pk)
+    if request.method == "POST":
+        form = DepartamentoConstanciaForm(request.POST, instance=departamento)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Departamento actualizado correctamente.")
+            return redirect("asociaciones:departamentos_constancia_list")
+    else:
+        form = DepartamentoConstanciaForm(instance=departamento)
+
+    return render(
+        request,
+        "asociaciones/departamentos_constancia/form.html",
+        {"form": form, "titulo": "Editar departamento de constancia", "accion": "Actualizar"},
+    )
+
+
+@informatica_required
+def departamento_constancia_toggle(request, pk):
+    departamento = get_object_or_404(DepartamentoConstancia, pk=pk)
+    departamento.activo = not departamento.activo
+    departamento.save(update_fields=["activo"])
+    messages.success(request, "Estado del departamento actualizado correctamente.")
+    return redirect("asociaciones:departamentos_constancia_list")
+
+
+@informatica_required
+def revisores_constancia_list(request):
+    revisores = RevisorConstancia.objects.select_related("departamento", "usuario").prefetch_related("usuario__groups").order_by(
+        "departamento__orden", "orden", "usuario__first_name"
+    )
+    return render(request, "asociaciones/revisores_constancia/list.html", {"revisores": revisores})
+
+
+@informatica_required
+def revisor_constancia_create(request):
+    if request.method == "POST":
+        form = RevisorConstanciaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Revisor creado correctamente.")
+            return redirect("asociaciones:revisores_constancia_list")
+    else:
+        form = RevisorConstanciaForm()
+
+    return render(
+        request,
+        "asociaciones/revisores_constancia/form.html",
+        {"form": form, "titulo": "Nuevo revisor de constancia", "accion": "Crear"},
+    )
+
+
+@informatica_required
+def revisor_constancia_update(request, pk):
+    revisor = get_object_or_404(RevisorConstancia, pk=pk)
+    if request.method == "POST":
+        form = RevisorConstanciaForm(request.POST, instance=revisor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Revisor actualizado correctamente.")
+            return redirect("asociaciones:revisores_constancia_list")
+    else:
+        form = RevisorConstanciaForm(instance=revisor)
+
+    return render(
+        request,
+        "asociaciones/revisores_constancia/form.html",
+        {"form": form, "titulo": "Editar revisor de constancia", "accion": "Actualizar"},
+    )
+
+
+@informatica_required
+def revisor_constancia_toggle(request, pk):
+    revisor = get_object_or_404(RevisorConstancia, pk=pk)
+    revisor.activo = not revisor.activo
+    revisor.save(update_fields=["activo"])
+    messages.success(request, "Estado del revisor actualizado correctamente.")
+    return redirect("asociaciones:revisores_constancia_list")
 
 
 firma_constancia_edit = firma_constancia_update
