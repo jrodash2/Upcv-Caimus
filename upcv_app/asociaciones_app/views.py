@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from calendar import month_name
+from functools import wraps
 from io import BytesIO
 from pathlib import Path
 
@@ -1645,18 +1646,19 @@ def validar_constancia_expediente(request, codigo):
 
 def informatica_required(view_func):
     @login_required
-    def _wrapped_view(request, *args, **kwargs):
-        if not is_informatica(request.user):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.groups.filter(name__iexact="Informatica").exists():
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
 
-    return _wrapped_view
+    return _wrapped
 
 
 @informatica_required
 def firmas_constancia_list(request):
-    firmas = FirmaConstancia.objects.order_by("orden", "nombre")
-    return render(request, "asociaciones_app/firmas_constancia_list.html", {"firmas": firmas})
+    firmas = FirmaConstancia.objects.all().order_by("orden", "nombre")
+    return render(request, "asociaciones/firmas_constancia/list.html", {"firmas": firmas})
 
 
 @informatica_required
@@ -1665,46 +1667,47 @@ def firma_constancia_create(request):
         form = FirmaConstanciaForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Firma de constancia creada correctamente.")
+            messages.success(request, "Firma creada correctamente.")
             return redirect("asociaciones:firmas_constancia_list")
     else:
         form = FirmaConstanciaForm()
 
     return render(
         request,
-        "asociaciones_app/firma_constancia_form.html",
-        {"form": form, "titulo": "Crear firma de constancia"},
+        "asociaciones/firmas_constancia/form.html",
+        {"form": form, "titulo": "Nueva firma de constancia", "accion": "Crear"},
     )
 
 
 @informatica_required
-def firma_constancia_edit(request, pk):
+def firma_constancia_update(request, pk):
     firma = get_object_or_404(FirmaConstancia, pk=pk)
     if request.method == "POST":
         form = FirmaConstanciaForm(request.POST, instance=firma)
         if form.is_valid():
             form.save()
-            messages.success(request, "Firma de constancia actualizada correctamente.")
+            messages.success(request, "Firma actualizada correctamente.")
             return redirect("asociaciones:firmas_constancia_list")
     else:
         form = FirmaConstanciaForm(instance=firma)
 
     return render(
         request,
-        "asociaciones_app/firma_constancia_form.html",
-        {"form": form, "firma": firma, "titulo": "Editar firma de constancia"},
+        "asociaciones/firmas_constancia/form.html",
+        {"form": form, "firma": firma, "titulo": "Editar firma de constancia", "accion": "Actualizar"},
     )
 
 
 @informatica_required
-@require_POST
 def firma_constancia_toggle(request, pk):
     firma = get_object_or_404(FirmaConstancia, pk=pk)
     firma.activo = not firma.activo
     firma.save(update_fields=["activo"])
-    estado = "activada" if firma.activo else "desactivada"
-    messages.success(request, f"Firma {estado} correctamente.")
+    messages.success(request, "Estado de la firma actualizado correctamente.")
     return redirect("asociaciones:firmas_constancia_list")
+
+
+firma_constancia_edit = firma_constancia_update
 
 
 @informatica_required

@@ -91,8 +91,7 @@ urlpatterns = [
     path("alertas-admin/<int:pk>/revisar/", views.alerta_admin_revisar, name="alerta_admin_revisar"),
     path("asignaciones/", views.asignaciones_list, name="asignaciones_list"),
     path("configuracion/firmas-constancia/", views.firmas_constancia_list, name="firmas_constancia_list"),
-    path("configuracion/firmas-constancia/nueva/", views.firma_constancia_create, name="firma_constancia_create"),
-    path("configuracion/firmas-constancia/<int:pk>/editar/", views.firma_constancia_edit, name="firma_constancia_edit"),
-    path("configuracion/firmas-constancia/<int:pk>/toggle/", views.firma_constancia_toggle, name="firma_constancia_toggle"),
-    path("configuracion/firmas-constancia/<int:pk>/eliminar/", views.firma_constancia_delete, name="firma_constancia_delete"),
+    path("configuracion/firmas-constancia/crear/", views.firma_constancia_create, name="firma_constancia_create"),
+    path("configuracion/firmas-constancia/<int:pk>/editar/", views.firma_constancia_update, name="firma_constancia_update"),
+    path("configuracion/firmas-constancia/<int:pk>/estado/", views.firma_constancia_toggle, name="firma_constancia_toggle"),
 ]
