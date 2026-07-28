@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from calendar import month_name
+from datetime import timedelta
 from functools import wraps
 from io import BytesIO
 from pathlib import Path
@@ -724,6 +725,7 @@ def expediente_caimus(request, pk):
             "estado_aprobado_valido": estado_aprobado_valido,
             "estado_visual_expediente": estado_visual_expediente,
             "puede_descargar_resolucion": puede_descargar_resolucion,
+            "puede_descargar_trazabilidad": is_admin(request.user) and user_has_expediente_access(request.user, expediente),
         },
     )
 
@@ -845,6 +847,32 @@ def _nombre_usuario(user):
     if not user:
         return ""
     return user.get_full_name() or user.username
+
+
+def formatear_duracion(delta):
+    """Devuelve una duración útil para lectura humana, sin exponer segundos."""
+    if delta is None:
+        return "No disponible"
+    total_segundos = max(0, int(delta.total_seconds()))
+    dias, resto = divmod(total_segundos, 86400)
+    horas, resto = divmod(resto, 3600)
+    minutos, _ = divmod(resto, 60)
+    partes = []
+    if dias:
+        partes.append(f"{dias} día{'s' if dias != 1 else ''}")
+    if horas:
+        partes.append(f"{horas} hora{'s' if horas != 1 else ''}")
+    if minutos or not partes:
+        partes.append(f"{minutos} minuto{'s' if minutos != 1 else ''}")
+    return ", ".join(partes)
+
+
+def obtener_nombre_usuario(usuario, valor_por_defecto="No disponible"):
+    """Obtiene un nombre presentable sin acceder a atributos de usuarios nulos."""
+    if not usuario:
+        return valor_por_defecto
+    nombre_completo = usuario.get_full_name().strip()
+    return nombre_completo or usuario.username or valor_por_defecto
 
 
 def construir_timeline_eventos_visibles_item(item):
@@ -1507,6 +1535,137 @@ def asignaciones_list(request):
         "asociaciones_app/asignaciones_list.html",
         {"asignaciones": asignaciones, "anios": anios, "anio_id": anio_id},
     )
+
+
+def _datos_item_trazabilidad(item, fecha_generacion):
+    eventos = list(item.historial.all())
+    cargas = [e for e in eventos if e.accion in {
+        HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO,
+        HistorialItemExpediente.ACCION_ARCHIVO_ACTUALIZADO,
+    }]
+    primera_carga_evento = next(
+        (e for e in cargas if e.accion == HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO),
+        cargas[0] if cargas else None,
+    )
+    primera_carga = primera_carga_evento.creado_en if primera_carga_evento else (item.fecha_carga if item.pdf else None)
+    primera_revision = next((e for e in eventos if e.accion in {
+        HistorialItemExpediente.ACCION_EN_REVISION,
+        HistorialItemExpediente.ACCION_OBSERVACION_ADMIN,
+        HistorialItemExpediente.ACCION_APROBADO,
+        HistorialItemExpediente.ACCION_RECHAZADO,
+    }), None)
+    decisiones = [e for e in eventos if e.accion in {
+        HistorialItemExpediente.ACCION_APROBADO,
+        HistorialItemExpediente.ACCION_RECHAZADO,
+    }]
+    decision = decisiones[-1] if decisiones else None
+    aprobacion = next((e for e in reversed(eventos) if e.accion == HistorialItemExpediente.ACCION_APROBADO), None)
+    observaciones = [e for e in eventos if e.accion == HistorialItemExpediente.ACCION_OBSERVACION_ADMIN]
+    actualizaciones = [e for e in eventos if e.accion == HistorialItemExpediente.ACCION_ARCHIVO_ACTUALIZADO]
+    ciclos = sum(
+        1 for actualizacion in actualizaciones
+        if any(e.creado_en < actualizacion.creado_en and e.accion in {
+            HistorialItemExpediente.ACCION_OBSERVACION_ADMIN,
+            HistorialItemExpediente.ACCION_RECHAZADO,
+        } for e in eventos)
+    )
+    respuestas = []
+    for observacion in observaciones:
+        siguiente = next((e for e in actualizaciones if e.creado_en > observacion.creado_en), None)
+        respuestas.append({
+            "observacion": observacion,
+            "actualizacion": siguiente,
+            "duracion": formatear_duracion(siguiente.creado_en - observacion.creado_en) if siguiente else "Pendiente de respuesta",
+        })
+    fin = aprobacion.creado_en if aprobacion else fecha_generacion
+    ultima = eventos[-1] if eventos else None
+    for evento in eventos:
+        evento.nombre_archivo = Path(evento.archivo.name).name if evento.archivo else "—"
+        evento.tipo_archivo = Path(evento.nombre_archivo).suffix.lstrip(".").upper() or "—"
+        evento.nombre_usuario_seguro = obtener_nombre_usuario(evento.usuario, "Sin usuario registrado")
+    usuario_primera_carga = primera_carga_evento.usuario if primera_carga_evento else item.subido_por
+    usuario_ultima_actualizacion = ultima.usuario if ultima else item.subido_por
+    return {
+        "item": item,
+        "eventos": eventos,
+        "primera_carga": primera_carga,
+        "usuario_primera_carga": usuario_primera_carga,
+        "nombre_usuario_primera_carga": obtener_nombre_usuario(usuario_primera_carga),
+        "ultima_actualizacion": ultima.creado_en if ultima else item.fecha_actualizacion,
+        "usuario_ultima_actualizacion": usuario_ultima_actualizacion,
+        "nombre_usuario_ultima_actualizacion": obtener_nombre_usuario(usuario_ultima_actualizacion),
+        "decision": decision,
+        "nombre_usuario_decision": (
+            obtener_nombre_usuario(decision.usuario, "Sin usuario registrado") if decision else "No disponible"
+        ),
+        "aprobacion": aprobacion,
+        "primera_revision": primera_revision,
+        "cantidad_archivos": len(cargas),
+        "cantidad_resubidas": len(actualizaciones),
+        "cantidad_observaciones": len(observaciones),
+        "ciclos_correccion": ciclos,
+        "observacion_final": observaciones[-1].descripcion if observaciones else item.observacion_revision,
+        "tiempo_primera_revision": formatear_duracion(primera_revision.creado_en - primera_carga) if primera_revision and primera_carga else "No disponible",
+        "tiempo_total": formatear_duracion(fin - primera_carga) if primera_carga else "No disponible",
+        "delta_aprobacion": aprobacion.creado_en - primera_carga if aprobacion and primera_carga else None,
+        "respuestas_observaciones": respuestas,
+    }
+
+
+@login_required
+def informe_trazabilidad_expediente_pdf(request, expediente_id):
+    expediente = get_object_or_404(
+        ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio", "aprobado_por"),
+        pk=expediente_id,
+    )
+    if not is_admin(request.user) or not user_has_expediente_access(request.user, expediente):
+        raise PermissionDenied
+
+    historial_qs = HistorialItemExpediente.objects.select_related("usuario").order_by("creado_en", "id")
+    items = list(expediente.items.filter(activo=True).select_related(
+        "subido_por", "aprobado_por", "rechazado_por"
+    ).prefetch_related(Prefetch("historial", queryset=historial_qs)).order_by("numero"))
+    fecha_generacion = timezone.localtime(timezone.now())
+    detalles = [_datos_item_trazabilidad(item, fecha_generacion) for item in items]
+    primeras_cargas = [d["primera_carga"] for d in detalles if d["primera_carga"]]
+    aprobaciones = [d["delta_aprobacion"] for d in detalles if d["delta_aprobacion"] is not None]
+    total_archivos = sum(d["cantidad_archivos"] for d in detalles)
+    # Los expedientes antiguos pueden tener archivo actual sin evento histórico.
+    total_archivos += sum(1 for d in detalles if d["item"].pdf and not d["cantidad_archivos"])
+    primera_carga = min(primeras_cargas) if primeras_cargas else None
+    aprobado = expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and expediente.aprobado_en
+    promedio = sum(aprobaciones, timedelta()) / len(aprobaciones) if aprobaciones else None
+    resolucion = getattr(expediente, "resolucion", None)
+    correlativo = resolucion.correlativo if resolucion else f"UPCV-CAIMUS-{expediente.asociacion.anio.anio}-{expediente.pk:04d}"
+    institucion = Institucion.objects.first()
+    contexto = {
+        "expediente": expediente,
+        "correlativo": correlativo,
+        "detalles": detalles,
+        "fecha_generacion": fecha_generacion,
+        "usuario_generacion": request.user,
+        "nombre_usuario_generacion": obtener_nombre_usuario(request.user),
+        "logo_secundario_url": request.build_absolute_uri(institucion.logo2.url) if institucion and institucion.logo2 else None,
+        "footer_image_url": request.build_absolute_uri(static("assets/images/pie.png")),
+        "resumen": {
+            "total": len(items),
+            "aprobados": sum(i.estado_item == ItemChecklistCAIMUS.ESTADO_APROBADO for i in items),
+            "rechazados": sum(i.estado_item == ItemChecklistCAIMUS.ESTADO_RECHAZADO for i in items),
+            "pendientes": sum(i.estado_item == ItemChecklistCAIMUS.ESTADO_BORRADOR for i in items),
+            "archivos": total_archivos,
+            "resubidas": sum(d["cantidad_resubidas"] for d in detalles),
+            "observaciones": sum(d["cantidad_observaciones"] for d in detalles),
+            "primera_carga": primera_carga,
+            "aprobacion_final": expediente.aprobado_en if aprobado else None,
+            "tiempo_total": formatear_duracion(expediente.aprobado_en - primera_carga) if aprobado and primera_carga else "Proceso aún en curso",
+            "promedio_aprobacion": formatear_duracion(promedio),
+        },
+    }
+    html = render_to_string("asociaciones_app/informes/informe_trazabilidad_expediente.html", contexto, request=request)
+    pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="Informe_Trazabilidad_{correlativo}.pdf"'
+    return response
 
 
 @asociacion_required

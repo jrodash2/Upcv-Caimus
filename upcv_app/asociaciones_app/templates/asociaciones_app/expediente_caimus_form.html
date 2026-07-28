@@ -371,6 +371,11 @@ caracteres especiales, símbolos ni la letra “ñ”. Se recomienda utilizar ú
                 La descarga de resolución está disponible únicamente para usuarios de asociación.
               </div>
             {% endif %}
+            {% if puede_descargar_trazabilidad %}
+              <a class="btn btn-primary btn-sm mt-2" href="{% url 'asociaciones:informe_trazabilidad_expediente_pdf' expediente.pk %}">
+                <i data-feather="download" aria-hidden="true"></i>Descargar informe de trazabilidad
+              </a>
+            {% endif %}
           </div>
         </div>
 
