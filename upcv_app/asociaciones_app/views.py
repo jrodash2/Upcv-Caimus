@@ -1615,7 +1615,9 @@ def _datos_item_trazabilidad(item, fecha_generacion):
 @login_required
 def informe_trazabilidad_expediente_pdf(request, expediente_id):
     expediente = get_object_or_404(
-        ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio", "aprobado_por"),
+        ExpedienteCAIMUS.objects.select_related(
+            "asociacion", "asociacion__anio", "aprobado_por", "resolucion"
+        ),
         pk=expediente_id,
     )
     if not is_admin(request.user) or not user_has_expediente_access(request.user, expediente):
@@ -1636,11 +1638,15 @@ def informe_trazabilidad_expediente_pdf(request, expediente_id):
     aprobado = expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and expediente.aprobado_en
     promedio = sum(aprobaciones, timedelta()) / len(aprobaciones) if aprobaciones else None
     resolucion = getattr(expediente, "resolucion", None)
-    correlativo = resolucion.correlativo if resolucion else f"UPCV-CAIMUS-{expediente.asociacion.anio.anio}-{expediente.pk:04d}"
+    numero_expediente = resolucion.correlativo if resolucion and resolucion.correlativo else "Sin asignar"
+    if numero_expediente == "Sin asignar":
+        nombre_archivo = f"Informe_Trazabilidad_Sin_Asignar_Expediente_{expediente.pk}.pdf"
+    else:
+        nombre_archivo = f"Informe_Trazabilidad_{numero_expediente}.pdf"
     institucion = Institucion.objects.first()
     contexto = {
         "expediente": expediente,
-        "correlativo": correlativo,
+        "numero_expediente": numero_expediente,
         "detalles": detalles,
         "fecha_generacion": fecha_generacion,
         "usuario_generacion": request.user,
@@ -1664,7 +1670,7 @@ def informe_trazabilidad_expediente_pdf(request, expediente_id):
     html = render_to_string("asociaciones_app/informes/informe_trazabilidad_expediente.html", contexto, request=request)
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="Informe_Trazabilidad_{correlativo}.pdf"'
+    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
     return response
 
 

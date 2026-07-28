@@ -32,7 +32,7 @@
   <div class="logo">{% if logo_secundario_url %}<img src="{{ logo_secundario_url }}" alt="Logo institucional secundario">{% endif %}</div>
   <h1>INFORME DE TRAZABILIDAD DEL EXPEDIENTE DIGITAL</h1>
   <table class="meta">
-    <tr><td class="etiqueta">Expediente</td><td>{{ correlativo }}</td><td class="etiqueta">Estado actual</td><td>{{ expediente.get_estado_display }}</td></tr>
+    <tr><td class="etiqueta">Número de expediente</td><td>{{ numero_expediente }}</td><td class="etiqueta">Estado</td><td>{{ expediente.get_estado_display }}</td></tr>
     <tr><td class="etiqueta">Asociación</td><td>{{ expediente.asociacion.nombre }}</td><td class="etiqueta">Código</td><td>{{ expediente.asociacion.codigo }}</td></tr>
     <tr><td class="etiqueta">Año</td><td>{{ expediente.asociacion.anio.anio }}</td><td class="etiqueta">Fecha de inicio</td><td>{{ expediente.creado_en|date:"d/m/Y h:i A" }}</td></tr>
     <tr><td class="etiqueta">Fecha de aprobación</td><td>{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No disponible" }}</td><td class="etiqueta">Informe generado</td><td>{{ fecha_generacion|date:"d/m/Y h:i A" }}</td></tr>
