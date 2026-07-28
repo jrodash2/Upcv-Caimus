@@ -17,6 +17,7 @@ from .models import (
     ExpedienteCAIMUS,
     EntradaRevisionAdmin,
     InformeMensual,
+    HistorialItemExpediente,
     NotificacionAdmin,
     NotificacionAsociacion,
     ResolucionInformeMensual,
@@ -1575,3 +1576,36 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(ResolucionInformeMensual.objects.filter(informe=informe).exists())
+
+    def test_admin_descarga_informe_trazabilidad_con_historial(self):
+        ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Documento trazable", activo=True)
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        crear_items_expediente(expediente)
+        item = expediente.items.get(numero=1)
+        HistorialItemExpediente.objects.create(
+            item=item,
+            usuario=self.admin_user,
+            accion=HistorialItemExpediente.ACCION_OBSERVACION_ADMIN,
+            descripcion="Corregir firma.",
+        )
+        client = Client()
+        client.login(username="admin", password="pass123")
+        response = client.get(reverse("asociaciones:informe_trazabilidad_expediente_pdf", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("Informe_Trazabilidad_UPCV-CAIMUS-2026", response["Content-Disposition"])
+
+    def test_asociacion_no_puede_descargar_informe_trazabilidad(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
+        client = Client()
+        client.login(username="user1", password="pass123")
+        response = client.get(reverse("asociaciones:informe_trazabilidad_expediente_pdf", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_informatica_puede_descargar_informe_trazabilidad(self):
+        expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.admin_user)
+        client = Client()
+        client.login(username="informatica", password="pass123")
+        response = client.get(reverse("asociaciones:informe_trazabilidad_expediente_pdf", args=[expediente.pk]))
+        self.assertEqual(response.status_code, 200)
