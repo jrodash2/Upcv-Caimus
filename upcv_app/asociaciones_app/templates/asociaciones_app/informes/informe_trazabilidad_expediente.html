@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: 8.5in 13in; margin: 1cm 1.2cm 1.4cm; }
+    body { font-family: Arial, sans-serif; font-size: 9px; color: #172033; padding-bottom: 1.8cm; }
+    h1 { color: #172b57; font-size: 16px; text-align: center; margin: 5px 0 12px; }
+    h2 { color: #172b57; font-size: 12px; border-bottom: 2px solid #3457a5; padding-bottom: 3px; }
+    h3 { color: #172b57; font-size: 11px; margin: 0 0 5px; }
+    .logo img { height: 48px; }
+    table { width: 100%; border-collapse: collapse; margin: 5px 0 10px; }
+    th, td { border: 1px solid #b8c0ce; padding: 4px; vertical-align: top; }
+    th { background: #e9eef8; color: #172b57; text-align: left; }
+    .meta td { width: 25%; }
+    .metricas td { width: 25%; }
+    .etiqueta { font-weight: bold; color: #34435f; }
+    .item-section { page-break-inside: avoid; margin: 0 0 18px; }
+    .historial-table { font-size: 8px; table-layout: fixed; }
+    .historial-table .fecha { width: 15%; }
+    .historial-table .accion { width: 13%; }
+    .historial-table .usuario { width: 16%; }
+    .historial-table .archivo { width: 18%; word-wrap: break-word; }
+    .estado { font-weight: bold; text-transform: uppercase; }
+    .respuestas { background: #f7f8fb; padding: 4px 8px; margin-bottom: 6px; }
+    footer { position: fixed; bottom: -1cm; left: 0; right: 0; text-align: center; }
+    footer img { width: 100%; }
+    .muted { color: #667085; }
+  </style>
+</head>
+<body>
+  <div class="logo">{% if logo_secundario_url %}<img src="{{ logo_secundario_url }}" alt="Logo institucional secundario">{% endif %}</div>
+  <h1>INFORME DE TRAZABILIDAD DEL EXPEDIENTE DIGITAL</h1>
+  <table class="meta">
+    <tr><td class="etiqueta">Expediente</td><td>{{ correlativo }}</td><td class="etiqueta">Estado actual</td><td>{{ expediente.get_estado_display }}</td></tr>
+    <tr><td class="etiqueta">Asociación</td><td>{{ expediente.asociacion.nombre }}</td><td class="etiqueta">Código</td><td>{{ expediente.asociacion.codigo }}</td></tr>
+    <tr><td class="etiqueta">Año</td><td>{{ expediente.asociacion.anio.anio }}</td><td class="etiqueta">Fecha de inicio</td><td>{{ expediente.creado_en|date:"d/m/Y h:i A" }}</td></tr>
+    <tr><td class="etiqueta">Fecha de aprobación</td><td>{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No disponible" }}</td><td class="etiqueta">Informe generado</td><td>{{ fecha_generacion|date:"d/m/Y h:i A" }}</td></tr>
+    <tr><td class="etiqueta">Descargado por</td><td colspan="3">{{ usuario_generacion.get_full_name|default:usuario_generacion.username }}</td></tr>
+  </table>
+
+  <h2>Resumen general</h2>
+  <table class="metricas">
+    <tr><td><span class="etiqueta">Ítems requeridos:</span> {{ resumen.total }}</td><td><span class="etiqueta">Aprobados:</span> {{ resumen.aprobados }}</td><td><span class="etiqueta">Rechazados:</span> {{ resumen.rechazados }}</td><td><span class="etiqueta">Pendientes:</span> {{ resumen.pendientes }}</td></tr>
+    <tr><td><span class="etiqueta">Archivos cargados:</span> {{ resumen.archivos }}</td><td><span class="etiqueta">Re-subidas:</span> {{ resumen.resubidas }}</td><td><span class="etiqueta">Observaciones:</span> {{ resumen.observaciones }}</td><td><span class="etiqueta">Primera carga:</span> {{ resumen.primera_carga|date:"d/m/Y h:i A"|default:"No disponible" }}</td></tr>
+    <tr><td colspan="2"><span class="etiqueta">Aprobación final:</span> {{ resumen.aprobacion_final|date:"d/m/Y h:i A"|default:"No disponible" }}</td><td><span class="etiqueta">Tiempo total:</span> {{ resumen.tiempo_total }}</td><td><span class="etiqueta">Promedio por ítem:</span> {{ resumen.promedio_aprobacion }}</td></tr>
+  </table>
+
+  <h2>Detalle e historial completo por ítem</h2>
+  {% for detalle in detalles %}
+    <section class="item-section">
+      <h3>{{ detalle.item.numero }}. {{ detalle.item.titulo }}</h3>
+      <table>
+        <tr><td class="etiqueta">Estado actual</td><td class="estado">{{ detalle.item.get_estado_item_display }}</td><td class="etiqueta">Primera carga</td><td>{{ detalle.primera_carga|date:"d/m/Y h:i A"|default:"No disponible" }}</td></tr>
+        <tr><td class="etiqueta">Usuario primera carga</td><td>{{ detalle.usuario_primera_carga.get_full_name|default:detalle.usuario_primera_carga.username|default:"No disponible" }}</td><td class="etiqueta">Última actualización</td><td>{{ detalle.ultima_actualizacion|date:"d/m/Y h:i A"|default:"No disponible" }} — {{ detalle.usuario_ultima_actualizacion.get_full_name|default:detalle.usuario_ultima_actualizacion.username|default:"No disponible" }}</td></tr>
+        <tr><td class="etiqueta">Decisión más reciente</td><td>{% if detalle.decision %}{{ detalle.decision.get_accion_display }} — {{ detalle.decision.creado_en|date:"d/m/Y h:i A" }} — {{ detalle.decision.usuario.get_full_name|default:detalle.decision.usuario.username|default:"Sin usuario" }}{% else %}No disponible{% endif %}</td><td class="etiqueta">Archivos / re-subidas / observaciones</td><td>{{ detalle.cantidad_archivos }} / {{ detalle.cantidad_resubidas }} / {{ detalle.cantidad_observaciones }}</td></tr>
+        <tr><td class="etiqueta">Primera revisión</td><td>{{ detalle.tiempo_primera_revision }}</td><td class="etiqueta">Tiempo hasta aprobación/actual</td><td>{{ detalle.tiempo_total }}</td></tr>
+        <tr><td class="etiqueta">Ciclos de corrección</td><td>{{ detalle.ciclos_correccion }}</td><td class="etiqueta">Observación administrativa final</td><td>{{ detalle.observacion_final|default:"Sin observación" }}</td></tr>
+      </table>
+      {% if detalle.respuestas_observaciones %}
+        <div class="respuestas"><strong>Tiempos de respuesta de la asociación:</strong>
+          {% for respuesta in detalle.respuestas_observaciones %}<br>{{ respuesta.observacion.creado_en|date:"d/m/Y h:i A" }}: {{ respuesta.duracion }}{% endfor %}
+        </div>
+      {% endif %}
+      <table class="historial-table">
+        <thead><tr><th class="fecha">Fecha y hora</th><th class="accion">Acción</th><th class="usuario">Usuario</th><th>Descripción</th><th class="archivo">Archivo histórico</th></tr></thead>
+        <tbody>
+          {% for evento in detalle.eventos %}
+            <tr><td>{{ evento.creado_en|date:"d/m/Y h:i A" }}</td><td>{{ evento.get_accion_display }}</td><td>{{ evento.usuario.get_full_name|default:evento.usuario.username|default:"Sin usuario" }}</td><td>{{ evento.descripcion|default:"Sin descripción" }}</td><td>{{ evento.nombre_archivo }}{% if evento.archivo %} ({{ evento.tipo_archivo }}){% endif %}</td></tr>
+          {% empty %}<tr><td colspan="5" class="muted">Sin acciones registradas.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% empty %}<p>El expediente no contiene ítems activos.</p>{% endfor %}
+
+  <h2>Resumen comparativo de tiempos</h2>
+  <table>
+    <thead><tr><th>Ítem</th><th>Inicio</th><th>Primera revisión</th><th>Última actualización</th><th>Aprobación</th><th>Tiempo total</th></tr></thead>
+    <tbody>{% for detalle in detalles %}<tr><td>{{ detalle.item.numero }}</td><td>{{ detalle.primera_carga|date:"d/m/Y h:i A"|default:"—" }}</td><td>{{ detalle.primera_revision.creado_en|date:"d/m/Y h:i A"|default:"—" }}</td><td>{{ detalle.ultima_actualizacion|date:"d/m/Y h:i A"|default:"—" }}</td><td>{{ detalle.aprobacion.creado_en|date:"d/m/Y h:i A"|default:"—" }}</td><td>{{ detalle.tiempo_total }}</td></tr>{% empty %}<tr><td colspan="6">Sin información.</td></tr>{% endfor %}</tbody>
+  </table>
+  <footer>{% if footer_image_url %}<img src="{{ footer_image_url }}" alt="Pie institucional">{% endif %}</footer>
+</body>
+</html>
