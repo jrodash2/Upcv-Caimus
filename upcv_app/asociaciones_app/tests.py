@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from datetime import date
+from io import BytesIO
 
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
+from pypdf import PdfReader
 
 from .forms import AsociacionUsuarioForm
 from .models import (
@@ -1593,3 +1595,53 @@ class AsociacionesTests(TestCase):
         client.login(username="informatica", password="pass123")
         response = client.get(reverse("asociaciones:informe_trazabilidad_expediente_pdf", args=[expediente.pk]))
         self.assertEqual(response.status_code, 200)
+
+    def test_informe_trazabilidad_sin_numero_muestra_sin_asignar(self):
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            creado_por=self.admin_user,
+            estado=ExpedienteCAIMUS.ESTADO_BORRADOR,
+        )
+        client = Client()
+        client.login(username="informatica", password="pass123")
+
+        url = reverse("asociaciones:informe_trazabilidad_expediente_pdf", args=[expediente.pk])
+        for _ in range(2):
+            response = client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response["Content-Type"], "application/pdf")
+            self.assertIn(
+                f"Informe_Trazabilidad_Sin_Asignar_Expediente_{expediente.pk}.pdf",
+                response["Content-Disposition"],
+            )
+            texto_pdf = "".join(page.extract_text() or "" for page in PdfReader(BytesIO(response.content)).pages)
+            self.assertIn("Sin asignar", texto_pdf)
+            self.assertIn("Borrador", texto_pdf)
+
+        expediente.refresh_from_db()
+        self.assertEqual(expediente.estado, ExpedienteCAIMUS.ESTADO_BORRADOR)
+        self.assertFalse(ResolucionExpediente.objects.filter(expediente=expediente).exists())
+
+        expediente.estado = ExpedienteCAIMUS.ESTADO_EN_REVISION
+        expediente.save(update_fields=["estado"])
+        response = client.get(url)
+        texto_pdf = "".join(page.extract_text() or "" for page in PdfReader(BytesIO(response.content)).pages)
+        self.assertIn("Sin asignar", texto_pdf)
+        self.assertIn("En revisión", texto_pdf)
+        self.assertFalse(ResolucionExpediente.objects.filter(expediente=expediente).exists())
+
+    def test_informe_trazabilidad_aprobado_muestra_correlativo_oficial(self):
+        expediente = self._crear_expediente_aprobado_completo()
+        client = Client()
+        client.login(username="informatica", password="pass123")
+
+        response = client.get(
+            reverse("asociaciones:informe_trazabilidad_expediente_pdf", args=[expediente.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("Informe_Trazabilidad_RES-2026-001.pdf", response["Content-Disposition"])
+        texto_pdf = "".join(page.extract_text() or "" for page in PdfReader(BytesIO(response.content)).pages)
+        self.assertIn("RES-2026-001", texto_pdf)
+        self.assertIn("Aprobado", texto_pdf)
