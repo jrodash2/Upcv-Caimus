@@ -1584,9 +1584,15 @@ class AsociacionesTests(TestCase):
         item = expediente.items.get(numero=1)
         HistorialItemExpediente.objects.create(
             item=item,
-            usuario=self.admin_user,
+            usuario=None,
             accion=HistorialItemExpediente.ACCION_OBSERVACION_ADMIN,
             descripcion="Corregir firma.",
+        )
+        HistorialItemExpediente.objects.create(
+            item=item,
+            usuario=None,
+            accion=HistorialItemExpediente.ACCION_RECHAZADO,
+            descripcion="Documento rechazado sin usuario histórico.",
         )
         client = Client()
         client.login(username="admin", password="pass123")

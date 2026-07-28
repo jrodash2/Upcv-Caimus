@@ -867,6 +867,14 @@ def formatear_duracion(delta):
     return ", ".join(partes)
 
 
+def obtener_nombre_usuario(usuario, valor_por_defecto="No disponible"):
+    """Obtiene un nombre presentable sin acceder a atributos de usuarios nulos."""
+    if not usuario:
+        return valor_por_defecto
+    nombre_completo = usuario.get_full_name().strip()
+    return nombre_completo or usuario.username or valor_por_defecto
+
+
 def construir_timeline_eventos_visibles_item(item):
     historial_ordenado = list(item.historial.select_related("usuario").all().order_by("creado_en", "id"))
     evento_inicial = next((e for e in historial_ordenado if e.accion == HistorialItemExpediente.ACCION_ARCHIVO_SUBIDO), None)
@@ -1574,14 +1582,22 @@ def _datos_item_trazabilidad(item, fecha_generacion):
     for evento in eventos:
         evento.nombre_archivo = Path(evento.archivo.name).name if evento.archivo else "—"
         evento.tipo_archivo = Path(evento.nombre_archivo).suffix.lstrip(".").upper() or "—"
+        evento.nombre_usuario_seguro = obtener_nombre_usuario(evento.usuario, "Sin usuario registrado")
+    usuario_primera_carga = primera_carga_evento.usuario if primera_carga_evento else item.subido_por
+    usuario_ultima_actualizacion = ultima.usuario if ultima else item.subido_por
     return {
         "item": item,
         "eventos": eventos,
         "primera_carga": primera_carga,
-        "usuario_primera_carga": primera_carga_evento.usuario if primera_carga_evento else item.subido_por,
+        "usuario_primera_carga": usuario_primera_carga,
+        "nombre_usuario_primera_carga": obtener_nombre_usuario(usuario_primera_carga),
         "ultima_actualizacion": ultima.creado_en if ultima else item.fecha_actualizacion,
-        "usuario_ultima_actualizacion": ultima.usuario if ultima else item.subido_por,
+        "usuario_ultima_actualizacion": usuario_ultima_actualizacion,
+        "nombre_usuario_ultima_actualizacion": obtener_nombre_usuario(usuario_ultima_actualizacion),
         "decision": decision,
+        "nombre_usuario_decision": (
+            obtener_nombre_usuario(decision.usuario, "Sin usuario registrado") if decision else "No disponible"
+        ),
         "aprobacion": aprobacion,
         "primera_revision": primera_revision,
         "cantidad_archivos": len(cargas),
@@ -1628,6 +1644,7 @@ def informe_trazabilidad_expediente_pdf(request, expediente_id):
         "detalles": detalles,
         "fecha_generacion": fecha_generacion,
         "usuario_generacion": request.user,
+        "nombre_usuario_generacion": obtener_nombre_usuario(request.user),
         "logo_secundario_url": request.build_absolute_uri(institucion.logo2.url) if institucion and institucion.logo2 else None,
         "footer_image_url": request.build_absolute_uri(static("assets/images/pie.png")),
         "resumen": {

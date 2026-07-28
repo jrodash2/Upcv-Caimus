@@ -36,7 +36,7 @@
     <tr><td class="etiqueta">Asociación</td><td>{{ expediente.asociacion.nombre }}</td><td class="etiqueta">Código</td><td>{{ expediente.asociacion.codigo }}</td></tr>
     <tr><td class="etiqueta">Año</td><td>{{ expediente.asociacion.anio.anio }}</td><td class="etiqueta">Fecha de inicio</td><td>{{ expediente.creado_en|date:"d/m/Y h:i A" }}</td></tr>
     <tr><td class="etiqueta">Fecha de aprobación</td><td>{{ expediente.aprobado_en|date:"d/m/Y h:i A"|default:"No disponible" }}</td><td class="etiqueta">Informe generado</td><td>{{ fecha_generacion|date:"d/m/Y h:i A" }}</td></tr>
-    <tr><td class="etiqueta">Descargado por</td><td colspan="3">{{ usuario_generacion.get_full_name|default:usuario_generacion.username }}</td></tr>
+    <tr><td class="etiqueta">Descargado por</td><td colspan="3">{{ nombre_usuario_generacion }}</td></tr>
   </table>
 
   <h2>Resumen general</h2>
@@ -52,8 +52,8 @@
       <h3>{{ detalle.item.numero }}. {{ detalle.item.titulo }}</h3>
       <table>
         <tr><td class="etiqueta">Estado actual</td><td class="estado">{{ detalle.item.get_estado_item_display }}</td><td class="etiqueta">Primera carga</td><td>{{ detalle.primera_carga|date:"d/m/Y h:i A"|default:"No disponible" }}</td></tr>
-        <tr><td class="etiqueta">Usuario primera carga</td><td>{{ detalle.usuario_primera_carga.get_full_name|default:detalle.usuario_primera_carga.username|default:"No disponible" }}</td><td class="etiqueta">Última actualización</td><td>{{ detalle.ultima_actualizacion|date:"d/m/Y h:i A"|default:"No disponible" }} — {{ detalle.usuario_ultima_actualizacion.get_full_name|default:detalle.usuario_ultima_actualizacion.username|default:"No disponible" }}</td></tr>
-        <tr><td class="etiqueta">Decisión más reciente</td><td>{% if detalle.decision %}{{ detalle.decision.get_accion_display }} — {{ detalle.decision.creado_en|date:"d/m/Y h:i A" }} — {{ detalle.decision.usuario.get_full_name|default:detalle.decision.usuario.username|default:"Sin usuario" }}{% else %}No disponible{% endif %}</td><td class="etiqueta">Archivos / re-subidas / observaciones</td><td>{{ detalle.cantidad_archivos }} / {{ detalle.cantidad_resubidas }} / {{ detalle.cantidad_observaciones }}</td></tr>
+        <tr><td class="etiqueta">Usuario primera carga</td><td>{{ detalle.nombre_usuario_primera_carga }}</td><td class="etiqueta">Última actualización</td><td>{{ detalle.ultima_actualizacion|date:"d/m/Y h:i A"|default:"No disponible" }} — {{ detalle.nombre_usuario_ultima_actualizacion }}</td></tr>
+        <tr><td class="etiqueta">Decisión más reciente</td><td>{% if detalle.decision %}{{ detalle.decision.get_accion_display }} — {{ detalle.decision.creado_en|date:"d/m/Y h:i A" }} — {{ detalle.nombre_usuario_decision }}{% else %}No disponible{% endif %}</td><td class="etiqueta">Archivos / re-subidas / observaciones</td><td>{{ detalle.cantidad_archivos }} / {{ detalle.cantidad_resubidas }} / {{ detalle.cantidad_observaciones }}</td></tr>
         <tr><td class="etiqueta">Primera revisión</td><td>{{ detalle.tiempo_primera_revision }}</td><td class="etiqueta">Tiempo hasta aprobación/actual</td><td>{{ detalle.tiempo_total }}</td></tr>
         <tr><td class="etiqueta">Ciclos de corrección</td><td>{{ detalle.ciclos_correccion }}</td><td class="etiqueta">Observación administrativa final</td><td>{{ detalle.observacion_final|default:"Sin observación" }}</td></tr>
       </table>
@@ -66,7 +66,7 @@
         <thead><tr><th class="fecha">Fecha y hora</th><th class="accion">Acción</th><th class="usuario">Usuario</th><th>Descripción</th><th class="archivo">Archivo histórico</th></tr></thead>
         <tbody>
           {% for evento in detalle.eventos %}
-            <tr><td>{{ evento.creado_en|date:"d/m/Y h:i A" }}</td><td>{{ evento.get_accion_display }}</td><td>{{ evento.usuario.get_full_name|default:evento.usuario.username|default:"Sin usuario" }}</td><td>{{ evento.descripcion|default:"Sin descripción" }}</td><td>{{ evento.nombre_archivo }}{% if evento.archivo %} ({{ evento.tipo_archivo }}){% endif %}</td></tr>
+            <tr><td>{{ evento.creado_en|date:"d/m/Y h:i A" }}</td><td>{{ evento.get_accion_display }}</td><td>{{ evento.nombre_usuario_seguro }}</td><td>{{ evento.descripcion|default:"Sin descripción" }}</td><td>{{ evento.nombre_archivo }}{% if evento.archivo %} ({{ evento.tipo_archivo }}){% endif %}</td></tr>
           {% empty %}<tr><td colspan="5" class="muted">Sin acciones registradas.</td></tr>{% endfor %}
         </tbody>
       </table>
