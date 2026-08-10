@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="{% static 'assets/css/responsive.css' %}">
   <link rel="stylesheet" href="{% static 'asociaciones_app/css/publico.css' %}">
 </head>
-<body class="landing-page">
+<body class="landing-page public-page">
   <header class="sticky-header public-navbar">
     <div class="container">
       <nav class="navbar navbar-b navbar-expand-lg">
@@ -28,6 +28,7 @@
             <li class="nav-item"><a class="nav-link" href="{% url 'asociaciones_publicas' %}#asociaciones">Asociaciones</a></li>
             <li class="nav-item"><a class="nav-link" href="{% url 'asociaciones_publicas' %}#expedientes">Estado de expedientes</a></li>
             <li class="nav-item"><a class="nav-link" href="{% url 'asociaciones_publicas' %}#informes">Informes</a></li>
+            <li class="nav-item ms-lg-2"><button type="button" id="publicThemeToggle" class="mode public-theme-toggle" aria-label="Cambiar modo de visualización"><i class="moon" data-feather="moon"></i></button></li>
             <li class="nav-item ms-lg-3"><a class="btn public-login-btn" href="{% url 'almacen:signin' %}">Acceso al sistema</a></li>
           </ul>
         </div>
@@ -51,5 +52,20 @@
   <script src="{% static 'assets/js/animation/wow/wow-init.js' %}"></script>
   <script src="{% static 'assets/js/landing_sticky.js' %}"></script>
   <script src="{% static 'assets/js/landing.js' %}"></script>
+  <script src="{% static 'assets/js/script.js' %}"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const toggle = document.getElementById("publicThemeToggle");
+      if (localStorage.getItem("mode") === "dark-only") document.body.classList.add("dark-only");
+      function updateThemeIcon() {
+        const dark = document.body.classList.contains("dark-only");
+        toggle.innerHTML = '<i data-feather="' + (dark ? "sun" : "moon") + '"></i>';
+        toggle.setAttribute("aria-label", dark ? "Activar modo claro" : "Activar modo oscuro");
+        feather.replace();
+      }
+      updateThemeIcon();
+      toggle.addEventListener("click", function () { window.setTimeout(updateThemeIcon, 0); });
+    });
+  </script>
 </body>
 </html>
