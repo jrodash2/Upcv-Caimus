@@ -457,6 +457,10 @@ def _dashboard_admin(request):
         "chart_payload": chart_payload,
         "meses_labels": [month_name[i] for i in range(1, 13)],
     }
+    if is_informatica(request.user):
+        context["url_publica"] = request.build_absolute_uri(
+            reverse("asociaciones:asociaciones_publicas")
+        )
     return render(request, "asociaciones_app/dashboard.html", context)
 
 

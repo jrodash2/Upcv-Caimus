@@ -96,6 +96,28 @@ class AsociacionesTests(TestCase):
         self.assertNotContains(response, "Observación estrictamente interna")
         self.assertNotContains(response, "Dato privado")
 
+    def test_dashboard_informatica_muestra_enlace_publico_absoluto(self):
+        client = Client()
+        client.login(username="informatica", password="pass123")
+
+        response = client.get(reverse("asociaciones:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        url_publica = response.wsgi_request.build_absolute_uri(
+            reverse("asociaciones:asociaciones_publicas")
+        )
+        self.assertEqual(response.context["url_publica"], url_publica)
+        self.assertContains(response, 'id="copiarLinkPublico"')
+        self.assertContains(response, url_publica)
+
+    def test_dashboard_no_muestra_enlace_publico_a_otros_grupos(self):
+        for usuario in (self.admin_user, self.user):
+            with self.subTest(usuario=usuario.username):
+                client = Client()
+                client.force_login(usuario)
+                response = client.get(reverse("asociaciones:dashboard"))
+                self.assertNotIn(b'id="copiarLinkPublico"', response.content)
+
     def test_correlativo_publico_solo_aparece_con_aprobacion_completa(self):
         expediente = ExpedienteCAIMUS.objects.create(
             asociacion=self.asociacion,

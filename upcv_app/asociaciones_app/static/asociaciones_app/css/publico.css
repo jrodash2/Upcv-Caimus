@@ -22,6 +22,12 @@
 .public-page textarea {
   font-family: "Montserrat", sans-serif;
 }
+/* Riho's landing title underline overlaps public descriptions at some breakpoints. */
+.public-page .section-py-space .title h2::before,
+.public-page .section-py-space .title h2::after {
+  content: none !important;
+  display: none !important;
+}
 .public-theme-toggle {
   width: 42px;
   height: 42px;

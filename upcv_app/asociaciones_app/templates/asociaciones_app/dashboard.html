@@ -36,6 +36,18 @@
         </form>
       </div>
       {% endif %}
+      {% if es_informatica %}
+      <div class="col-md-8 d-flex align-items-end justify-content-md-end mt-3 mt-md-0">
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-primary" id="copiarLinkPublico" data-url="{{ url_publica }}">
+            <i data-feather="copy"></i> Copiar enlace público
+          </button>
+          <a href="{{ url_publica }}" target="_blank" rel="noopener" class="btn btn-outline-primary">
+            <i data-feather="external-link"></i> Abrir vista pública
+          </a>
+        </div>
+      </div>
+      {% endif %}
     </div>
 
     <div class="row">
@@ -210,4 +222,45 @@
 {{ chart_payload|json_script:"dashboard-chart-data" }}
 {{ meses_labels|json_script:"dashboard-month-labels" }}
 <script src="{% static 'asociaciones_app/js/dashboard.js' %}"></script>
+{% if es_informatica %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const btn = document.getElementById("copiarLinkPublico");
+  if (!btn) return;
+  const textoOriginal = btn.innerHTML;
+
+  function mostrarConfirmacion() {
+    btn.innerHTML = "✓ Enlace copiado";
+    btn.classList.replace("btn-primary", "btn-success");
+    window.setTimeout(function () {
+      btn.innerHTML = textoOriginal;
+      btn.classList.replace("btn-success", "btn-primary");
+      if (typeof feather !== "undefined") feather.replace();
+    }, 2000);
+  }
+
+  function copiarLinkFallback(texto) {
+    const input = document.createElement("textarea");
+    input.value = texto;
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    document.body.removeChild(input);
+    mostrarConfirmacion();
+  }
+
+  btn.addEventListener("click", async function () {
+    const url = btn.dataset.url;
+    try {
+      await navigator.clipboard.writeText(url);
+      mostrarConfirmacion();
+    } catch (error) {
+      copiarLinkFallback(url);
+    }
+  });
+});
+</script>
+{% endif %}
 {% endblock %}
