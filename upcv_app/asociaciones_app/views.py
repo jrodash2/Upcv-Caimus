@@ -93,6 +93,152 @@ ALLOWED_EXPEDIENTE_ITEM_CONTENT_TYPES = {
 from .utils import obtener_entradas_bandeja_admin, resumen_dashboard_admin
 
 
+PUBLIC_MONTHS = (
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+)
+
+
+def _estado_publico_expediente(expediente, aprobados, total):
+    """Return the truthful public state; approval always requires every active item."""
+    if expediente is None:
+        return "sin_iniciar", "Sin iniciar"
+    if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and total and aprobados == total:
+        return "aprobado", "Aprobado"
+    labels = {
+        ExpedienteCAIMUS.ESTADO_EN_REVISION: ("revision", "En revisión"),
+        ExpedienteCAIMUS.ESTADO_RECHAZADO: ("rechazado", "Rechazado / Con observaciones"),
+        ExpedienteCAIMUS.ESTADO_APROBADO: ("revision", "En revisión"),
+    }
+    return labels.get(expediente.estado, ("borrador", "Borrador"))
+
+
+def _datos_publicos_asociacion(asociacion, detalle=False):
+    expediente = getattr(asociacion, "expedientes_publicos", None)
+    items = list(getattr(expediente, "items_publicos", [])) if expediente else []
+    aprobados = sum(item.estado_item == ItemChecklistCAIMUS.ESTADO_APROBADO for item in items)
+    total = len(items)
+    porcentaje = int(aprobados * 100 / total) if total else 0
+    estado_clave, estado = _estado_publico_expediente(expediente, aprobados, total)
+
+    configuraciones = list(getattr(asociacion.anio, "config_publica", []))
+    requeridos = {config.mes for config in configuraciones if config.requerido}
+    no_requeridos = {config.mes for config in configuraciones if not config.requerido}
+    # An unconfigured active year defaults to requiring all months, consistently
+    # with informe_mes_requerido().
+    if not configuraciones:
+        requeridos = set(range(1, 13))
+    informes = {informe.mes: informe for informe in getattr(asociacion, "informes_publicos", [])}
+    informes_aprobados = sum(
+        mes in informes and informes[mes].estado == InformeMensual.ESTADO_APROBADO
+        for mes in requeridos
+    )
+    informes_pendientes = len(requeridos) - informes_aprobados
+    fechas = []
+    if expediente:
+        fechas.append(expediente.actualizado_en)
+        fechas.extend(item.fecha_actualizacion for item in items if item.fecha_actualizacion)
+    fechas.extend(informe.actualizado_en for informe in informes.values() if informe.actualizado_en)
+
+    data = {
+        "pk": asociacion.pk,
+        "nombre": asociacion.nombre,
+        "codigo": asociacion.codigo,
+        "anio": asociacion.anio.anio,
+        "estado_clave": estado_clave,
+        "estado": estado,
+        "aprobados": aprobados,
+        "total": total,
+        "porcentaje": porcentaje,
+        "informes_aprobados": informes_aprobados,
+        "informes_pendientes": informes_pendientes,
+        "informes_no_requeridos": len(no_requeridos),
+        "actualizado": max(fechas) if fechas else None,
+    }
+    if detalle:
+        iconos_item = {"aprobado": "✓", "rechazado": "×", "borrador": "○"}
+        data["items"] = [
+            {
+                "numero": item.numero,
+                "titulo": item.titulo,
+                "estado": item.get_estado_item_display(),
+                "estado_clave": item.estado_item,
+                "icono": iconos_item[item.estado_item],
+            }
+            for item in items
+        ]
+        meses = []
+        for mes in range(1, 13):
+            informe = informes.get(mes)
+            if mes in no_requeridos:
+                clave, etiqueta, icono = "no_requerido", "No requerido", "—"
+            elif informe and informe.estado == InformeMensual.ESTADO_APROBADO:
+                clave, etiqueta, icono = "aprobado", "Aprobado", "✓"
+            elif informe and informe.estado == InformeMensual.ESTADO_RECHAZADO:
+                clave, etiqueta, icono = "rechazado", "Rechazado", "×"
+            elif informe and informe.estado == InformeMensual.ESTADO_EN_REVISION:
+                clave, etiqueta, icono = "revision", "En revisión", "!"
+            else:
+                clave, etiqueta, icono = "pendiente", "Pendiente", "○"
+            meses.append({"mes": PUBLIC_MONTHS[mes - 1], "estado": etiqueta, "estado_clave": clave, "icono": icono})
+        data["meses"] = meses
+    return data
+
+
+def _asociaciones_publicas_queryset():
+    items = ItemChecklistCAIMUS.objects.filter(activo=True).only(
+        "expediente_id", "numero", "titulo", "estado_item", "fecha_actualizacion"
+    ).order_by("numero")
+    expedientes = ExpedienteCAIMUS.objects.only(
+        "id", "asociacion_id", "estado", "actualizado_en"
+    ).prefetch_related(Prefetch("items", queryset=items, to_attr="items_publicos"))
+    informes = InformeMensual.objects.only("asociacion_id", "mes", "estado", "actualizado_en")
+    configs = ConfiguracionInformeAnio.objects.filter(activo=True).only("anio_id", "mes", "requerido")
+    return Asociacion.objects.filter(activo=True, anio__activo=True).select_related("anio").only(
+        "id", "nombre", "codigo", "anio_id", "anio__anio"
+    ).prefetch_related(
+        Prefetch("expediente_caimus", queryset=expedientes, to_attr="expedientes_publicos"),
+        Prefetch("informes_mensuales", queryset=informes, to_attr="informes_publicos"),
+        Prefetch("anio__configuracion_informes", queryset=configs, to_attr="config_publica"),
+    )
+
+
+def asociaciones_publicas(request):
+    """Read-only transparency portal; deliberately has no authentication decorator."""
+    anios = list(Anio.objects.filter(activo=True).values_list("anio", flat=True))
+    anio = request.GET.get("anio", "").strip()
+    busqueda = request.GET.get("q", "").strip()[:100]
+    estado = request.GET.get("estado", "").strip()
+    queryset = _asociaciones_publicas_queryset()
+    if anio.isdigit() and int(anio) in anios:
+        queryset = queryset.filter(anio__anio=int(anio))
+    else:
+        anio = ""
+    if busqueda:
+        queryset = queryset.filter(Q(nombre__icontains=busqueda) | Q(codigo__icontains=busqueda))
+    asociaciones = [_datos_publicos_asociacion(obj) for obj in queryset.order_by("nombre")]
+    if estado:
+        asociaciones = [obj for obj in asociaciones if obj["estado_clave"] == estado]
+    resumen = {
+        "asociaciones": len(asociaciones),
+        "aprobados": sum(obj["estado_clave"] == "aprobado" for obj in asociaciones),
+        "revision": sum(obj["estado_clave"] == "revision" for obj in asociaciones),
+        "pendientes": sum(obj["estado_clave"] in {"sin_iniciar", "borrador", "rechazado"} for obj in asociaciones),
+        "informes": sum(obj["informes_aprobados"] for obj in asociaciones),
+    }
+    return render(request, "asociaciones_app/publico/lista.html", {
+        "asociaciones": asociaciones, "anios": anios, "anio_seleccionado": anio,
+        "busqueda": busqueda, "estado_seleccionado": estado, "resumen": resumen,
+    })
+
+
+def asociacion_publica_detalle(request, pk):
+    asociacion = get_object_or_404(_asociaciones_publicas_queryset(), pk=pk)
+    return render(request, "asociaciones_app/publico/detalle.html", {
+        "asociacion": _datos_publicos_asociacion(asociacion, detalle=True),
+    })
+
+
 def _generar_qr_validacion_base64(validacion_url):
     qr = qrcode.QRCode(box_size=4, border=2)
     qr.add_data(validacion_url)
