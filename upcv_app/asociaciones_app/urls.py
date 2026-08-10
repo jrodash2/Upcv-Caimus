@@ -5,6 +5,8 @@ from . import views
 app_name = "asociaciones"
 
 urlpatterns = [
+    path("publico/asociaciones/", views.asociaciones_publicas, name="asociaciones_publicas"),
+    path("publico/asociaciones/<int:pk>/", views.asociacion_publica_detalle, name="asociacion_publica_detalle"),
     path("", views.asociaciones_inicio, name="inicio"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("dashboard/resumen/excel/", views.exportar_resumen_asociaciones_excel, name="exportar_resumen_asociaciones_excel"),

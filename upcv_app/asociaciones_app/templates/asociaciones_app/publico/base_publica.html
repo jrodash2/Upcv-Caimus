@@ -1,0 +1,55 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{% block title %}Seguimiento Público CAIMUS{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'assets/css/font-awesome.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/vendors/icofont.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/vendors/animate.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/vendors/bootstrap.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/responsive.css' %}">
+  <link rel="stylesheet" href="{% static 'asociaciones_app/css/publico.css' %}">
+</head>
+<body class="landing-page">
+  <header class="sticky-header public-navbar">
+    <div class="container">
+      <nav class="navbar navbar-b navbar-expand-lg">
+        <a class="navbar-brand" href="{% url 'asociaciones_publicas' %}">
+          {% if institucion.logo %}<img src="{{ institucion.logo.url }}" class="img-fluid public-logo" alt="{{ institucion.nombre }}">{% else %}<strong>CAIMUS</strong>{% endif %}
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#publicNavbar" aria-controls="publicNavbar" aria-expanded="false" aria-label="Abrir menú"><i data-feather="menu"></i></button>
+        <div class="collapse navbar-collapse" id="publicNavbar">
+          <ul class="navbar-nav ms-auto align-items-lg-center">
+            <li class="nav-item"><a class="nav-link" href="{% url 'asociaciones_publicas' %}#inicio">Inicio</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'asociaciones_publicas' %}#asociaciones">Asociaciones</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'asociaciones_publicas' %}#expedientes">Estado de expedientes</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'asociaciones_publicas' %}#informes">Informes</a></li>
+            <li class="nav-item ms-lg-3"><a class="btn btn-primary" href="{% url 'almacen:signin' %}">Acceso al sistema</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer class="landing-footer public-footer section-py-space">
+    <div class="container text-center">
+      {% if institucion.logo %}<img src="{{ institucion.logo.url }}" class="img-fluid public-logo mb-3" alt="{{ institucion.nombre }}">{% endif %}
+      <h4>{{ institucion.nombre|default:'CAIMUS' }}</h4>
+      <p>Portal institucional de consulta y transparencia. La información publicada es únicamente informativa.</p>
+      <p class="mb-0">&copy; {% now 'Y' %} {{ institucion.nombre|default:'CAIMUS' }} · <a href="{% url 'almacen:signin' %}">Acceso al sistema</a></p>
+    </div>
+  </footer>
+  <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+  <script src="{% static 'assets/js/bootstrap/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/js/icons/feather-icon/feather.min.js' %}"></script>
+  <script src="{% static 'assets/js/icons/feather-icon/feather-icon.js' %}"></script>
+  <script src="{% static 'assets/js/animation/wow/wow.min.js' %}"></script>
+  <script src="{% static 'assets/js/animation/wow/wow-init.js' %}"></script>
+  <script src="{% static 'assets/js/landing_sticky.js' %}"></script>
+  <script src="{% static 'assets/js/landing.js' %}"></script>
+</body>
+</html>
