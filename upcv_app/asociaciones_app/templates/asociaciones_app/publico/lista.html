@@ -1,0 +1,39 @@
+{% extends 'asociaciones_app/publico/base_publica.html' %}
+{% block content %}
+<section id="inicio" class="landing-home public-hero">
+  <div class="container">
+    <div class="row">
+      <div class="col-xl-8 col-lg-9 wow fadeInUp public-hero-content"><span class="public-kicker">Información pública institucional</span><h1 class="public-hero-title">Seguimiento Público CAIMUS</h1><p class="public-hero-subtitle">Consulta el avance de los expedientes e informes de las asociaciones registradas.</p><a href="#asociaciones" class="btn public-hero-btn">Consultar asociaciones</a></div>
+    </div>
+  </div>
+</section>
+<section id="expedientes" class="section-py-space public-summary"><div class="container">
+  <div class="title text-center wow fadeInUp"><h2>Resumen del proceso</h2><p>Indicadores correspondientes a los filtros seleccionados.</p></div>
+  <div class="row g-3">
+    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="users"></i><span>Asociaciones activas</span><h3>{{ resumen.asociaciones }}</h3></div></div>
+    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="check-circle"></i><span>Expedientes aprobados</span><h3>{{ resumen.aprobados }}</h3></div></div>
+    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="eye"></i><span>En revisión</span><h3>{{ resumen.revision }}</h3></div></div>
+    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="clock"></i><span>Pendientes</span><h3>{{ resumen.pendientes }}</h3></div></div>
+    <div id="informes" class="col-xl col-md-4 col-12 wow fadeInUp"><div class="feature-box common-card"><i data-feather="file-text"></i><span>Informes aprobados</span><h3>{{ resumen.informes }}</h3></div></div>
+  </div>
+</div></section>
+<section id="asociaciones" class="section-py-space"><div class="container">
+  <div class="title text-center wow fadeInUp"><h2>Asociaciones registradas</h2><p>Busque por nombre o código y filtre la información por año y estado.</p></div>
+  <form method="get" class="common-card public-filter mb-4 wow fadeInUp" role="search"><div class="row g-3 align-items-end">
+    <div class="col-lg-5"><label for="q" class="form-label">Buscar asociación</label><input id="q" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar asociación..."></div>
+    <div class="col-sm-5 col-lg-2"><label for="anio" class="form-label">Año</label><select id="anio" name="anio" class="form-select"><option value="">Todos</option>{% for valor in anios %}<option value="{{ valor }}"{% if anio_seleccionado == valor|stringformat:'s' %} selected{% endif %}>{{ valor }}</option>{% endfor %}</select></div>
+    <div class="col-sm-7 col-lg-3"><label for="estado" class="form-label">Estado</label><select id="estado" name="estado" class="form-select"><option value="">Todos</option><option value="sin_iniciar"{% if estado_seleccionado == 'sin_iniciar' %} selected{% endif %}>Sin iniciar</option><option value="borrador"{% if estado_seleccionado == 'borrador' %} selected{% endif %}>Borrador</option><option value="revision"{% if estado_seleccionado == 'revision' %} selected{% endif %}>En revisión</option><option value="rechazado"{% if estado_seleccionado == 'rechazado' %} selected{% endif %}>Con observaciones</option><option value="aprobado"{% if estado_seleccionado == 'aprobado' %} selected{% endif %}>Aprobado</option></select></div>
+    <div class="col-lg-2 d-grid"><button class="btn btn-primary"><i data-feather="search"></i> Consultar</button></div>
+  </div></form>
+  <div class="row g-4">
+  {% for item in asociaciones %}<div class="col-lg-4 col-md-6 wow fadeInUp"><article class="common-card public-association-card h-100">
+    <div class="d-flex justify-content-between gap-2"><div><h3>{{ item.nombre }}</h3><span class="text-muted">Código {{ item.codigo }}</span></div><span class="badge badge-light-primary">{{ item.anio }}</span></div><hr>
+    <div class="d-flex justify-content-between align-items-center"><span>Estado</span><span class="badge public-status status-{{ item.estado_clave }}">{% if item.estado_clave == 'aprobado' %}✓ Expediente aprobado{% elif item.estado_clave == 'revision' %}! En revisión{% elif item.estado_clave == 'rechazado' %}× {{ item.estado }}{% else %}○ {{ item.estado }}{% endif %}</span></div>
+    <div class="public-number"><small>Número de expediente</small><strong>{{ item.correlativo }}</strong></div>
+    <div class="d-flex justify-content-between mt-3"><strong>Avance del expediente<br><small>{{ item.aprobados }} de {{ item.total }} aprobados</small></strong><b>{{ item.porcentaje }}%</b></div><div class="progress mt-2"><div class="progress-bar" role="progressbar" style="width:{{ item.porcentaje }}%" aria-valuenow="{{ item.porcentaje }}" aria-valuemin="0" aria-valuemax="100"></div></div>
+    <div class="public-reports mt-4"><h6>Informes mensuales</h6><div><span>✓ Aprobados</span><b>{{ item.informes_aprobados }}</b></div><div><span>! En revisión</span><b>{{ item.informes_revision }}</b></div><div><span>○ Pendientes</span><b>{{ item.informes_pendientes }}</b></div><div><span>— No requeridos</span><b>{{ item.informes_no_requeridos }}</b></div></div>
+    <p class="text-muted small mt-3"><i data-feather="calendar"></i> Actualizado: {% if item.actualizado %}{{ item.actualizado|date:'d/m/Y h:i A' }}{% else %}Sin actividad registrada{% endif %}</p><a class="btn btn-outline-primary w-100 mt-auto" href="{% url 'asociacion_publica_detalle' item.pk %}">Ver detalle <i data-feather="arrow-right"></i></a>
+  </article></div>{% empty %}<div class="col-12"><div class="common-card text-center"><h3>No se encontraron asociaciones</h3><p class="mb-0">Pruebe con otros criterios de consulta.</p></div></div>{% endfor %}
+  </div>
+</div></section>
+{% endblock %}
