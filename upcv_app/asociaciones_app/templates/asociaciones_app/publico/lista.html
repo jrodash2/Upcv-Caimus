@@ -1,0 +1,34 @@
+{% extends 'asociaciones_app/publico/base_publica.html' %}
+{% block content %}
+<section class="mb-4"><h1 class="h3 mb-1">Estado de asociaciones</h1><p class="text-muted mb-0">Consulte el avance público de expedientes e informes mensuales.</p></section>
+<section class="summary-grid mb-4" aria-label="Resumen público">
+  <div class="summary-card"><span>Asociaciones activas</span><strong>{{ resumen.asociaciones }}</strong></div>
+  <div class="summary-card success"><span>Expedientes aprobados</span><strong>{{ resumen.aprobados }}</strong></div>
+  <div class="summary-card info"><span>En revisión</span><strong>{{ resumen.revision }}</strong></div>
+  <div class="summary-card warning"><span>Expedientes pendientes</span><strong>{{ resumen.pendientes }}</strong></div>
+  <div class="summary-card purple"><span>Informes aprobados</span><strong>{{ resumen.informes }}</strong></div>
+</section>
+<form method="get" class="card filter-card mb-4" role="search">
+  <div class="card-body row g-3 align-items-end">
+    <div class="col-lg-5"><label for="q" class="form-label">Buscar asociación</label><input id="q" name="q" value="{{ busqueda }}" class="form-control" placeholder="Nombre o código"></div>
+    <div class="col-sm-5 col-lg-2"><label for="anio" class="form-label">Año</label><select id="anio" name="anio" class="form-select"><option value="">Todos</option>{% for valor in anios %}<option value="{{ valor }}"{% if anio_seleccionado == valor|stringformat:'s' %} selected{% endif %}>{{ valor }}</option>{% endfor %}</select></div>
+    <div class="col-sm-7 col-lg-3"><label for="estado" class="form-label">Estado</label><select id="estado" name="estado" class="form-select"><option value="">Todos</option><option value="sin_iniciar"{% if estado_seleccionado == 'sin_iniciar' %} selected{% endif %}>Sin iniciar</option><option value="borrador"{% if estado_seleccionado == 'borrador' %} selected{% endif %}>Borrador</option><option value="revision"{% if estado_seleccionado == 'revision' %} selected{% endif %}>En revisión</option><option value="rechazado"{% if estado_seleccionado == 'rechazado' %} selected{% endif %}>Con observaciones</option><option value="aprobado"{% if estado_seleccionado == 'aprobado' %} selected{% endif %}>Aprobado</option></select></div>
+    <div class="col-lg-2 d-grid"><button class="btn btn-primary">Consultar</button></div>
+  </div>
+</form>
+<div class="association-grid">
+{% for item in asociaciones %}
+  <article class="card association-card">
+    <div class="card-body d-flex flex-column">
+      <div class="d-flex justify-content-between gap-2"><div><h2 class="h5 mb-1">{{ item.nombre }}</h2><span class="code">{{ item.codigo }}</span></div><span class="year-pill">{{ item.anio }}</span></div>
+      <hr><div class="d-flex justify-content-between align-items-center"><span class="label">Expediente</span><span class="status status-{{ item.estado_clave }}">{{ item.estado }}</span></div>
+      <div class="d-flex justify-content-between mt-3"><strong>{{ item.aprobados }} de {{ item.total }} ítems aprobados</strong><strong>{{ item.porcentaje }}%</strong></div>
+      <div class="progress mt-2" role="progressbar" aria-label="Progreso aprobado" aria-valuenow="{{ item.porcentaje }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width:{{ item.porcentaje }}%"></div></div>
+      <div class="reports mt-4"><strong>Informes mensuales</strong><div><span>✓ Aprobados</span><b>{{ item.informes_aprobados }}</b></div><div><span>○ Pendientes</span><b>{{ item.informes_pendientes }}</b></div><div><span>— No requeridos</span><b>{{ item.informes_no_requeridos }}</b></div></div>
+      <p class="updated mt-3">Última actualización: {% if item.actualizado %}{{ item.actualizado|date:'d/m/Y h:i A' }}{% else %}Sin actividad registrada{% endif %}</p>
+      <a class="btn btn-light mt-auto" href="{% url 'asociacion_publica_detalle' item.pk %}">Ver detalle <span aria-hidden="true">→</span></a>
+    </div>
+  </article>
+{% empty %}<div class="card empty-state"><div class="card-body"><h2 class="h5">No se encontraron asociaciones</h2><p class="mb-0 text-muted">Pruebe con otros criterios de consulta.</p></div></div>{% endfor %}
+</div>
+{% endblock %}

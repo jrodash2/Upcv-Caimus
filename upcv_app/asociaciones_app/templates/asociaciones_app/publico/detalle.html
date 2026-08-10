@@ -1,0 +1,11 @@
+{% extends 'asociaciones_app/publico/base_publica.html' %}
+{% block title %}{{ asociacion.nombre }} · Información Pública CAIMUS{% endblock %}
+{% block content %}
+<a href="{% url 'asociaciones_publicas' %}" class="back-link">← Volver a asociaciones</a>
+<section class="detail-hero mt-3 mb-4"><div><span class="year-pill">Año {{ asociacion.anio }}</span><h1>{{ asociacion.nombre }}</h1><p class="mb-0">Código público: {{ asociacion.codigo }}</p></div><span class="status status-{{ asociacion.estado_clave }}">{{ asociacion.estado }}</span></section>
+<section class="card mb-4"><div class="card-body"><div class="d-flex justify-content-between"><div><span class="label">Progreso del expediente</span><h2 class="h5 mt-1 mb-0">{{ asociacion.aprobados }} de {{ asociacion.total }} requisitos aprobados</h2></div><strong class="percent">{{ asociacion.porcentaje }}%</strong></div><div class="progress mt-3"><div class="progress-bar" style="width:{{ asociacion.porcentaje }}%"></div></div><p class="updated mb-0 mt-3">Última actualización: {% if asociacion.actualizado %}{{ asociacion.actualizado|date:'d/m/Y h:i A' }}{% else %}Sin actividad registrada{% endif %}</p></div></section>
+<div class="detail-grid">
+ <section class="card"><div class="card-body"><h2 class="h5">Checklist público</h2><p class="text-muted">Estado de requisitos, sin documentos ni observaciones internas.</p><ol class="checklist">{% for item in asociacion.items %}<li><div><strong>{{ item.titulo }}</strong><span class="item-state state-{{ item.estado_clave }}">{{ item.icono }} {{ item.estado }}</span></div></li>{% empty %}<li>No hay requisitos registrados.</li>{% endfor %}</ol></div></section>
+ <section class="card"><div class="card-body"><h2 class="h5">Informes mensuales</h2><p class="text-muted">Resumen informativo por mes.</p><div class="months">{% for mes in asociacion.meses %}<div><span>{{ mes.mes }}</span><span class="status status-{{ mes.estado_clave }}">{{ mes.icono }} {{ mes.estado }}</span></div>{% endfor %}</div></div></section>
+</div>
+{% endblock %}

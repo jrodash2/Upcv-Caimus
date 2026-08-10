@@ -4,8 +4,11 @@ from django.urls import path, include
 from almacen_app import urls as almacen_urls
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
+from asociaciones_app import views as asociaciones_views
 
 urlpatterns = [
+    path('publico/asociaciones/', asociaciones_views.asociaciones_publicas, name='asociaciones_publicas'),
+    path('publico/asociaciones/<int:pk>/', asociaciones_views.asociacion_publica_detalle, name='asociacion_publica_detalle'),
     path('admin/', admin.site.urls),
     path('almacen/', include('almacen_app.urls')),  # Incluye las URLs de tu aplicación
     path('', include(almacen_urls.urlpatterns)),  # Esto redirige la raíz al signin o vista principal

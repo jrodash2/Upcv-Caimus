@@ -1,0 +1,26 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{% block title %}Información Pública CAIMUS{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'assets/css/vendors/bootstrap.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'asociaciones_app/css/publico.css' %}">
+</head>
+<body class="public-body">
+  <header class="public-header">
+    <div class="container d-flex align-items-center justify-content-between gap-3 py-4">
+      <a class="public-brand" href="{% url 'asociaciones_publicas' %}" aria-label="Inicio de Información Pública CAIMUS">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span><strong>Información Pública CAIMUS</strong><small>Seguimiento del estado de expedientes e informes de asociaciones</small></span>
+      </a>
+      <a href="{% url 'almacen:signin' %}" class="btn btn-outline-light btn-sm">Acceso al sistema</a>
+    </div>
+  </header>
+  <main class="container py-4 py-lg-5">{% block content %}{% endblock %}</main>
+  <footer class="public-footer"><div class="container">Portal público de consulta y transparencia · La información mostrada es únicamente informativa.</div></footer>
+</body>
+</html>
