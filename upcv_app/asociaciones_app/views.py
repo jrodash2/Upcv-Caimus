@@ -99,11 +99,11 @@ PUBLIC_MONTHS = (
 )
 
 
-def _estado_publico_expediente(expediente, aprobados, total):
+def _estado_publico_expediente(expediente, aprobados, total, correlativo):
     """Return the truthful public state; approval always requires every active item."""
     if expediente is None:
         return "sin_iniciar", "Sin iniciar"
-    if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and total and aprobados == total:
+    if expediente.estado == ExpedienteCAIMUS.ESTADO_APROBADO and total and aprobados == total and correlativo:
         return "aprobado", "Aprobado"
     labels = {
         ExpedienteCAIMUS.ESTADO_EN_REVISION: ("revision", "En revisión"),
@@ -119,7 +119,11 @@ def _datos_publicos_asociacion(asociacion, detalle=False):
     aprobados = sum(item.estado_item == ItemChecklistCAIMUS.ESTADO_APROBADO for item in items)
     total = len(items)
     porcentaje = int(aprobados * 100 / total) if total else 0
-    estado_clave, estado = _estado_publico_expediente(expediente, aprobados, total)
+    resolucion = getattr(expediente, "resolucion_publica", None) if expediente else None
+    correlativo = resolucion.correlativo if resolucion and resolucion.correlativo else None
+    estado_clave, estado = _estado_publico_expediente(expediente, aprobados, total, correlativo)
+    if estado_clave != "aprobado":
+        correlativo = None
 
     configuraciones = list(getattr(asociacion.anio, "config_publica", []))
     requeridos = {config.mes for config in configuraciones if config.requerido}
@@ -133,7 +137,11 @@ def _datos_publicos_asociacion(asociacion, detalle=False):
         mes in informes and informes[mes].estado == InformeMensual.ESTADO_APROBADO
         for mes in requeridos
     )
-    informes_pendientes = len(requeridos) - informes_aprobados
+    informes_revision = sum(
+        mes in informes and informes[mes].estado == InformeMensual.ESTADO_EN_REVISION
+        for mes in requeridos
+    )
+    informes_pendientes = len(requeridos) - informes_aprobados - informes_revision
     fechas = []
     if expediente:
         fechas.append(expediente.actualizado_en)
@@ -147,10 +155,12 @@ def _datos_publicos_asociacion(asociacion, detalle=False):
         "anio": asociacion.anio.anio,
         "estado_clave": estado_clave,
         "estado": estado,
+        "correlativo": correlativo or "Sin asignar",
         "aprobados": aprobados,
         "total": total,
         "porcentaje": porcentaje,
         "informes_aprobados": informes_aprobados,
+        "informes_revision": informes_revision,
         "informes_pendientes": informes_pendientes,
         "informes_no_requeridos": len(no_requeridos),
         "actualizado": max(fechas) if fechas else None,
@@ -191,7 +201,14 @@ def _asociaciones_publicas_queryset():
     ).order_by("numero")
     expedientes = ExpedienteCAIMUS.objects.only(
         "id", "asociacion_id", "estado", "actualizado_en"
-    ).prefetch_related(Prefetch("items", queryset=items, to_attr="items_publicos"))
+    ).prefetch_related(
+        Prefetch("items", queryset=items, to_attr="items_publicos"),
+        Prefetch(
+            "resolucion",
+            queryset=ResolucionExpediente.objects.only("expediente_id", "correlativo"),
+            to_attr="resolucion_publica",
+        ),
+    )
     informes = InformeMensual.objects.only("asociacion_id", "mes", "estado", "actualizado_en")
     configs = ConfiguracionInformeAnio.objects.filter(activo=True).only("anio_id", "mes", "requerido")
     return Asociacion.objects.filter(activo=True, anio__activo=True).select_related("anio").only(

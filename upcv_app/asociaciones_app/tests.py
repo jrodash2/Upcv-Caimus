@@ -77,6 +77,52 @@ class AsociacionesTests(TestCase):
         response = client.get(reverse("asociaciones:expediente_caimus", args=[self.asociacion.pk]))
         self.assertEqual(response.status_code, 403)
 
+    def test_portal_publico_no_requiere_login_y_no_expone_datos_sensibles(self):
+        self.asociacion.dpi_representante_legal = "1234567890101"
+        self.asociacion.save(update_fields=["dpi_representante_legal"])
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            estado=ExpedienteCAIMUS.ESTADO_EN_REVISION,
+            observacion_admin="Observación estrictamente interna",
+        )
+        expediente.items.create(numero=1, titulo="Requisito público", observaciones="Dato privado")
+
+        response = Client().get(reverse("asociaciones_publicas"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Asociacion X")
+        self.assertContains(response, "Sin asignar")
+        self.assertNotContains(response, "1234567890101")
+        self.assertNotContains(response, "Observación estrictamente interna")
+        self.assertNotContains(response, "Dato privado")
+
+    def test_correlativo_publico_solo_aparece_con_aprobacion_completa(self):
+        expediente = ExpedienteCAIMUS.objects.create(
+            asociacion=self.asociacion,
+            estado=ExpedienteCAIMUS.ESTADO_APROBADO,
+        )
+        item = expediente.items.create(
+            numero=1,
+            titulo="Requisito público",
+            estado_item=ItemChecklistCAIMUS.ESTADO_APROBADO,
+        )
+        ResolucionExpediente.objects.create(
+            expediente=expediente,
+            correlativo="UPCV-CAIMUS-2026-0001",
+            fecha_emision=date.today(),
+        )
+        url = reverse("asociacion_publica_detalle", args=[self.asociacion.pk])
+
+        response = Client().get(url)
+        self.assertContains(response, "UPCV-CAIMUS-2026-0001")
+        self.assertContains(response, "Expediente aprobado")
+
+        item.estado_item = ItemChecklistCAIMUS.ESTADO_BORRADOR
+        item.save(update_fields=["estado_item"])
+        response = Client().get(url)
+        self.assertContains(response, "Sin asignar")
+        self.assertNotContains(response, "UPCV-CAIMUS-2026-0001")
+
     def test_entregado_sin_pdf_es_invalido(self):
         AsociacionUsuario.objects.create(asociacion=self.asociacion, usuario=self.user, rol_en_asociacion="Miembro")
         expediente = ExpedienteCAIMUS.objects.create(asociacion=self.asociacion, creado_por=self.user)
