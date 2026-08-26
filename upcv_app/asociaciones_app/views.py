@@ -16,7 +16,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.core.signing import BadSignature, Signer
 from django.db.models import Count, Prefetch, Q
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -232,14 +232,16 @@ def _asociaciones_publicas_queryset():
 def asociaciones_publicas(request):
     """Read-only transparency portal; deliberately has no authentication decorator."""
     anios = list(Anio.objects.filter(activo=True).values_list("anio", flat=True))
-    anio = request.GET.get("anio", "").strip()
+    anio_param = request.GET.get("anio", "").strip()
     busqueda = request.GET.get("q", "").strip()[:100]
     estado = request.GET.get("estado", "").strip()
     queryset = _asociaciones_publicas_queryset()
-    if anio.isdigit() and int(anio) in anios:
-        queryset = queryset.filter(anio__anio=int(anio))
-    else:
-        anio = ""
+    anio_seleccionado = None
+    if anio_param.isdigit() and int(anio_param) in anios:
+        anio_seleccionado = Anio.objects.filter(
+            anio=int(anio_param), activo=True
+        ).first()
+        queryset = queryset.filter(anio=anio_seleccionado)
     if busqueda:
         queryset = queryset.filter(Q(nombre__icontains=busqueda) | Q(codigo__icontains=busqueda))
     asociaciones = [_datos_publicos_asociacion(obj) for obj in queryset.order_by("nombre")]
@@ -253,7 +255,8 @@ def asociaciones_publicas(request):
         "informes": sum(obj["informes_aprobados"] for obj in asociaciones),
     }
     return render(request, "asociaciones_app/publico/lista.html", {
-        "asociaciones": asociaciones, "anios": anios, "anio_seleccionado": anio,
+        "asociaciones": asociaciones, "anios": anios,
+        "anio_seleccionado": anio_seleccionado,
         "busqueda": busqueda, "estado_seleccionado": estado, "resumen": resumen,
     })
 
@@ -262,7 +265,23 @@ def asociacion_publica_detalle(request, pk):
     asociacion = get_object_or_404(_asociaciones_publicas_queryset(), pk=pk)
     return render(request, "asociaciones_app/publico/detalle.html", {
         "asociacion": _datos_publicos_asociacion(asociacion, detalle=True),
+        "anio_seleccionado": asociacion.anio,
     })
+
+
+def documento_legal_publico(request, pk, tipo):
+    """Expose only the two legal documents explicitly designated as public."""
+    field_name = {"acuerdo": "acuerdo_gubernativo", "decreto": "decreto_congreso"}.get(tipo)
+    if not field_name:
+        raise Http404
+    anio = get_object_or_404(Anio, pk=pk, activo=True)
+    documento = getattr(anio, field_name)
+    if not documento:
+        raise Http404
+    try:
+        return FileResponse(documento.open("rb"), content_type="application/pdf")
+    except (FileNotFoundError, OSError):
+        raise Http404
 
 
 def _generar_qr_validacion_base64(validacion_url):
@@ -668,7 +687,7 @@ def anio_informes_config(request, pk):
 @admin_required
 def anio_create(request):
     if request.method == "POST":
-        form = AnioForm(request.POST)
+        form = AnioForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             messages.success(request, "Año creado correctamente.")
@@ -682,14 +701,14 @@ def anio_create(request):
 def anio_edit(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     if request.method == "POST":
-        form = AnioForm(request.POST, instance=anio)
+        form = AnioForm(request.POST, request.FILES, instance=anio)
         if form.is_valid():
             form.save()
             messages.success(request, "Año actualizado correctamente.")
             return redirect("asociaciones:anios_list")
     else:
         form = AnioForm(instance=anio)
-    return render(request, "asociaciones_app/anio_form.html", {"form": form, "titulo": "Editar año"})
+    return render(request, "asociaciones_app/anio_form.html", {"form": form, "titulo": "Editar año", "anio": anio})
 
 
 @admin_required

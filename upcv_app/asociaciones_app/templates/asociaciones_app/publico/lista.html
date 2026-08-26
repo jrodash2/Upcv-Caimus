@@ -17,14 +17,24 @@
     <div id="informes" class="col-xl col-md-4 col-12 wow fadeInUp"><div class="feature-box common-card"><i data-feather="file-text"></i><span>Informes aprobados</span><h3>{{ resumen.informes }}</h3></div></div>
   </div>
 </div></section>
+
 <section id="asociaciones" class="section-py-space"><div class="container">
   <div class="title text-center wow fadeInUp"><h2>Asociaciones registradas</h2><p>Busque por nombre o código y filtre la información por año y estado.</p></div>
   <form method="get" class="common-card public-filter mb-4 wow fadeInUp" role="search"><div class="row g-3 align-items-end">
     <div class="col-lg-5"><label for="q" class="form-label">Buscar asociación</label><input id="q" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar asociación..."></div>
-    <div class="col-sm-5 col-lg-2"><label for="anio" class="form-label">Año</label><select id="anio" name="anio" class="form-select"><option value="">Todos</option>{% for valor in anios %}<option value="{{ valor }}"{% if anio_seleccionado == valor|stringformat:'s' %} selected{% endif %}>{{ valor }}</option>{% endfor %}</select></div>
+    <div class="col-sm-5 col-lg-2"><label for="anio" class="form-label">Año</label><select id="anio" name="anio" class="form-select"><option value="">Todos</option>{% for valor in anios %}<option value="{{ valor }}"{% if anio_seleccionado and anio_seleccionado.anio == valor %} selected{% endif %}>{{ valor }}</option>{% endfor %}</select></div>
     <div class="col-sm-7 col-lg-3"><label for="estado" class="form-label">Estado</label><select id="estado" name="estado" class="form-select"><option value="">Todos</option><option value="sin_iniciar"{% if estado_seleccionado == 'sin_iniciar' %} selected{% endif %}>Sin iniciar</option><option value="borrador"{% if estado_seleccionado == 'borrador' %} selected{% endif %}>Borrador</option><option value="revision"{% if estado_seleccionado == 'revision' %} selected{% endif %}>En revisión</option><option value="rechazado"{% if estado_seleccionado == 'rechazado' %} selected{% endif %}>Con observaciones</option><option value="aprobado"{% if estado_seleccionado == 'aprobado' %} selected{% endif %}>Aprobado</option></select></div>
     <div class="col-lg-2 d-grid"><button class="btn btn-primary"><i data-feather="search"></i> Consultar</button></div>
   </div></form>
+{% if anio_seleccionado %}{% if anio_seleccionado.acuerdo_gubernativo or anio_seleccionado.decreto_congreso %}
+<section class="public-legal-documents mb-5">
+  <div class="title text-center wow fadeInUp"><h2>Documentos legales del ejercicio fiscal {{ anio_seleccionado.anio }}</h2><p>Consulte el marco legal oficial correspondiente al año seleccionado.</p></div>
+  <div class="row g-4 justify-content-center">
+    {% if anio_seleccionado.acuerdo_gubernativo %}<div class="col-lg-5 col-md-6"><article class="common-card public-legal-card"><i data-feather="file-text"></i><div><h3>Acuerdo gubernativo</h3><p>Documento oficial del ejercicio fiscal {{ anio_seleccionado.anio }}</p><a href="{% url 'documento_legal_publico' anio_seleccionado.pk 'acuerdo' %}" target="_blank" rel="noopener" class="btn btn-outline-primary">Consultar documento</a></div></article></div>{% endif %}
+    {% if anio_seleccionado.decreto_congreso %}<div class="col-lg-5 col-md-6"><article class="common-card public-legal-card"><i data-feather="book-open"></i><div><h3>Decreto del Congreso</h3><p>Documento oficial del ejercicio fiscal {{ anio_seleccionado.anio }}</p><a href="{% url 'documento_legal_publico' anio_seleccionado.pk 'decreto' %}" target="_blank" rel="noopener" class="btn btn-outline-primary">Consultar documento</a></div></article></div>{% endif %}
+  </div>
+</section>
+{% endif %}{% endif %}
   <div class="row g-4">
   {% for item in asociaciones %}<div class="col-lg-4 col-md-6 wow fadeInUp"><article class="common-card public-association-card h-100">
     <div class="d-flex justify-content-between gap-2"><div><h3>{{ item.nombre }}</h3><span class="text-muted">Código {{ item.codigo }}</span></div><span class="badge badge-light-primary">{{ item.anio }}</span></div><hr>
