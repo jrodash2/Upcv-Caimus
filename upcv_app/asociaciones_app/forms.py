@@ -42,6 +42,7 @@ class AsociacionForm(forms.ModelForm):
             "nombre_representante_legal",
             "dpi_representante_legal",
             "acuerdo_gubernativo",
+            "convenio_firmado",
             "activo",
         ]
         labels = {
@@ -49,6 +50,7 @@ class AsociacionForm(forms.ModelForm):
             "nombre_representante_legal": "Nombre representante legal",
             "dpi_representante_legal": "DPI representante legal",
             "acuerdo_gubernativo": "Acuerdo gubernativo",
+            "convenio_firmado": "Convenio firmado",
         }
         widgets = {
             "anio": forms.Select(attrs={"class": "form-select"}),
@@ -57,6 +59,9 @@ class AsociacionForm(forms.ModelForm):
             "nombre_representante_legal": forms.TextInput(attrs={"class": "form-control"}),
             "dpi_representante_legal": forms.TextInput(attrs={"class": "form-control", "placeholder": "0000 00000 0000"}),
             "acuerdo_gubernativo": forms.TextInput(attrs={"class": "form-control"}),
+            "convenio_firmado": forms.ClearableFileInput(
+                attrs={"class": "form-control", "accept": "application/pdf,.pdf"}
+            ),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 

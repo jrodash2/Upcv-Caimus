@@ -156,13 +156,22 @@ def _datos_publicos_asociacion(asociacion, detalle=False):
         "estado_clave": estado_clave,
         "estado": estado,
         "correlativo": correlativo or "Sin asignar",
+        "convenio_clave": (
+            "firmado" if asociacion.convenio_firmado
+            else "pendiente" if estado_clave == "aprobado" and correlativo
+            else "no_disponible"
+        ),
+        "convenio_estado": (
+            "Firmado" if asociacion.convenio_firmado
+            else "Pendiente de firma" if estado_clave == "aprobado" and correlativo
+            else "Aún no disponible"
+        ),
         "aprobados": aprobados,
         "total": total,
         "porcentaje": porcentaje,
         "informes_aprobados": informes_aprobados,
         "informes_revision": informes_revision,
         "informes_pendientes": informes_pendientes,
-        "informes_no_requeridos": len(no_requeridos),
         "actualizado": max(fechas) if fechas else None,
     }
     if detalle:
@@ -179,10 +188,10 @@ def _datos_publicos_asociacion(asociacion, detalle=False):
         ]
         meses = []
         for mes in range(1, 13):
+            if mes not in requeridos:
+                continue
             informe = informes.get(mes)
-            if mes in no_requeridos:
-                clave, etiqueta, icono = "no_requerido", "No requerido", "—"
-            elif informe and informe.estado == InformeMensual.ESTADO_APROBADO:
+            if informe and informe.estado == InformeMensual.ESTADO_APROBADO:
                 clave, etiqueta, icono = "aprobado", "Aprobado", "✓"
             elif informe and informe.estado == InformeMensual.ESTADO_RECHAZADO:
                 clave, etiqueta, icono = "rechazado", "Rechazado", "×"
@@ -212,7 +221,7 @@ def _asociaciones_publicas_queryset():
     informes = InformeMensual.objects.only("asociacion_id", "mes", "estado", "actualizado_en")
     configs = ConfiguracionInformeAnio.objects.filter(activo=True).only("anio_id", "mes", "requerido")
     return Asociacion.objects.filter(activo=True, anio__activo=True).select_related("anio").only(
-        "id", "nombre", "codigo", "anio_id", "anio__anio"
+        "id", "nombre", "codigo", "convenio_firmado", "anio_id", "anio__anio"
     ).prefetch_related(
         Prefetch("expediente_caimus", queryset=expedientes, to_attr="expedientes_publicos"),
         Prefetch("informes_mensuales", queryset=informes, to_attr="informes_publicos"),
@@ -239,8 +248,8 @@ def asociaciones_publicas(request):
     resumen = {
         "asociaciones": len(asociaciones),
         "aprobados": sum(obj["estado_clave"] == "aprobado" for obj in asociaciones),
-        "revision": sum(obj["estado_clave"] == "revision" for obj in asociaciones),
-        "pendientes": sum(obj["estado_clave"] in {"sin_iniciar", "borrador", "rechazado"} for obj in asociaciones),
+        "convenios_firmados": sum(obj["convenio_clave"] == "firmado" for obj in asociaciones),
+        "pendientes_firma": sum(obj["convenio_clave"] == "pendiente" for obj in asociaciones),
         "informes": sum(obj["informes_aprobados"] for obj in asociaciones),
     }
     return render(request, "asociaciones_app/publico/lista.html", {
@@ -319,6 +328,13 @@ def _dashboard_admin(request):
             expedientes_aprobados_validos += 1
     expedientes_por_estado[ExpedienteCAIMUS.ESTADO_APROBADO] = expedientes_aprobados_validos
     informes_por_estado = {estado: informes.filter(estado=estado).count() for estado, _label in InformeMensual.ESTADOS}
+    convenios_firmados = asociaciones.exclude(convenio_firmado="").exclude(convenio_firmado__isnull=True).count()
+    pendientes_firma = expedientes.filter(
+        estado=ExpedienteCAIMUS.ESTADO_APROBADO,
+        resolucion__correlativo__isnull=False,
+    ).filter(
+        Q(asociacion__convenio_firmado="") | Q(asociacion__convenio_firmado__isnull=True)
+    ).exclude(resolucion__correlativo="").count()
 
     progresos = []
     for expediente in expedientes.prefetch_related("items"):
@@ -434,6 +450,8 @@ def _dashboard_admin(request):
             "total_usuarios_asignados": AsociacionUsuario.objects.filter(activo=True).count(),
             "total_expedientes": expedientes.count(),
             "expedientes_aprobados": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_APROBADO],
+            "convenios_firmados": convenios_firmados,
+            "pendientes_firma": pendientes_firma,
             "expedientes_en_revision": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_EN_REVISION],
             "expedientes_rechazados": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_RECHAZADO],
             "expedientes_borrador": expedientes_por_estado[ExpedienteCAIMUS.ESTADO_BORRADOR],
@@ -475,12 +493,16 @@ def exportar_resumen_asociaciones_excel(request):
     resumen = []
     for asociacion in asociaciones:
         expediente = getattr(asociacion, "expediente_caimus", None)
+        resolucion = getattr(expediente, "resolucion", None) if expediente else None
         resumen_asoc = resumen_informes_asociacion(asociacion)
         resumen.append(
             {
                 "asociacion": asociacion.nombre,
                 "anio": asociacion.anio.anio,
                 "expediente": expediente.estado if expediente else "SIN_EXPEDIENTE",
+                "numero_expediente": resolucion.correlativo if resolucion and resolucion.correlativo else "Sin asignar",
+                "convenio_firmado": "Sí" if asociacion.convenio_firmado else "No",
+                "ultima_actualizacion": expediente.actualizado_en if expediente else None,
                 "informes_aprobados": resumen_asoc["aprobados"],
                 "informes_pendientes": resumen_asoc["pendientes"],
                 "informes_no_requeridos": resumen_asoc["no_requeridos"],
@@ -490,7 +512,7 @@ def exportar_resumen_asociaciones_excel(request):
     wb = Workbook()
     ws = wb.active
     ws.title = "Resumen Asociaciones"
-    headers = ["Asociación", "Año", "Expediente", "Informes aprobados", "Informes pendientes", "Informes no requeridos", "Fecha de descarga"]
+    headers = ["Asociación", "Año", "Número de expediente", "Estado expediente", "Convenio firmado", "Última actualización", "Informes aprobados", "Informes pendientes", "Informes no requeridos", "Fecha de descarga"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True)
@@ -501,16 +523,19 @@ def exportar_resumen_asociaciones_excel(request):
             ws.append([
                 fila["asociacion"],
                 fila["anio"],
+                fila["numero_expediente"],
                 fila["expediente"],
+                fila["convenio_firmado"],
+                fila["ultima_actualizacion"].strftime("%d/%m/%Y %H:%M") if fila["ultima_actualizacion"] else "",
                 fila["informes_aprobados"],
                 fila["informes_pendientes"],
                 fila["informes_no_requeridos"],
                 timezone.now().strftime("%d/%m/%Y %H:%M"),
             ])
     else:
-        ws.append(["Sin registros", "", "", "", "", "", timezone.now().strftime("%d/%m/%Y %H:%M")])
+        ws.append(["Sin registros"] + [""] * 8 + [timezone.now().strftime("%d/%m/%Y %H:%M")])
 
-    for col in ["A", "B", "C", "D", "E", "F", "G"]:
+    for col in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]:
         ws.column_dimensions[col].width = 24
 
     response = HttpResponse(
@@ -727,7 +752,7 @@ def asociacion_list(request, anio_id):
 def asociacion_create(request, anio_id):
     anio = get_object_or_404(Anio, pk=anio_id)
     if request.method == "POST":
-        form = AsociacionForm(request.POST)
+        form = AsociacionForm(request.POST, request.FILES)
         if form.is_valid():
             asociacion = form.save()
             messages.success(request, "Asociación creada correctamente.")
@@ -745,7 +770,7 @@ def asociacion_create(request, anio_id):
 def asociacion_edit(request, pk):
     asociacion = get_object_or_404(Asociacion, pk=pk)
     if request.method == "POST":
-        form = AsociacionForm(request.POST, instance=asociacion)
+        form = AsociacionForm(request.POST, request.FILES, instance=asociacion)
         if form.is_valid():
             form.save()
             messages.success(request, "Asociación actualizada correctamente.")
@@ -755,7 +780,7 @@ def asociacion_edit(request, pk):
     return render(
         request,
         "asociaciones_app/asociacion_form.html",
-        {"form": form, "anio": asociacion.anio, "titulo": "Editar asociación"},
+        {"form": form, "anio": asociacion.anio, "asociacion": asociacion, "titulo": "Editar asociación"},
     )
 
 

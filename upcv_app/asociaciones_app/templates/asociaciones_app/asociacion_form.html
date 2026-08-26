@@ -6,7 +6,7 @@
     <div class="page-title"><h4>{{ titulo }}</h4></div>
     <div class="card">
       <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
           {{ form.non_field_errors }}
           {% if form.errors %}
@@ -45,6 +45,18 @@
                 {{ form.activo }}
                 <label class="form-check-label" for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label>
               </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="{{ form.convenio_firmado.id_for_label }}">Convenio firmado</label>
+              {{ form.convenio_firmado }}
+              {% if form.convenio_firmado.errors %}<div class="text-danger small">{{ form.convenio_firmado.errors }}</div>{% endif %}
+              {% if asociacion.convenio_firmado %}
+                <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+                  <span class="badge bg-success">Convenio cargado</span>
+                  <a href="{{ asociacion.convenio_firmado.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">Ver convenio</a>
+                  <span class="text-muted small">Seleccione otro PDF para sustituirlo.</span>
+                </div>
+              {% endif %}
             </div>
           </div>
           <div class="mt-3 d-flex gap-2 flex-wrap">

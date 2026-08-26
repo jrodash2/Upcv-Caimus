@@ -28,6 +28,16 @@ def validate_pdf_size(value):
         raise ValidationError(f"El archivo excede el tamaño máximo permitido ({max_size // (1024 * 1024)} MB).")
 
 
+def validate_pdf_content(value):
+    """Reject renamed files even when their extension and reported MIME type say PDF."""
+    position = value.tell() if hasattr(value, "tell") else None
+    signature = value.read(5)
+    if position is not None:
+        value.seek(position)
+    if signature != b"%PDF-":
+        raise ValidationError("El archivo no contiene un documento PDF válido.")
+
+
 class Anio(models.Model):
     anio = models.PositiveIntegerField(unique=True)
     activo = models.BooleanField(default=True)
@@ -123,6 +133,12 @@ class Asociacion(models.Model):
     nombre_representante_legal = models.CharField(max_length=255, blank=True, null=True)
     dpi_representante_legal = models.CharField(max_length=20, blank=True, null=True)
     acuerdo_gubernativo = models.CharField(max_length=255, blank=True, null=True)
+    convenio_firmado = models.FileField(
+        upload_to="asociaciones/convenios/",
+        blank=True,
+        null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size, validate_pdf_content],
+    )
     activo = models.BooleanField(default=True)
 
     class Meta:
