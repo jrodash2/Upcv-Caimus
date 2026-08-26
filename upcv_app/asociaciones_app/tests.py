@@ -87,7 +87,7 @@ class AsociacionesTests(TestCase):
         )
         expediente.items.create(numero=1, titulo="Requisito público", observaciones="Dato privado")
 
-        response = Client().get(reverse("asociaciones_publicas"))
+        response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Asociacion X")
@@ -101,13 +101,42 @@ class AsociacionesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Documentos legales del ejercicio fiscal")
 
+    def test_portal_publico_sin_anio_selecciona_activo_mas_reciente(self):
+        self.anio_otro.decreto_congreso = SimpleUploadedFile("decreto-2027.pdf", b"%PDF-1.4 d")
+        self.anio_otro.save()
+
+        response = Client().get(reverse("asociaciones:asociaciones_publicas"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["anio_seleccionado"], 2027)
+        self.assertEqual(response.context["anio_obj"], self.anio_otro)
+        self.assertContains(response, "Documentos legales del ejercicio fiscal 2027")
+        self.assertContains(response, "Decreto del Congreso")
+
+    def test_portal_publico_anio_invalido_usa_activo_mas_reciente(self):
+        response = Client().get(reverse("asociaciones:asociaciones_publicas"), {"anio": "abc"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["anio_seleccionado"], 2027)
+        self.assertEqual(response.context["anio_obj"], self.anio_otro)
+
+    def test_portal_publico_sin_activos_usa_anio_mas_reciente(self):
+        Anio.objects.update(activo=False)
+
+        response = Client().get(reverse("asociaciones:asociaciones_publicas"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["anio_seleccionado"], 2027)
+        self.assertEqual(response.context["anio_obj"], self.anio_otro)
+
     def test_portal_publico_muestra_solamente_acuerdo_disponible(self):
         self.anio.acuerdo_gubernativo = SimpleUploadedFile(
             "acuerdo.pdf", b"%PDF-1.4 acuerdo", content_type="application/pdf"
         )
         self.anio.save()
         response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
-        self.assertEqual(response.context["anio_seleccionado"], self.anio)
+        self.assertEqual(response.context["anio_seleccionado"], 2026)
+        self.assertEqual(response.context["anio_obj"], self.anio)
         self.assertContains(response, "Documentos legales del ejercicio fiscal 2026")
         self.assertContains(response, "Acuerdo gubernativo")
         self.assertNotContains(response, "Decreto del Congreso")
@@ -132,7 +161,8 @@ class AsociacionesTests(TestCase):
         self.assertContains(response_2026, "Acuerdo gubernativo")
         self.assertContains(response_2026, "Decreto del Congreso")
         response_2027 = Client().get(reverse("asociaciones_publicas"), {"anio": 2027})
-        self.assertEqual(response_2027.context["anio_seleccionado"], self.anio_otro)
+        self.assertEqual(response_2027.context["anio_seleccionado"], 2027)
+        self.assertEqual(response_2027.context["anio_obj"], self.anio_otro)
         self.assertNotContains(response_2027, "Acuerdo gubernativo")
         self.assertContains(response_2027, "Decreto del Congreso")
 
@@ -144,7 +174,8 @@ class AsociacionesTests(TestCase):
 
         response = Client().get(reverse("asociacion_publica_detalle", args=[self.asociacion.pk]))
 
-        self.assertEqual(response.context["anio_seleccionado"], self.asociacion.anio)
+        self.assertEqual(response.context["anio_seleccionado"], 2026)
+        self.assertEqual(response.context["anio_obj"], self.asociacion.anio)
         self.assertContains(response, "Marco legal del ejercicio fiscal 2026")
         self.assertContains(response, "Acuerdo gubernativo")
         self.assertNotContains(response, "Decreto del Congreso")

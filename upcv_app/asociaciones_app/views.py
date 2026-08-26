@@ -231,17 +231,27 @@ def _asociaciones_publicas_queryset():
 
 def asociaciones_publicas(request):
     """Read-only transparency portal; deliberately has no authentication decorator."""
-    anios = list(Anio.objects.filter(activo=True).values_list("anio", flat=True))
+    anios_objetos = list(Anio.objects.order_by("-anio"))
+    anios = [obj.anio for obj in anios_objetos]
     anio_param = request.GET.get("anio", "").strip()
     busqueda = request.GET.get("q", "").strip()[:100]
     estado = request.GET.get("estado", "").strip()
     queryset = _asociaciones_publicas_queryset()
-    anio_seleccionado = None
-    if anio_param.isdigit() and int(anio_param) in anios:
-        anio_seleccionado = Anio.objects.filter(
-            anio=int(anio_param), activo=True
-        ).first()
-        queryset = queryset.filter(anio=anio_seleccionado)
+    try:
+        anio_seleccionado = int(anio_param) if anio_param else None
+    except (TypeError, ValueError):
+        anio_seleccionado = None
+
+    anio_obj = next(
+        (obj for obj in anios_objetos if obj.anio == anio_seleccionado), None
+    )
+    if anio_obj is None:
+        anio_obj = next((obj for obj in anios_objetos if obj.activo), None)
+    if anio_obj is None:
+        anio_obj = anios_objetos[0] if anios_objetos else None
+    if anio_obj is not None:
+        anio_seleccionado = anio_obj.anio
+        queryset = queryset.filter(anio=anio_obj)
     if busqueda:
         queryset = queryset.filter(Q(nombre__icontains=busqueda) | Q(codigo__icontains=busqueda))
     asociaciones = [_datos_publicos_asociacion(obj) for obj in queryset.order_by("nombre")]
@@ -257,6 +267,7 @@ def asociaciones_publicas(request):
     return render(request, "asociaciones_app/publico/lista.html", {
         "asociaciones": asociaciones, "anios": anios,
         "anio_seleccionado": anio_seleccionado,
+        "anio_obj": anio_obj,
         "busqueda": busqueda, "estado_seleccionado": estado, "resumen": resumen,
         "anio_obj": anio_obj,
     })
@@ -266,7 +277,8 @@ def asociacion_publica_detalle(request, pk):
     asociacion = get_object_or_404(_asociaciones_publicas_queryset(), pk=pk)
     return render(request, "asociaciones_app/publico/detalle.html", {
         "asociacion": _datos_publicos_asociacion(asociacion, detalle=True),
-        "anio_seleccionado": asociacion.anio,
+        "anio_seleccionado": asociacion.anio.anio,
+        "anio_obj": asociacion.anio,
     })
 
 
