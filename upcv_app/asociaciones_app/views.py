@@ -16,7 +16,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.core.signing import BadSignature, Signer
 from django.db.models import Count, Prefetch, Q
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -236,7 +236,9 @@ def asociaciones_publicas(request):
     busqueda = request.GET.get("q", "").strip()[:100]
     estado = request.GET.get("estado", "").strip()
     queryset = _asociaciones_publicas_queryset()
+    anio_obj = None
     if anio.isdigit() and int(anio) in anios:
+        anio_obj = Anio.objects.get(anio=int(anio), activo=True)
         queryset = queryset.filter(anio__anio=int(anio))
     else:
         anio = ""
@@ -255,6 +257,7 @@ def asociaciones_publicas(request):
     return render(request, "asociaciones_app/publico/lista.html", {
         "asociaciones": asociaciones, "anios": anios, "anio_seleccionado": anio,
         "busqueda": busqueda, "estado_seleccionado": estado, "resumen": resumen,
+        "anio_obj": anio_obj,
     })
 
 
@@ -262,7 +265,23 @@ def asociacion_publica_detalle(request, pk):
     asociacion = get_object_or_404(_asociaciones_publicas_queryset(), pk=pk)
     return render(request, "asociaciones_app/publico/detalle.html", {
         "asociacion": _datos_publicos_asociacion(asociacion, detalle=True),
+        "anio_obj": asociacion.anio,
     })
+
+
+def documento_legal_publico(request, pk, tipo):
+    """Expose only the two legal documents explicitly designated as public."""
+    field_name = {"acuerdo": "acuerdo_gubernativo", "decreto": "decreto_congreso"}.get(tipo)
+    if not field_name:
+        raise Http404
+    anio = get_object_or_404(Anio, pk=pk, activo=True)
+    documento = getattr(anio, field_name)
+    if not documento:
+        raise Http404
+    try:
+        return FileResponse(documento.open("rb"), content_type="application/pdf")
+    except (FileNotFoundError, OSError):
+        raise Http404
 
 
 def _generar_qr_validacion_base64(validacion_url):
@@ -668,7 +687,7 @@ def anio_informes_config(request, pk):
 @admin_required
 def anio_create(request):
     if request.method == "POST":
-        form = AnioForm(request.POST)
+        form = AnioForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             messages.success(request, "Año creado correctamente.")
@@ -682,14 +701,14 @@ def anio_create(request):
 def anio_edit(request, pk):
     anio = get_object_or_404(Anio, pk=pk)
     if request.method == "POST":
-        form = AnioForm(request.POST, instance=anio)
+        form = AnioForm(request.POST, request.FILES, instance=anio)
         if form.is_valid():
             form.save()
             messages.success(request, "Año actualizado correctamente.")
             return redirect("asociaciones:anios_list")
     else:
         form = AnioForm(instance=anio)
-    return render(request, "asociaciones_app/anio_form.html", {"form": form, "titulo": "Editar año"})
+    return render(request, "asociaciones_app/anio_form.html", {"form": form, "titulo": "Editar año", "anio": anio})
 
 
 @admin_required

@@ -96,6 +96,55 @@ class AsociacionesTests(TestCase):
         self.assertNotContains(response, "Observación estrictamente interna")
         self.assertNotContains(response, "Dato privado")
 
+    def test_portal_publico_oculta_seccion_legal_sin_documentos(self):
+        response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Documentos legales del ejercicio fiscal")
+
+    def test_portal_publico_muestra_solamente_acuerdo_disponible(self):
+        self.anio.acuerdo_gubernativo = SimpleUploadedFile(
+            "acuerdo.pdf", b"%PDF-1.4 acuerdo", content_type="application/pdf"
+        )
+        self.anio.save()
+        response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+        self.assertContains(response, "Documentos legales del ejercicio fiscal 2026")
+        self.assertContains(response, "Acuerdo gubernativo")
+        self.assertNotContains(response, "Decreto del Congreso")
+
+    def test_portal_publico_muestra_solamente_decreto_disponible(self):
+        self.anio.decreto_congreso = SimpleUploadedFile(
+            "decreto.pdf", b"%PDF-1.4 decreto", content_type="application/pdf"
+        )
+        self.anio.save()
+        response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+        self.assertContains(response, "Decreto del Congreso")
+        self.assertNotContains(response, "Acuerdo gubernativo")
+
+    def test_portal_publico_cambia_ambos_documentos_con_el_anio(self):
+        self.anio.acuerdo_gubernativo = SimpleUploadedFile("acuerdo-2026.pdf", b"%PDF-1.4 a")
+        self.anio.decreto_congreso = SimpleUploadedFile("decreto-2026.pdf", b"%PDF-1.4 d")
+        self.anio.save()
+        self.anio_otro.decreto_congreso = SimpleUploadedFile("decreto-2027.pdf", b"%PDF-1.4 d")
+        self.anio_otro.save()
+
+        response_2026 = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+        self.assertContains(response_2026, "Acuerdo gubernativo")
+        self.assertContains(response_2026, "Decreto del Congreso")
+        response_2027 = Client().get(reverse("asociaciones_publicas"), {"anio": 2027})
+        self.assertNotContains(response_2027, "Acuerdo gubernativo")
+        self.assertContains(response_2027, "Decreto del Congreso")
+
+    def test_documento_legal_publico_solo_sirve_campos_permitidos(self):
+        self.anio.acuerdo_gubernativo = SimpleUploadedFile("acuerdo.pdf", b"%PDF-1.4 acuerdo")
+        self.anio.save()
+        response = Client().get(reverse("documento_legal_publico", args=[self.anio.pk, "acuerdo"]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(
+            Client().get(reverse("documento_legal_publico", args=[self.anio.pk, "interno"])).status_code,
+            404,
+        )
+
     def test_dashboard_informatica_muestra_enlace_publico_absoluto(self):
         client = Client()
         client.login(username="informatica", password="pass123")
