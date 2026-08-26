@@ -6,33 +6,7 @@
       <div class="col-lg-5 wow fadeInUp public-hero-content"><span class="public-kicker">Información pública institucional</span><h1 class="public-hero-title">Seguimiento Público CAIMUS</h1><p class="public-hero-subtitle">Consulta territorial de asociaciones y seguimiento del expediente digital.</p><p class="public-map-instruction">Seleccione un departamento para consultar las asociaciones registradas.</p></div>
       <div class="col-lg-7 wow fadeInUp">
         <div class="public-map-card public-map-container"><div class="map-heading"><div><span class="public-map-eyebrow">Cobertura territorial</span><h2>Mapa de Guatemala</h2></div><span class="badge badge-light-primary">{{ anio_seleccionado|default:'Sin año' }}</span></div>
-          <div class="public-map-canvas"><svg id="guatemalaMap" class="guatemala-interactive-map" viewBox="0 0 700 760" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Mapa interactivo de los 22 departamentos de Guatemala">
-            <g stroke-linecap="round" stroke-linejoin="round">
-              <!-- The paths share their boundary coordinates so the country reads as one continuous silhouette. -->
-              <path id="gt-peten" class="gt-department" data-codigo="17" data-departamento="Petén" d="M151 25 L452 27 L505 65 L516 128 L490 184 L520 224 L482 286 L397 300 L346 286 L303 315 L244 291 L190 302 L142 278 L119 218 L137 161 L116 93 Z"/>
-              <path id="gt-huehuetenango" class="gt-department" data-codigo="13" data-departamento="Huehuetenango" d="M142 278 L190 302 L244 291 L303 315 L299 367 L270 395 L226 382 L203 412 L149 395 L101 413 L64 374 L82 322 Z"/>
-              <path id="gt-quiche" class="gt-department" data-codigo="14" data-departamento="Quiché" d="M303 315 L346 286 L397 300 L407 346 L389 386 L354 413 L309 404 L270 395 L299 367 Z"/>
-              <path id="gt-alta-verapaz" class="gt-department" data-codigo="16" data-departamento="Alta Verapaz" d="M397 300 L482 286 L523 315 L561 354 L540 397 L488 418 L437 395 L389 386 L407 346 Z"/>
-              <path id="gt-izabal" class="gt-department" data-codigo="18" data-departamento="Izabal" d="M523 315 L583 321 L617 303 L646 320 L634 354 L660 374 L641 410 L590 429 L540 397 L561 354 Z"/>
-              <path id="gt-san-marcos" class="gt-department" data-codigo="12" data-departamento="San Marcos" d="M64 374 L101 413 L113 449 L99 489 L120 527 L83 553 L42 537 L25 485 L38 444 L27 410 Z"/>
-              <path id="gt-totonicapan" class="gt-department" data-codigo="08" data-departamento="Totonicapán" d="M101 413 L149 395 L203 412 L203 446 L171 465 L113 449 Z"/>
-              <path id="gt-quetzaltenango" class="gt-department" data-codigo="09" data-departamento="Quetzaltenango" d="M113 449 L171 465 L179 510 L143 539 L120 527 L99 489 Z"/>
-              <path id="gt-solola" class="gt-department" data-codigo="07" data-departamento="Sololá" d="M203 446 L226 466 L222 506 L179 510 L171 465 Z"/>
-              <path id="gt-baja-verapaz" class="gt-department" data-codigo="15" data-departamento="Baja Verapaz" d="M270 395 L309 404 L354 413 L366 453 L337 477 L291 464 L260 435 Z"/>
-              <path id="gt-el-progreso" class="gt-department" data-codigo="02" data-departamento="El Progreso" d="M354 413 L389 386 L437 395 L457 428 L507 473 L475 506 L433 463 L382 471 L337 477 L366 453 Z"/>
-              <path id="gt-zacapa" class="gt-department" data-codigo="19" data-departamento="Zacapa" d="M437 395 L488 418 L540 397 L590 429 L566 466 L507 473 L457 428 Z"/>
-              <path id="gt-chiquimula" class="gt-department" data-codigo="20" data-departamento="Chiquimula" d="M507 473 L566 466 L594 493 L584 542 L548 568 L501 544 L475 506 Z"/>
-              <path id="gt-retalhuleu" class="gt-department" data-codigo="11" data-departamento="Retalhuleu" d="M83 553 L120 527 L143 539 L179 510 L199 551 L159 580 L105 585 Z"/>
-              <path id="gt-suchitepequez" class="gt-department" data-codigo="10" data-departamento="Suchitepéquez" d="M179 510 L222 506 L258 529 L270 570 L216 592 L159 580 L199 551 Z"/>
-              <path id="gt-chimaltenango" class="gt-department" data-codigo="04" data-departamento="Chimaltenango" d="M203 446 L203 412 L226 382 L270 395 L260 435 L291 464 L278 512 L258 529 L222 506 L226 466 Z"/>
-              <path id="gt-sacatepequez" class="gt-department" data-codigo="03" data-departamento="Sacatepéquez" d="M258 529 L278 512 L312 523 L324 559 L290 580 L270 570 Z"/>
-              <path id="gt-guatemala" class="gt-department" data-codigo="01" data-departamento="Guatemala" d="M291 464 L337 477 L382 471 L399 501 L378 550 L324 559 L312 523 L278 512 Z"/>
-              <path id="gt-jalapa" class="gt-department" data-codigo="21" data-departamento="Jalapa" d="M382 471 L433 463 L475 506 L501 544 L469 573 L421 553 L378 550 L399 501 Z"/>
-              <path id="gt-escuintla" class="gt-department" data-codigo="05" data-departamento="Escuintla" d="M105 585 L159 580 L216 592 L270 570 L290 580 L324 559 L354 595 L335 631 L292 653 L226 642 L169 623 L119 617 Z"/>
-              <path id="gt-santa-rosa" class="gt-department" data-codigo="06" data-departamento="Santa Rosa" d="M324 559 L378 550 L421 553 L469 573 L454 620 L419 649 L374 632 L335 631 L354 595 Z"/>
-              <path id="gt-jutiapa" class="gt-department" data-codigo="22" data-departamento="Jutiapa" d="M469 573 L501 544 L548 568 L571 614 L552 665 L514 696 L469 675 L419 649 L454 620 Z"/>
-            </g><g id="mapCounters" aria-hidden="true"></g>
-          </svg></div>
+          <div class="public-map-canvas">{% include "asociaciones_app/publico/includes/mapa_guatemala.html" %}</div>
           <div class="map-legend"><span><i class="legend-empty"></i> Sin asociaciones</span><span><i class="legend-active"></i> Con asociaciones</span></div>
           <div id="mapTooltip" class="map-tooltip" role="tooltip" aria-hidden="true"></div>
         </div>
