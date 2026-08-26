@@ -6,33 +6,7 @@
       <div class="col-lg-5 wow fadeInUp public-hero-content"><span class="public-kicker">Información pública institucional</span><h1 class="public-hero-title">Seguimiento Público CAIMUS</h1><p class="public-hero-subtitle">Consulta territorial de asociaciones y seguimiento del expediente digital.</p><p class="public-map-instruction">Seleccione un departamento para consultar las asociaciones registradas.</p></div>
       <div class="col-lg-7 wow fadeInUp">
         <div class="public-map-card public-map-container"><div class="map-heading"><div><span class="public-map-eyebrow">Cobertura territorial</span><h2>Mapa de Guatemala</h2></div><span class="badge badge-light-primary">{{ anio_seleccionado|default:'Sin año' }}</span></div>
-          <div class="public-map-canvas"><svg id="guatemalaMap" class="guatemala-interactive-map" viewBox="0 0 700 760" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Mapa interactivo de los 22 departamentos de Guatemala">
-            <g stroke-linecap="round" stroke-linejoin="round">
-              <!-- The paths share their boundary coordinates so the country reads as one continuous silhouette. -->
-              <path id="gt-peten" class="gt-department" data-codigo="17" data-departamento="Petén" d="M151 25 L452 27 L505 65 L516 128 L490 184 L520 224 L482 286 L397 300 L346 286 L303 315 L244 291 L190 302 L142 278 L119 218 L137 161 L116 93 Z"/>
-              <path id="gt-huehuetenango" class="gt-department" data-codigo="13" data-departamento="Huehuetenango" d="M142 278 L190 302 L244 291 L303 315 L299 367 L270 395 L226 382 L203 412 L149 395 L101 413 L64 374 L82 322 Z"/>
-              <path id="gt-quiche" class="gt-department" data-codigo="14" data-departamento="Quiché" d="M303 315 L346 286 L397 300 L407 346 L389 386 L354 413 L309 404 L270 395 L299 367 Z"/>
-              <path id="gt-alta-verapaz" class="gt-department" data-codigo="16" data-departamento="Alta Verapaz" d="M397 300 L482 286 L523 315 L561 354 L540 397 L488 418 L437 395 L389 386 L407 346 Z"/>
-              <path id="gt-izabal" class="gt-department" data-codigo="18" data-departamento="Izabal" d="M523 315 L583 321 L617 303 L646 320 L634 354 L660 374 L641 410 L590 429 L540 397 L561 354 Z"/>
-              <path id="gt-san-marcos" class="gt-department" data-codigo="12" data-departamento="San Marcos" d="M64 374 L101 413 L113 449 L99 489 L120 527 L83 553 L42 537 L25 485 L38 444 L27 410 Z"/>
-              <path id="gt-totonicapan" class="gt-department" data-codigo="08" data-departamento="Totonicapán" d="M101 413 L149 395 L203 412 L203 446 L171 465 L113 449 Z"/>
-              <path id="gt-quetzaltenango" class="gt-department" data-codigo="09" data-departamento="Quetzaltenango" d="M113 449 L171 465 L179 510 L143 539 L120 527 L99 489 Z"/>
-              <path id="gt-solola" class="gt-department" data-codigo="07" data-departamento="Sololá" d="M203 446 L226 466 L222 506 L179 510 L171 465 Z"/>
-              <path id="gt-baja-verapaz" class="gt-department" data-codigo="15" data-departamento="Baja Verapaz" d="M270 395 L309 404 L354 413 L366 453 L337 477 L291 464 L260 435 Z"/>
-              <path id="gt-el-progreso" class="gt-department" data-codigo="02" data-departamento="El Progreso" d="M354 413 L389 386 L437 395 L457 428 L507 473 L475 506 L433 463 L382 471 L337 477 L366 453 Z"/>
-              <path id="gt-zacapa" class="gt-department" data-codigo="19" data-departamento="Zacapa" d="M437 395 L488 418 L540 397 L590 429 L566 466 L507 473 L457 428 Z"/>
-              <path id="gt-chiquimula" class="gt-department" data-codigo="20" data-departamento="Chiquimula" d="M507 473 L566 466 L594 493 L584 542 L548 568 L501 544 L475 506 Z"/>
-              <path id="gt-retalhuleu" class="gt-department" data-codigo="11" data-departamento="Retalhuleu" d="M83 553 L120 527 L143 539 L179 510 L199 551 L159 580 L105 585 Z"/>
-              <path id="gt-suchitepequez" class="gt-department" data-codigo="10" data-departamento="Suchitepéquez" d="M179 510 L222 506 L258 529 L270 570 L216 592 L159 580 L199 551 Z"/>
-              <path id="gt-chimaltenango" class="gt-department" data-codigo="04" data-departamento="Chimaltenango" d="M203 446 L203 412 L226 382 L270 395 L260 435 L291 464 L278 512 L258 529 L222 506 L226 466 Z"/>
-              <path id="gt-sacatepequez" class="gt-department" data-codigo="03" data-departamento="Sacatepéquez" d="M258 529 L278 512 L312 523 L324 559 L290 580 L270 570 Z"/>
-              <path id="gt-guatemala" class="gt-department" data-codigo="01" data-departamento="Guatemala" d="M291 464 L337 477 L382 471 L399 501 L378 550 L324 559 L312 523 L278 512 Z"/>
-              <path id="gt-jalapa" class="gt-department" data-codigo="21" data-departamento="Jalapa" d="M382 471 L433 463 L475 506 L501 544 L469 573 L421 553 L378 550 L399 501 Z"/>
-              <path id="gt-escuintla" class="gt-department" data-codigo="05" data-departamento="Escuintla" d="M105 585 L159 580 L216 592 L270 570 L290 580 L324 559 L354 595 L335 631 L292 653 L226 642 L169 623 L119 617 Z"/>
-              <path id="gt-santa-rosa" class="gt-department" data-codigo="06" data-departamento="Santa Rosa" d="M324 559 L378 550 L421 553 L469 573 L454 620 L419 649 L374 632 L335 631 L354 595 Z"/>
-              <path id="gt-jutiapa" class="gt-department" data-codigo="22" data-departamento="Jutiapa" d="M469 573 L501 544 L548 568 L571 614 L552 665 L514 696 L469 675 L419 649 L454 620 Z"/>
-            </g><g id="mapCounters" aria-hidden="true"></g>
-          </svg></div>
+          <div class="public-map-canvas">{% include "asociaciones_app/publico/includes/mapa_guatemala.html" %}</div>
           <div class="map-legend"><span><i class="legend-empty"></i> Sin asociaciones</span><span><i class="legend-active"></i> Con asociaciones</span></div>
           <div id="mapTooltip" class="map-tooltip" role="tooltip" aria-hidden="true"></div>
         </div>
@@ -40,8 +14,8 @@
     </div>
   </div>
 </section>
-{{ departamentos_publicos|json_script:"departamentos-publicos" }}
-<div class="modal fade" id="departamentoModal" tabindex="-1" aria-labelledby="departamentoModalTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4 shadow-lg border-0"><div class="modal-header"><div><span class="public-map-eyebrow">Consulta territorial</span><h3 class="modal-title" id="departamentoModalTitle"></h3></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div><div class="modal-body"><label for="mapAssociationSearch" class="visually-hidden">Buscar asociación</label><input id="mapAssociationSearch" class="form-control mb-3" type="search" placeholder="Buscar asociación..."><div id="mapAssociationResults" class="row g-3"></div><p id="mapNoResults" class="text-center text-muted py-4" hidden>No se encontraron asociaciones.</p></div></div></div></div>
+{{ departamentos_publicos|json_script:"departamentos-publicos-data" }}
+<div class="modal fade" id="departamentoPublicoModal" tabindex="-1" aria-labelledby="departamentoModalTitulo" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4 shadow-lg border-0"><div class="modal-header"><div><span class="public-map-eyebrow">Cobertura territorial</span><h3 class="modal-title" id="departamentoModalTitulo"></h3></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div><div class="modal-body"><label for="mapAssociationSearch" class="visually-hidden">Buscar asociación</label><input id="mapAssociationSearch" class="form-control mb-3" type="search" placeholder="Buscar asociación..."><div id="mapAssociationResults" class="row g-3"></div><p id="mapNoResults" class="text-center text-muted py-4" hidden>No hay asociaciones registradas en este departamento para el año seleccionado.</p></div></div></div></div>
 <section id="expedientes" class="section-py-space public-summary"><div class="container">
   <div class="title text-center wow fadeInUp"><h2>Resumen del proceso</h2><p>Indicadores correspondientes a los filtros seleccionados.</p></div>
   <div class="row g-3">
@@ -85,38 +59,117 @@
 </div></section>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const dataNode = document.getElementById("departamentos-publicos");
-  if (!dataNode) return;
-  const departamentos = JSON.parse(dataNode.textContent);
-  const porCodigo = Object.fromEntries(departamentos.map(item => [item.codigo, item]));
-  const tooltip = document.getElementById("mapTooltip");
+  if (window.caimusMapInitialized) return;
+  const dataNode = document.getElementById("departamentos-publicos-data");
   const map = document.getElementById("guatemalaMap");
+  if (!dataNode || !map) return;
+  let departamentosData = [];
+  try {
+    departamentosData = JSON.parse(dataNode.textContent);
+  } catch (error) {
+    console.error("No se pudo leer departamentos_publicos", error);
+    return;
+  }
+  window.caimusMapInitialized = true;
+  const tooltip = document.getElementById("mapTooltip");
   const results = document.getElementById("mapAssociationResults");
   const noResults = document.getElementById("mapNoResults");
   const search = document.getElementById("mapAssociationSearch");
-  const modalElement = document.getElementById("departamentoModal");
-  const modal = new bootstrap.Modal(modalElement);
+  const modalElement = document.getElementById("departamentoPublicoModal");
+  const modalTitle = document.getElementById("departamentoModalTitulo");
   let seleccionadas = [];
-  const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+
+  function textElement(tag, className, value) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    element.textContent = value;
+    return element;
+  }
+
   function render(items) {
-    results.innerHTML = items.map(item => `<div class="col-md-6 map-association-item"><article class="public-map-association h-100"><div class="d-flex justify-content-between gap-2"><div><h4>${escapeHtml(item.nombre)}</h4><small>Código: ${escapeHtml(item.codigo)}</small></div><span class="badge badge-light-primary">${escapeHtml(item.anio)}</span></div><hr><div class="map-detail-row"><span>Expediente digital</span><strong>${escapeHtml(item.estado)}</strong></div><div class="public-number"><small>Número de expediente</small><strong>${escapeHtml(item.correlativo)}</strong></div><div class="map-detail-row"><span>Avance</span><strong>${escapeHtml(item.porcentaje)}%</strong></div><div class="map-detail-row"><span>Convenio</span><strong>${escapeHtml(item.convenio_estado)}</strong></div><a class="btn btn-outline-primary w-100 mt-3" href="${escapeHtml(item.detalle_url)}">Ver detalle</a></article></div>`).join("");
+    results.replaceChildren();
+    items.forEach(item => {
+      const column = document.createElement("div");
+      column.className = "col-md-6 map-association-item";
+      const article = document.createElement("article");
+      article.className = "public-map-association h-100";
+      const heading = document.createElement("div");
+      heading.className = "d-flex justify-content-between gap-2";
+      const identity = document.createElement("div");
+      identity.append(textElement("h4", "", item.nombre), textElement("small", "", `Código: ${item.codigo}`));
+      heading.append(identity, textElement("span", "badge badge-light-primary", item.anio));
+      article.append(heading, document.createElement("hr"));
+      [["Expediente digital", item.estado], ["Avance", `${item.porcentaje}%`], ["Convenio", item.convenio_estado]].forEach(([label, value]) => {
+        const row = document.createElement("div");
+        row.className = "map-detail-row";
+        row.append(textElement("span", "", label), textElement("strong", "", value));
+        article.appendChild(row);
+      });
+      const number = document.createElement("div");
+      number.className = "public-number";
+      number.append(textElement("small", "", "Número de expediente"), textElement("strong", "", item.correlativo || "Sin asignar"));
+      const detail = textElement("a", "btn btn-outline-primary w-100 mt-3", "Ver detalle");
+      detail.href = item.detalle_url;
+      article.append(number, detail);
+      column.appendChild(article);
+      results.appendChild(column);
+    });
     noResults.hidden = items.length > 0;
   }
+
+  function abrirModalDepartamento(info) {
+    modalTitle.textContent = `Asociaciones de ${info.nombre}`;
+    seleccionadas = Array.isArray(info.asociaciones) ? info.asociaciones : [];
+    search.value = "";
+    render(seleccionadas);
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
+  }
+
+  function seleccionarDepartamento(path) {
+    const codigo = String(path.dataset.codigo || "").padStart(2, "0");
+    const info = departamentosData.find(item => String(item.codigo || "").padStart(2, "0") === codigo);
+    if (!info) return;
+    document.querySelectorAll(".gt-department.is-selected").forEach(node => node.classList.remove("is-selected"));
+    path.classList.add("is-selected");
+    abrirModalDepartamento(info);
+  }
+
+  function showTooltip(info, event) {
+    tooltip.replaceChildren(
+      textElement("strong", "", info.nombre),
+      textElement("span", "", info.cantidad ? `${info.cantidad} ${info.cantidad === 1 ? "asociación registrada" : "asociaciones registradas"}` : "Sin asociaciones registradas")
+    );
+    tooltip.style.left = `${event.clientX + 14}px`;
+    tooltip.style.top = `${event.clientY + 14}px`;
+    tooltip.classList.add("show");
+    tooltip.setAttribute("aria-hidden", "false");
+  }
+
   document.querySelectorAll(".gt-department").forEach(path => {
-    const departamento = porCodigo[path.dataset.codigo] || {nombre: path.dataset.departamento, cantidad: 0, asociaciones: []};
+    const codigo = String(path.dataset.codigo || "").padStart(2, "0");
+    const departamento = departamentosData.find(item => String(item.codigo || "").padStart(2, "0") === codigo) || {nombre: path.dataset.departamento, cantidad: 0, asociaciones: []};
     path.classList.toggle("has-associations", departamento.cantidad > 0);
+    path.classList.toggle("no-associations", !departamento.cantidad);
     path.setAttribute("tabindex", "0"); path.setAttribute("role", "button");
     path.setAttribute("aria-label", `${departamento.nombre}: ${departamento.cantidad ? departamento.cantidad + " asociaciones registradas" : "sin asociaciones registradas"}`);
-    const showTooltip = event => { tooltip.innerHTML = `<strong>${escapeHtml(departamento.nombre)}</strong><span>${departamento.cantidad ? departamento.cantidad + (departamento.cantidad === 1 ? " asociación registrada" : " asociaciones registradas") : "Sin asociaciones registradas"}</span>`; tooltip.style.left = `${event.clientX + 14}px`; tooltip.style.top = `${event.clientY + 14}px`; tooltip.classList.add("show"); tooltip.setAttribute("aria-hidden", "false"); };
-    path.addEventListener("pointerenter", () => { path.parentNode.appendChild(path); map.classList.add("is-hovering"); path.classList.add("is-hovered"); });
-    path.addEventListener("pointermove", showTooltip);
+    path.addEventListener("pointerenter", event => { map.classList.add("is-hovering"); path.classList.add("is-hovered"); showTooltip(departamento, event); });
+    path.addEventListener("pointermove", event => { tooltip.style.left = `${event.clientX + 14}px`; tooltip.style.top = `${event.clientY + 14}px`; });
     path.addEventListener("pointerleave", () => { tooltip.classList.remove("show"); tooltip.setAttribute("aria-hidden", "true"); map.classList.remove("is-hovering"); path.classList.remove("is-hovered"); });
-    const open = () => { if (!departamento.cantidad) return; document.querySelectorAll(".gt-department.selected").forEach(node => node.classList.remove("selected")); path.classList.add("selected"); document.getElementById("departamentoModalTitle").textContent = `Asociaciones de ${departamento.nombre}`; seleccionadas = departamento.asociaciones; search.value = ""; render(seleccionadas); modal.show(); };
-    path.addEventListener("click", open); path.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
-    if (departamento.cantidad) { const box = path.getBBox(); const badge = document.createElementNS("http://www.w3.org/2000/svg", "g"); badge.classList.add("map-count"); badge.innerHTML = `<circle cx="${box.x + box.width / 2}" cy="${box.y + box.height / 2}" r="15"></circle><text x="${box.x + box.width / 2}" y="${box.y + box.height / 2 + 5}" text-anchor="middle">${departamento.cantidad}</text>`; document.getElementById("mapCounters").appendChild(badge); }
+    path.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); seleccionarDepartamento(path); });
+    path.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); seleccionarDepartamento(path); } });
+    if (departamento.cantidad) {
+      const box = path.getBBox();
+      const badge = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      const count = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      const x = box.x + box.width / 2; const y = box.y + box.height / 2;
+      badge.classList.add("map-count"); circle.setAttribute("cx", x); circle.setAttribute("cy", y); circle.setAttribute("r", "15");
+      count.setAttribute("x", x); count.setAttribute("y", y + 5); count.setAttribute("text-anchor", "middle"); count.textContent = departamento.cantidad;
+      badge.append(circle, count); document.getElementById("mapCounters").appendChild(badge);
+    }
   });
   search.addEventListener("input", () => { const query = search.value.toLocaleLowerCase("es").trim(); render(seleccionadas.filter(item => `${item.nombre} ${item.codigo}`.toLocaleLowerCase("es").includes(query))); });
-  modalElement.addEventListener("hidden.bs.modal", () => document.querySelectorAll(".gt-department.selected").forEach(node => node.classList.remove("selected")));
+  modalElement.addEventListener("hidden.bs.modal", () => document.querySelectorAll(".gt-department.is-selected").forEach(node => node.classList.remove("is-selected")));
 });
 </script>
 {% endblock %}

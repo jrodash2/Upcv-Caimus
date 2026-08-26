@@ -73,8 +73,10 @@ class AsociacionesTests(TestCase):
         self.assertTrue(all(item["cantidad"] == 0 for item in response.context["departamentos_publicos"]))
         self.assertEqual(response.content.count(b'class="gt-department"'), 22)
         self.assertContains(response, 'class="guatemala-interactive-map"')
-        self.assertContains(response, 'id="departamentos-publicos"')
-        self.assertContains(response, 'path.parentNode.appendChild(path)')
+        self.assertContains(response, 'id="departamentos-publicos-data"')
+        self.assertContains(response, 'function seleccionarDepartamento(path)')
+        self.assertContains(response, 'bootstrap.Modal.getOrCreateInstance(modalElement).show()')
+        self.assertNotContains(response, 'path.parentNode.appendChild(path)')
 
     def test_mapa_respeta_el_anio_seleccionado(self):
         peten = Departamento.objects.get(codigo="17")
