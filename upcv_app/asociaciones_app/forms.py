@@ -22,13 +22,19 @@ from .models import (
 class AnioForm(forms.ModelForm):
     class Meta:
         model = Anio
-        fields = ["anio", "activo"]
+        fields = ["anio", "activo", "acuerdo_gubernativo", "decreto_congreso"]
         labels = {
             "anio": "Año"
         }
         widgets = {
             "anio": forms.NumberInput(attrs={"class": "form-control"}),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "acuerdo_gubernativo": forms.ClearableFileInput(
+                attrs={"class": "form-control", "accept": "application/pdf,.pdf"}
+            ),
+            "decreto_congreso": forms.ClearableFileInput(
+                attrs={"class": "form-control", "accept": "application/pdf,.pdf"}
+            ),
         }
 
 
