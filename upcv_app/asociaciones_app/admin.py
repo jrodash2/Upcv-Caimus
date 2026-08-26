@@ -4,6 +4,7 @@ from .models import (
     Anio,
     Asociacion,
     AsociacionUsuario,
+    Departamento,
     ExpedienteCAIMUS,
     ItemChecklistCAIMUS,
     ExpedienteEstadoHistorial,
@@ -15,6 +16,7 @@ from .models import (
 
 admin.site.register(Anio)
 admin.site.register(Asociacion)
+admin.site.register(Departamento)
 admin.site.register(AsociacionUsuario)
 admin.site.register(ExpedienteCAIMUS)
 admin.site.register(ItemChecklistCAIMUS)

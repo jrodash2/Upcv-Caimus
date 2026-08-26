@@ -12,6 +12,7 @@ from .models import (
     AsociacionUsuario,
     ChecklistAnioItem,
     DepartamentoConstancia,
+    Departamento,
     ExpedienteCAIMUS,
     FirmaConstancia,
     ItemChecklistCAIMUS,
@@ -45,6 +46,7 @@ class AsociacionForm(forms.ModelForm):
             "anio",
             "nombre",
             "codigo",
+            "departamento",
             "nombre_representante_legal",
             "dpi_representante_legal",
             "acuerdo_gubernativo",
@@ -57,11 +59,13 @@ class AsociacionForm(forms.ModelForm):
             "dpi_representante_legal": "DPI representante legal",
             "acuerdo_gubernativo": "Acuerdo gubernativo",
             "convenio_firmado": "Convenio firmado",
+            "departamento": "Departamento",
         }
         widgets = {
             "anio": forms.Select(attrs={"class": "form-select"}),
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "codigo": forms.TextInput(attrs={"class": "form-control"}),
+            "departamento": forms.Select(attrs={"class": "form-select"}),
             "nombre_representante_legal": forms.TextInput(attrs={"class": "form-control"}),
             "dpi_representante_legal": forms.TextInput(attrs={"class": "form-control", "placeholder": "0000 00000 0000"}),
             "acuerdo_gubernativo": forms.TextInput(attrs={"class": "form-control"}),
@@ -70,6 +74,11 @@ class AsociacionForm(forms.ModelForm):
             ),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["departamento"].queryset = Departamento.objects.filter(activo=True)
+        self.fields["departamento"].empty_label = "Seleccione un departamento"
 
     def clean_dpi_representante_legal(self):
         dpi_raw = (self.cleaned_data.get("dpi_representante_legal") or "").strip()
