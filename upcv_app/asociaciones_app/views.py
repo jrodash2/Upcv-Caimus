@@ -258,6 +258,7 @@ def asociaciones_publicas(request):
         "asociaciones": asociaciones, "anios": anios,
         "anio_seleccionado": anio_seleccionado,
         "busqueda": busqueda, "estado_seleccionado": estado, "resumen": resumen,
+        "anio_obj": anio_obj,
     })
 
 
