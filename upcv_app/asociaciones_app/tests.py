@@ -27,6 +27,7 @@ from .models import (
     ItemChecklistCAIMUS,
     crear_items_expediente,
     ConfiguracionInformeAnio,
+    Departamento,
 )
 from .permissions import expediente_items_100_aprobados
 
@@ -50,6 +51,40 @@ class AsociacionesTests(TestCase):
         self.asociacion = Asociacion.objects.create(anio=self.anio, nombre="Asociacion X", codigo="AX")
         self.asociacion_otra = Asociacion.objects.create(anio=self.anio, nombre="Asociacion Y", codigo="AY")
         self.asociacion_otro_anio = Asociacion.objects.create(anio=self.anio_otro, nombre="Asociacion Z", codigo="AZ")
+
+    def test_mapa_publico_agrupa_por_departamento_y_enlaza_mismo_detalle(self):
+        guatemala = Departamento.objects.get(codigo="01")
+        self.asociacion.departamento = guatemala
+        self.asociacion.save(update_fields=["departamento"])
+
+        response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+
+        departamento = next(item for item in response.context["departamentos_publicos"] if item["codigo"] == "01")
+        self.assertEqual(departamento["cantidad"], 1)
+        self.assertEqual(departamento["asociaciones"][0]["nombre"], "Asociacion X")
+        self.assertEqual(
+            departamento["asociaciones"][0]["detalle_url"],
+            reverse("asociacion_publica_detalle", args=[self.asociacion.pk]),
+        )
+
+    def test_mapa_incluye_departamentos_vacios_y_omite_asociaciones_sin_departamento(self):
+        response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+        self.assertEqual(len(response.context["departamentos_publicos"]), 22)
+        self.assertTrue(all(item["cantidad"] == 0 for item in response.context["departamentos_publicos"]))
+
+    def test_mapa_respeta_el_anio_seleccionado(self):
+        peten = Departamento.objects.get(codigo="17")
+        self.asociacion.departamento = peten
+        self.asociacion.save(update_fields=["departamento"])
+        self.asociacion_otro_anio.departamento = peten
+        self.asociacion_otro_anio.save(update_fields=["departamento"])
+
+        response_2026 = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+        response_2027 = Client().get(reverse("asociaciones_publicas"), {"anio": 2027})
+        peten_2026 = next(item for item in response_2026.context["departamentos_publicos"] if item["codigo"] == "17")
+        peten_2027 = next(item for item in response_2027.context["departamentos_publicos"] if item["codigo"] == "17")
+        self.assertEqual([item["nombre"] for item in peten_2026["asociaciones"]], ["Asociacion X"])
+        self.assertEqual([item["nombre"] for item in peten_2027["asociaciones"]], ["Asociacion Z"])
 
     def _crear_expediente_aprobado_completo(self):
         ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)

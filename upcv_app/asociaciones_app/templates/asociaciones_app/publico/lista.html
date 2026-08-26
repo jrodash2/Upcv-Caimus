@@ -1,12 +1,46 @@
 {% extends 'asociaciones_app/publico/base_publica.html' %}
 {% block content %}
-<section id="inicio" class="landing-home public-hero">
+<section id="inicio" class="public-map-hero">
   <div class="container">
-    <div class="row">
-      <div class="col-xl-8 col-lg-9 wow fadeInUp public-hero-content"><span class="public-kicker">Información pública institucional</span><h1 class="public-hero-title">Seguimiento Público CAIMUS</h1><p class="public-hero-subtitle">Consulta el avance de los expedientes e informes de las asociaciones registradas.</p><a href="#asociaciones" class="btn public-hero-btn">Consultar asociaciones</a></div>
+    <div class="row align-items-center g-5">
+      <div class="col-lg-5 wow fadeInUp public-hero-content"><span class="public-kicker">Información pública institucional</span><h1 class="public-hero-title">Seguimiento Público CAIMUS</h1><p class="public-hero-subtitle">Consulta territorial de asociaciones y seguimiento del expediente digital.</p><p class="public-map-instruction">Seleccione un departamento para consultar las asociaciones registradas.</p></div>
+      <div class="col-lg-7 wow fadeInUp">
+        <div class="public-map-card"><div class="d-flex justify-content-between align-items-center mb-2"><div><span class="public-map-eyebrow">Cobertura territorial</span><h2>Mapa de Guatemala</h2></div><span class="badge badge-light-primary">{{ anio_seleccionado|default:'Sin año' }}</span></div>
+          <svg id="guatemalaMap" class="guatemala-map" viewBox="0 0 660 600" role="group" aria-label="Mapa interactivo de los 22 departamentos de Guatemala">
+            <g stroke="#fff" stroke-width="4" stroke-linejoin="round">
+              <path id="departamento-peten" class="guate-department" data-codigo="17" data-departamento="Petén" d="M155 25 L475 28 540 75 495 225 350 245 250 210 125 225 105 110Z"/>
+              <path id="departamento-huehuetenango" class="guate-department" data-codigo="13" data-departamento="Huehuetenango" d="M105 230 L245 215 280 285 225 345 120 330 70 275Z"/>
+              <path id="departamento-quiche" class="guate-department" data-codigo="14" data-departamento="Quiché" d="M245 215 L350 245 360 350 280 370 225 345 280 285Z"/>
+              <path id="departamento-alta-verapaz" class="guate-department" data-codigo="16" data-departamento="Alta Verapaz" d="M350 245 L495 225 535 290 475 360 360 350Z"/>
+              <path id="departamento-izabal" class="guate-department" data-codigo="18" data-departamento="Izabal" d="M535 290 L635 300 610 390 535 410 475 360Z"/>
+              <path id="departamento-san-marcos" class="guate-department" data-codigo="12" data-departamento="San Marcos" d="M70 275 L120 330 125 420 55 455 28 370Z"/>
+              <path id="departamento-totonicapan" class="guate-department" data-codigo="08" data-departamento="Totonicapán" d="M120 330 L225 345 210 400 125 420Z"/>
+              <path id="departamento-quetzaltenango" class="guate-department" data-codigo="09" data-departamento="Quetzaltenango" d="M55 455 L125 420 210 400 195 465 110 490Z"/>
+              <path id="departamento-solola" class="guate-department" data-codigo="07" data-departamento="Sololá" d="M210 400 L280 370 295 430 250 465 195 465Z"/>
+              <path id="departamento-baja-verapaz" class="guate-department" data-codigo="15" data-departamento="Baja Verapaz" d="M280 370 L360 350 410 400 350 440 295 430Z"/>
+              <path id="departamento-el-progreso" class="guate-department" data-codigo="02" data-departamento="El Progreso" d="M410 400 L475 360 505 420 440 455 350 440Z"/>
+              <path id="departamento-zacapa" class="guate-department" data-codigo="19" data-departamento="Zacapa" d="M505 420 L535 410 610 390 585 460 520 475 440 455Z"/>
+              <path id="departamento-chiquimula" class="guate-department" data-codigo="20" data-departamento="Chiquimula" d="M520 475 L585 460 610 530 530 545 485 505Z"/>
+              <path id="departamento-retalhuleu" class="guate-department" data-codigo="11" data-departamento="Retalhuleu" d="M110 490 L195 465 205 515 135 545 75 520Z"/>
+              <path id="departamento-suchitepequez" class="guate-department" data-codigo="10" data-departamento="Suchitepéquez" d="M195 465 L250 465 290 505 205 540 205 515Z"/>
+              <path id="departamento-chimaltenango" class="guate-department" data-codigo="04" data-departamento="Chimaltenango" d="M250 465 L295 430 350 440 345 495 290 505Z"/>
+              <path id="departamento-sacatepequez" class="guate-department" data-codigo="03" data-departamento="Sacatepéquez" d="M290 505 L345 495 365 535 315 550Z"/>
+              <path id="departamento-guatemala" class="guate-department" data-codigo="01" data-departamento="Guatemala" d="M350 440 L440 455 430 520 365 535 345 495Z"/>
+              <path id="departamento-jalapa" class="guate-department" data-codigo="21" data-departamento="Jalapa" d="M440 455 L520 475 485 505 480 550 430 520Z"/>
+              <path id="departamento-escuintla" class="guate-department" data-codigo="05" data-departamento="Escuintla" d="M135 545 L205 540 290 505 315 550 370 575 230 585Z"/>
+              <path id="departamento-santa-rosa" class="guate-department" data-codigo="06" data-departamento="Santa Rosa" d="M315 550 L365 535 430 520 480 550 450 585 370 575Z"/>
+              <path id="departamento-jutiapa" class="guate-department" data-codigo="22" data-departamento="Jutiapa" d="M480 550 L530 545 565 585 450 585Z"/>
+            </g><g id="mapCounters" aria-hidden="true"></g>
+          </svg>
+          <div class="map-legend"><span><i class="legend-empty"></i> Sin asociaciones</span><span><i class="legend-active"></i> Con asociaciones</span></div>
+          <div id="mapTooltip" class="public-map-tooltip" role="tooltip" hidden></div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
+{{ departamentos_publicos|json_script:"departamentosPublicos" }}
+<div class="modal fade" id="departamentoModal" tabindex="-1" aria-labelledby="departamentoModalTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4 shadow-lg border-0"><div class="modal-header"><div><span class="public-map-eyebrow">Consulta territorial</span><h3 class="modal-title" id="departamentoModalTitle"></h3></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div><div class="modal-body"><label for="mapAssociationSearch" class="visually-hidden">Buscar asociación</label><input id="mapAssociationSearch" class="form-control mb-3" type="search" placeholder="Buscar asociación..."><div id="mapAssociationResults" class="row g-3"></div><p id="mapNoResults" class="text-center text-muted py-4" hidden>No se encontraron asociaciones.</p></div></div></div></div>
 <section id="expedientes" class="section-py-space public-summary"><div class="container">
   <div class="title text-center wow fadeInUp"><h2>Resumen del proceso</h2><p>Indicadores correspondientes a los filtros seleccionados.</p></div>
   <div class="row g-3">
@@ -48,4 +82,39 @@
   </article></div>{% empty %}<div class="col-12"><div class="common-card text-center"><h3>No se encontraron asociaciones</h3><p class="mb-0">Pruebe con otros criterios de consulta.</p></div></div>{% endfor %}
   </div>
 </div></section>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const dataNode = document.getElementById("departamentosPublicos");
+  if (!dataNode) return;
+  const departamentos = JSON.parse(dataNode.textContent);
+  const porCodigo = Object.fromEntries(departamentos.map(item => [item.codigo, item]));
+  const tooltip = document.getElementById("mapTooltip");
+  const map = document.getElementById("guatemalaMap");
+  const results = document.getElementById("mapAssociationResults");
+  const noResults = document.getElementById("mapNoResults");
+  const search = document.getElementById("mapAssociationSearch");
+  const modalElement = document.getElementById("departamentoModal");
+  const modal = new bootstrap.Modal(modalElement);
+  let seleccionadas = [];
+  const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+  function render(items) {
+    results.innerHTML = items.map(item => `<div class="col-md-6 map-association-item"><article class="public-map-association h-100"><div class="d-flex justify-content-between gap-2"><div><h4>${escapeHtml(item.nombre)}</h4><small>Código: ${escapeHtml(item.codigo)}</small></div><span class="badge badge-light-primary">${escapeHtml(item.anio)}</span></div><hr><div class="map-detail-row"><span>Expediente digital</span><strong>${escapeHtml(item.estado)}</strong></div><div class="public-number"><small>Número de expediente</small><strong>${escapeHtml(item.correlativo)}</strong></div><div class="map-detail-row"><span>Avance</span><strong>${escapeHtml(item.porcentaje)}%</strong></div><div class="map-detail-row"><span>Convenio</span><strong>${escapeHtml(item.convenio_estado)}</strong></div><a class="btn btn-outline-primary w-100 mt-3" href="${escapeHtml(item.detalle_url)}">Ver detalle</a></article></div>`).join("");
+    noResults.hidden = items.length > 0;
+  }
+  document.querySelectorAll(".guate-department").forEach(path => {
+    const departamento = porCodigo[path.dataset.codigo] || {nombre: path.dataset.departamento, cantidad: 0, asociaciones: []};
+    path.classList.toggle("has-associations", departamento.cantidad > 0);
+    path.setAttribute("tabindex", "0"); path.setAttribute("role", "button");
+    path.setAttribute("aria-label", `${departamento.nombre}: ${departamento.cantidad ? departamento.cantidad + " asociaciones registradas" : "sin asociaciones registradas"}`);
+    const showTooltip = event => { tooltip.innerHTML = `<strong>${escapeHtml(departamento.nombre)}</strong><span>${departamento.cantidad ? departamento.cantidad + (departamento.cantidad === 1 ? " asociación registrada" : " asociaciones registradas") : "Sin asociaciones registradas"}</span>`; tooltip.hidden = false; const box = map.parentElement.getBoundingClientRect(); tooltip.style.left = `${event.clientX - box.left + 12}px`; tooltip.style.top = `${event.clientY - box.top + 12}px`; };
+    path.addEventListener("pointermove", showTooltip);
+    path.addEventListener("pointerleave", () => { tooltip.hidden = true; });
+    const open = () => { if (!departamento.cantidad) return; document.querySelectorAll(".guate-department.selected").forEach(node => node.classList.remove("selected")); path.classList.add("selected"); document.getElementById("departamentoModalTitle").textContent = `Asociaciones de ${departamento.nombre}`; seleccionadas = departamento.asociaciones; search.value = ""; render(seleccionadas); modal.show(); };
+    path.addEventListener("click", open); path.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
+    if (departamento.cantidad) { const box = path.getBBox(); const badge = document.createElementNS("http://www.w3.org/2000/svg", "g"); badge.classList.add("map-count"); badge.innerHTML = `<circle cx="${box.x + box.width / 2}" cy="${box.y + box.height / 2}" r="15"></circle><text x="${box.x + box.width / 2}" y="${box.y + box.height / 2 + 5}" text-anchor="middle">${departamento.cantidad}</text>`; document.getElementById("mapCounters").appendChild(badge); }
+  });
+  search.addEventListener("input", () => { const query = search.value.toLocaleLowerCase("es").trim(); render(seleccionadas.filter(item => `${item.nombre} ${item.codigo}`.toLocaleLowerCase("es").includes(query))); });
+  modalElement.addEventListener("hidden.bs.modal", () => document.querySelectorAll(".guate-department.selected").forEach(node => node.classList.remove("selected")));
+});
+</script>
 {% endblock %}
