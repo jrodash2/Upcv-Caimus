@@ -9,6 +9,7 @@ from asociaciones_app import views as asociaciones_views
 urlpatterns = [
     path('publico/asociaciones/', asociaciones_views.asociaciones_publicas, name='asociaciones_publicas'),
     path('publico/asociaciones/<int:pk>/', asociaciones_views.asociacion_publica_detalle, name='asociacion_publica_detalle'),
+    path('publico/anios/<int:pk>/documentos/<str:tipo>/', asociaciones_views.documento_legal_publico, name='documento_legal_publico'),
     path('admin/', admin.site.urls),
     path('almacen/', include('almacen_app.urls')),  # Incluye las URLs de tu aplicación
     path('', include(almacen_urls.urlpatterns)),  # Esto redirige la raíz al signin o vista principal

@@ -41,6 +41,14 @@ def validate_pdf_content(value):
 class Anio(models.Model):
     anio = models.PositiveIntegerField(unique=True)
     activo = models.BooleanField(default=True)
+    acuerdo_gubernativo = models.FileField(
+        upload_to="documentos_legales/acuerdos/", blank=True, null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size, validate_pdf_content],
+    )
+    decreto_congreso = models.FileField(
+        upload_to="documentos_legales/decretos/", blank=True, null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size, validate_pdf_content],
+    )
 
     class Meta:
         verbose_name = "Año"

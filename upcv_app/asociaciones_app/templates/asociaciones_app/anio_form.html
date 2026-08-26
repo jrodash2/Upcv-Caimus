@@ -6,7 +6,7 @@
     <div class="page-title"><h4>{{ titulo }}</h4></div>
     <div class="card">
       <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
           {{ form.non_field_errors }}
           <div class="row">
@@ -20,6 +20,21 @@
                 <label class="form-check-label" for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label>
               </div>
             </div>
+          </div>
+          <div class="card mt-3 border">
+            <div class="card-header"><h5 class="mb-0">Documentos legales{% if anio %} del año {{ anio.anio }}{% endif %}</h5></div>
+            <div class="card-body"><div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="{{ form.acuerdo_gubernativo.id_for_label }}">Acuerdo gubernativo</label>
+                {{ form.acuerdo_gubernativo }}{{ form.acuerdo_gubernativo.errors }}
+                <div class="mt-2">{% if anio.acuerdo_gubernativo %}<span class="badge bg-success">Documento cargado</span> <a href="{{ anio.acuerdo_gubernativo.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">Ver documento</a><small class="d-block text-muted mt-1">Seleccione otro PDF para sustituirlo.</small>{% else %}<span class="badge bg-secondary">Sin documento cargado</span>{% endif %}</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="{{ form.decreto_congreso.id_for_label }}">Decreto del Congreso</label>
+                {{ form.decreto_congreso }}{{ form.decreto_congreso.errors }}
+                <div class="mt-2">{% if anio.decreto_congreso %}<span class="badge bg-success">Documento cargado</span> <a href="{{ anio.decreto_congreso.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">Ver documento</a><small class="d-block text-muted mt-1">Seleccione otro PDF para sustituirlo.</small>{% else %}<span class="badge bg-secondary">Sin documento cargado</span>{% endif %}</div>
+              </div>
+            </div></div>
           </div>
           <div class="mt-3 d-flex gap-2 flex-wrap">
             <button class="btn btn-primary" type="submit">Guardar</button>
