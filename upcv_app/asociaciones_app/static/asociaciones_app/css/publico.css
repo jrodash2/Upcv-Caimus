@@ -7,10 +7,7 @@
 .public-navbar .nav-link:hover,.public-navbar .nav-link.active{color:#fff!important}
 .public-navbar .navbar-toggler{color:#fff;border:1px solid rgba(255,255,255,.4)}
 .public-login-btn{background:#fff;color:var(--color-caimus-primary);border:1px solid #fff;border-radius:8px;font-weight:500;transition:all .2s ease}
-.public-login-btn:hover{background:rgba(255,255,255,.9);color:var(--color-caimus-primary-dark);transform:translateY(-1px)}.public-hero{min-height:auto;padding:130px 0 80px;background:url("../../assets/images/login/login_bg.jpg") center/cover no-repeat}
-.public-hero h1{font-size:52px;color:#20232d;text-shadow:0 1px 2px rgba(255,255,255,.8)}
-.public-hero p{font:20px Roboto,sans-serif;max-width:680px;color:#20232d;text-shadow:0 1px 2px rgba(255,255,255,.8)}
-.public-hero .badge-light-primary{background:rgba(11,134,189,.14);color:var(--color-caimus-primary)}
+.public-login-btn:hover{background:rgba(255,255,255,.9);color:var(--color-caimus-primary-dark);transform:translateY(-1px)}
 .public-primary-btn{background:var(--color-caimus-primary);border-color:var(--color-caimus-primary);color:#fff;transition:all .2s ease}
 .public-primary-btn:hover{background:var(--color-caimus-primary-dark);border-color:var(--color-caimus-primary-dark);color:#fff;transform:translateY(-1px)}.common-card{background:#fff;border-radius:15px;padding:28px;box-shadow:0 5px 20px rgba(0,0,0,.08)}.public-hero-card{background:rgba(255,255,255,.96);border:0;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08)}.public-hero-card svg{width:48px;height:48px;color:var(--color-caimus-primary);margin-bottom:20px}.public-summary{background:#f7f7fa}.feature-box{text-align:center;height:100%;transition:.3s}.feature-box:hover,.public-association-card:hover{transform:translateY(-5px)}.feature-box svg{color:var(--theme-default);margin-bottom:12px}.feature-box span{display:block;color:#6c757d}.feature-box h3{font-size:32px;margin:8px 0 0}.public-filter{padding:24px}.public-filter svg,.public-association-card svg,.public-detail svg{width:16px;height:16px}.public-association-card{display:flex;flex-direction:column;transition:.3s}.public-association-card h3{font-size:20px}.public-status{white-space:normal;text-align:left}.status-aprobado{background:#d1e7dd!important;color:#0f5132!important}.status-revision{background:#cff4fc!important;color:#055160!important}.status-rechazado{background:#f8d7da!important;color:#842029!important}.status-borrador,.status-pendiente,.status-sin_iniciar{background:#e2e3e5!important;color:#41464b!important}.status-no_requerido{background:#fff3cd!important;color:#664d03!important}.public-number{margin-top:15px;padding:12px;background:#f7f7fa;border-left:3px solid var(--theme-default)}.public-number small,.public-number strong{display:block}.public-reports{padding:15px;background:#f7f7fa;border-radius:8px}.public-reports>div,.public-months>div{display:flex;justify-content:space-between;padding-top:8px}.progress{height:9px}.progress-bar{background-color:var(--theme-default)}.public-footer{background:#171829;color:#fff}.public-footer p{color:#b8b8c5}.public-footer a{color:#fff}.public-detail{padding-top:130px;background:#f7f7fa}.public-detail-head h1{font-size:32px}.public-checklist>div{display:grid;grid-template-columns:42px 1fr auto;gap:12px;align-items:center;padding:15px 0;border-bottom:1px solid #eee}.check-number{font-weight:700;color:var(--theme-default)}.public-months>div{align-items:center;padding:10px 0;border-bottom:1px solid #eee}@media(max-width:991px){.public-navbar .navbar-collapse{padding:15px 0}.public-navbar .nav-item{width:100%}.public-hero{padding:110px 0 60px}.public-hero h1{font-size:40px}}@media(max-width:767px){.public-hero h1{font-size:34px}}@media(max-width:575px){.public-logo{max-width:135px;max-height:46px}.public-hero{padding:95px 0 50px}.public-hero h1{font-size:32px}.public-checklist>div{grid-template-columns:32px 1fr}.public-checklist .badge{grid-column:2}.common-card{padding:20px}}
 
@@ -47,39 +44,6 @@
   transform: translateY(-1px);
 }
 .public-theme-toggle svg { width: 19px; height: 19px; }
-.public-hero {
-  position: relative;
-  min-height: 560px;
-  padding: 105px 0 70px;
-  display: flex;
-  align-items: center;
-  background-position: center;
-  background-size: cover;
-}
-.public-hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, .42);
-}
-.public-hero > .container { position: relative; z-index: 2; }
-.public-hero-content { max-width: 760px; }
-.public-hero-title {
-  font-size: clamp(40px, 4vw, 64px) !important;
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -1px;
-  color: #101828 !important;
-  margin-bottom: 16px;
-}
-.public-hero-subtitle {
-  max-width: 680px !important;
-  font-family: "Montserrat", sans-serif !important;
-  font-size: 20px !important;
-  line-height: 1.45;
-  color: #344054 !important;
-  margin-bottom: 28px;
-}
 .public-kicker {
   display: inline-flex;
   align-items: center;
@@ -107,9 +71,6 @@
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(11, 134, 189, .28);
 }
-body.dark-only .public-hero::before { background: rgba(5, 15, 25, .58); }
-body.dark-only .public-hero-title { color: #fff !important; text-shadow: none; }
-body.dark-only .public-hero-subtitle { color: rgba(255, 255, 255, .86) !important; text-shadow: none; }
 body.dark-only .public-kicker { background: rgba(11, 134, 189, .22); color: #8dd8f5; }
 body.dark-only .public-summary,
 body.dark-only .public-detail { background: #1d1e26; }
@@ -137,3 +98,15 @@ body.dark-only .public-legal-card { border-color: rgba(255,255,255,.1); }
   .public-hero-title { font-size: 34px !important; }
   .public-hero-subtitle { font-size: 17px !important; }
 }
+
+/* Interactive territorial hero */
+.public-map-hero{background:#f8fafc;padding:120px 0 64px;overflow:hidden}
+.public-map-hero .public-hero-title{font-size:clamp(38px,4vw,58px)!important;font-weight:700;line-height:1.08;color:#101828!important;margin-bottom:18px}
+.public-map-hero .public-hero-subtitle{font-size:20px!important;line-height:1.55;color:#344054!important;margin-bottom:18px}
+.public-map-instruction{font-size:16px;color:#667085;max-width:460px}
+.public-map-card{position:relative;background:#fff;border-radius:20px;padding:25px;box-shadow:0 16px 40px rgba(0,0,0,.08)}
+.public-map-card h2{font-size:24px;margin:2px 0 0}.public-map-eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:11px;font-weight:700;color:var(--color-caimus-primary)}
+.guatemala-map{display:block;width:100%;height:auto;max-height:540px;margin:auto}.guate-department{fill:#e8edf2;cursor:pointer;transition:fill .2s ease,filter .2s ease;outline:none}.guate-department.has-associations{fill:#0b86bd}.guate-department:hover,.guate-department:focus{fill:#0876a7;filter:drop-shadow(0 5px 4px rgba(0,0,0,.18))}.guate-department.selected{fill:#075f88}.map-count{pointer-events:none}.map-count circle{fill:#fff;stroke:#075f88;stroke-width:2}.map-count text{fill:#075f88;font-size:14px;font-weight:700}.map-legend{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;font-size:12px;color:#667085}.map-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}.legend-empty{background:#e8edf2}.legend-active{background:#0b86bd}.public-map-tooltip{position:absolute;z-index:5;pointer-events:none;background:#18202c;color:#fff;padding:9px 12px;border-radius:9px;box-shadow:0 7px 20px rgba(0,0,0,.2);font-size:12px;max-width:210px}.public-map-tooltip strong,.public-map-tooltip span{display:block}.public-map-association{border:1px solid #e4e7ec;border-radius:14px;padding:18px}.public-map-association h4{font-size:17px;margin:0}.map-detail-row{display:flex;justify-content:space-between;gap:15px;margin-top:12px;font-size:13px}.map-detail-row strong{text-align:right}.public-map-association .public-number{font-size:13px}
+body.dark-only .public-map-hero{background:#111827}body.dark-only .public-map-hero .public-hero-title{color:#fff!important}body.dark-only .public-map-hero .public-hero-subtitle,body.dark-only .public-map-instruction{color:#cbd5e1!important}body.dark-only .public-map-card{background:#18202c;color:#f8fafc}body.dark-only .guate-department{fill:#394454}body.dark-only .guate-department.has-associations{fill:#0b86bd}body.dark-only .modal-content{background:#18202c;color:#f8fafc}body.dark-only .modal-header{border-color:#344054}body.dark-only .btn-close{filter:invert(1)}body.dark-only .public-map-association{border-color:#344054}body.dark-only .map-legend{color:#cbd5e1}
+@media(max-width:991px){.public-map-hero{padding:105px 0 55px}.public-map-card{max-width:720px;margin:auto}}
+@media(max-width:575px){.public-map-hero{padding:90px 0 45px}.public-map-card{padding:16px;border-radius:16px}.public-map-hero .public-hero-subtitle{font-size:17px!important}.map-count circle{r:13}.map-legend{gap:12px}}

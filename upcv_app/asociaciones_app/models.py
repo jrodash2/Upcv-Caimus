@@ -134,10 +134,28 @@ class ChecklistAnioItem(models.Model):
         return f"{self.anio.anio} - {self.numero}. {self.titulo}"
 
 
+class Departamento(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    codigo = models.CharField(max_length=2, unique=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nombre"]
+        verbose_name = "Departamento"
+        verbose_name_plural = "Departamentos"
+
+    def __str__(self) -> str:
+        return self.nombre
+
+
 class Asociacion(models.Model):
     anio = models.ForeignKey(Anio, on_delete=models.CASCADE, related_name="asociaciones")
     nombre = models.CharField(max_length=255)
     codigo = models.SlugField(max_length=80)
+    departamento = models.ForeignKey(
+        Departamento, on_delete=models.PROTECT, related_name="asociaciones",
+        null=True, blank=True,
+    )
     nombre_representante_legal = models.CharField(max_length=255, blank=True, null=True)
     dpi_representante_legal = models.CharField(max_length=20, blank=True, null=True)
     acuerdo_gubernativo = models.CharField(max_length=255, blank=True, null=True)
