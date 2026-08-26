@@ -232,16 +232,16 @@ def _asociaciones_publicas_queryset():
 def asociaciones_publicas(request):
     """Read-only transparency portal; deliberately has no authentication decorator."""
     anios = list(Anio.objects.filter(activo=True).values_list("anio", flat=True))
-    anio = request.GET.get("anio", "").strip()
+    anio_param = request.GET.get("anio", "").strip()
     busqueda = request.GET.get("q", "").strip()[:100]
     estado = request.GET.get("estado", "").strip()
     queryset = _asociaciones_publicas_queryset()
-    anio_obj = None
-    if anio.isdigit() and int(anio) in anios:
-        anio_obj = Anio.objects.get(anio=int(anio), activo=True)
-        queryset = queryset.filter(anio__anio=int(anio))
-    else:
-        anio = ""
+    anio_seleccionado = None
+    if anio_param.isdigit() and int(anio_param) in anios:
+        anio_seleccionado = Anio.objects.filter(
+            anio=int(anio_param), activo=True
+        ).first()
+        queryset = queryset.filter(anio=anio_seleccionado)
     if busqueda:
         queryset = queryset.filter(Q(nombre__icontains=busqueda) | Q(codigo__icontains=busqueda))
     asociaciones = [_datos_publicos_asociacion(obj) for obj in queryset.order_by("nombre")]
@@ -255,7 +255,8 @@ def asociaciones_publicas(request):
         "informes": sum(obj["informes_aprobados"] for obj in asociaciones),
     }
     return render(request, "asociaciones_app/publico/lista.html", {
-        "asociaciones": asociaciones, "anios": anios, "anio_seleccionado": anio,
+        "asociaciones": asociaciones, "anios": anios,
+        "anio_seleccionado": anio_seleccionado,
         "busqueda": busqueda, "estado_seleccionado": estado, "resumen": resumen,
         "anio_obj": anio_obj,
     })
@@ -265,7 +266,7 @@ def asociacion_publica_detalle(request, pk):
     asociacion = get_object_or_404(_asociaciones_publicas_queryset(), pk=pk)
     return render(request, "asociaciones_app/publico/detalle.html", {
         "asociacion": _datos_publicos_asociacion(asociacion, detalle=True),
-        "anio_obj": asociacion.anio,
+        "anio_seleccionado": asociacion.anio,
     })
 
 
