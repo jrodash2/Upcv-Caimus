@@ -28,6 +28,12 @@
               <label class="form-label" for="{{ form.codigo.id_for_label }}">{{ form.codigo.label }}</label>
               {{ form.codigo }}
             </div>
+            <div class="col-12"><h5 class="mt-2 mb-3">Ubicación territorial</h5></div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.departamento.id_for_label }}">{{ form.departamento.label }}</label>
+              {{ form.departamento }}
+              {% if form.departamento.errors %}<div class="text-danger small">{{ form.departamento.errors }}</div>{% endif %}
+            </div>
             <div class="col-md-4 mb-3">
               <label class="form-label" for="{{ form.nombre_representante_legal.id_for_label }}">{{ form.nombre_representante_legal.label }}</label>
               {{ form.nombre_representante_legal }}

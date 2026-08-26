@@ -43,6 +43,7 @@
               <tr>
                 <th class="col-nombre-asociacion">Nombre</th>
                 <th>Código</th>
+                <th>Departamento</th>
                 <th>Representante legal</th>
                 <th>Acuerdo gubernativo</th>
                 <th>Activo</th>
@@ -58,6 +59,7 @@
                   </div>
                 </td>
                 <td>{{ asociacion.codigo }}</td>
+                <td>{{ asociacion.departamento|default:"Sin asignar" }}</td>
                 <td>{{ asociacion.nombre_representante_legal|default:"—" }}</td>
                 <td>{{ asociacion.acuerdo_gubernativo|default:"—" }}</td>
                 <td>{% if asociacion.activo %}Sí{% else %}No{% endif %}</td>
@@ -71,7 +73,7 @@
                 </td>
               </tr>
               {% empty %}
-              <tr><td colspan="6">No hay asociaciones registradas.</td></tr>
+              <tr><td colspan="7">No hay asociaciones registradas.</td></tr>
               {% endfor %}
             </tbody>
           </table>

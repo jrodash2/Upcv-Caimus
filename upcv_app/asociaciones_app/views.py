@@ -45,6 +45,7 @@ from .models import (
     Asociacion,
     AsociacionUsuario,
     DepartamentoConstancia,
+    Departamento,
     EntradaRevisionAdmin,
     ExpedienteCAIMUS,
     ExpedienteEstadoHistorial,
@@ -220,8 +221,9 @@ def _asociaciones_publicas_queryset():
     )
     informes = InformeMensual.objects.only("asociacion_id", "mes", "estado", "actualizado_en")
     configs = ConfiguracionInformeAnio.objects.filter(activo=True).only("anio_id", "mes", "requerido")
-    return Asociacion.objects.filter(activo=True, anio__activo=True).select_related("anio").only(
-        "id", "nombre", "codigo", "convenio_firmado", "anio_id", "anio__anio"
+    return Asociacion.objects.filter(activo=True, anio__activo=True).select_related("anio", "departamento").only(
+        "id", "nombre", "codigo", "convenio_firmado", "anio_id", "anio__anio",
+        "departamento_id", "departamento__codigo", "departamento__nombre"
     ).prefetch_related(
         Prefetch("expediente_caimus", queryset=expedientes, to_attr="expedientes_publicos"),
         Prefetch("informes_mensuales", queryset=informes, to_attr="informes_publicos"),
@@ -254,9 +256,31 @@ def asociaciones_publicas(request):
         queryset = queryset.filter(anio=anio_obj)
     if busqueda:
         queryset = queryset.filter(Q(nombre__icontains=busqueda) | Q(codigo__icontains=busqueda))
-    asociaciones = [_datos_publicos_asociacion(obj) for obj in queryset.order_by("nombre")]
+    objetos_publicos = list(queryset.order_by("nombre"))
+    pares_publicos = [(obj, _datos_publicos_asociacion(obj)) for obj in objetos_publicos]
     if estado:
-        asociaciones = [obj for obj in asociaciones if obj["estado_clave"] == estado]
+        pares_publicos = [(obj, datos) for obj, datos in pares_publicos if datos["estado_clave"] == estado]
+    asociaciones = [datos for _, datos in pares_publicos]
+    asociaciones_por_departamento = {}
+    for obj, datos in pares_publicos:
+        if obj.departamento_id:
+            datos_mapa = {
+                key: datos[key] for key in (
+                    "pk", "nombre", "codigo", "anio", "estado", "estado_clave",
+                    "correlativo", "porcentaje", "convenio_estado", "convenio_clave",
+                )
+            }
+            datos_mapa["detalle_url"] = reverse("asociacion_publica_detalle", args=[obj.pk])
+            asociaciones_por_departamento.setdefault(obj.departamento.codigo, []).append(datos_mapa)
+    departamentos_publicos = [
+        {
+            "id": departamento.pk, "codigo": departamento.codigo,
+            "nombre": departamento.nombre,
+            "cantidad": len(asociaciones_por_departamento.get(departamento.codigo, [])),
+            "asociaciones": asociaciones_por_departamento.get(departamento.codigo, []),
+        }
+        for departamento in Departamento.objects.filter(activo=True).order_by("codigo")
+    ]
     resumen = {
         "asociaciones": len(asociaciones),
         "aprobados": sum(obj["estado_clave"] == "aprobado" for obj in asociaciones),
@@ -269,7 +293,7 @@ def asociaciones_publicas(request):
         "anio_seleccionado": anio_seleccionado,
         "anio_obj": anio_obj,
         "busqueda": busqueda, "estado_seleccionado": estado, "resumen": resumen,
-        "anio_obj": anio_obj,
+        "departamentos_publicos": departamentos_publicos,
     })
 
 
@@ -345,7 +369,7 @@ def _dashboard_admin(request):
     if anio_seleccionado is None:
         anio_seleccionado = Anio.objects.filter(activo=True).order_by("-anio").first() or anios_disponibles.first()
 
-    asociaciones = Asociacion.objects.select_related("anio")
+    asociaciones = Asociacion.objects.select_related("anio", "departamento")
     expedientes = ExpedienteCAIMUS.objects.select_related("asociacion", "asociacion__anio")
     informes = InformeMensual.objects.select_related("asociacion", "asociacion__anio")
     if anio_seleccionado:
@@ -518,7 +542,7 @@ def _dashboard_admin(request):
 @admin_required
 def exportar_resumen_asociaciones_excel(request):
     anio_param = request.GET.get("anio")
-    asociaciones = Asociacion.objects.select_related("anio")
+    asociaciones = Asociacion.objects.select_related("anio", "departamento")
     if anio_param:
         asociaciones = asociaciones.filter(anio__anio=anio_param)
 
@@ -530,6 +554,7 @@ def exportar_resumen_asociaciones_excel(request):
         resumen.append(
             {
                 "asociacion": asociacion.nombre,
+                "departamento": asociacion.departamento.nombre if asociacion.departamento else "Sin asignar",
                 "anio": asociacion.anio.anio,
                 "expediente": expediente.estado if expediente else "SIN_EXPEDIENTE",
                 "numero_expediente": resolucion.correlativo if resolucion and resolucion.correlativo else "Sin asignar",
@@ -544,7 +569,7 @@ def exportar_resumen_asociaciones_excel(request):
     wb = Workbook()
     ws = wb.active
     ws.title = "Resumen Asociaciones"
-    headers = ["Asociación", "Año", "Número de expediente", "Estado expediente", "Convenio firmado", "Última actualización", "Informes aprobados", "Informes pendientes", "Informes no requeridos", "Fecha de descarga"]
+    headers = ["Asociación", "Departamento", "Año", "Número de expediente", "Estado expediente", "Convenio firmado", "Última actualización", "Informes aprobados", "Informes pendientes", "Informes no requeridos", "Fecha de descarga"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True)
@@ -554,6 +579,7 @@ def exportar_resumen_asociaciones_excel(request):
         for fila in resumen:
             ws.append([
                 fila["asociacion"],
+                fila["departamento"],
                 fila["anio"],
                 fila["numero_expediente"],
                 fila["expediente"],
@@ -565,9 +591,9 @@ def exportar_resumen_asociaciones_excel(request):
                 timezone.now().strftime("%d/%m/%Y %H:%M"),
             ])
     else:
-        ws.append(["Sin registros"] + [""] * 8 + [timezone.now().strftime("%d/%m/%Y %H:%M")])
+        ws.append(["Sin registros"] + [""] * 9 + [timezone.now().strftime("%d/%m/%Y %H:%M")])
 
-    for col in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]:
+    for col in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]:
         ws.column_dimensions[col].width = 24
 
     response = HttpResponse(
