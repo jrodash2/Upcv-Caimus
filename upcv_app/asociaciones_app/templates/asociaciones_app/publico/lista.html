@@ -12,8 +12,8 @@
   <div class="row g-3">
     <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="users"></i><span>Asociaciones activas</span><h3>{{ resumen.asociaciones }}</h3></div></div>
     <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="check-circle"></i><span>Expedientes aprobados</span><h3>{{ resumen.aprobados }}</h3></div></div>
-    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="eye"></i><span>En revisión</span><h3>{{ resumen.revision }}</h3></div></div>
-    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="clock"></i><span>Pendientes</span><h3>{{ resumen.pendientes }}</h3></div></div>
+    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="file-text"></i><span>Convenios firmados</span><h3>{{ resumen.convenios_firmados }}</h3></div></div>
+    <div class="col-xl col-md-4 col-6 wow fadeInUp"><div class="feature-box common-card"><i data-feather="clock"></i><span>Pendientes de firma</span><h3>{{ resumen.pendientes_firma }}</h3></div></div>
     <div id="informes" class="col-xl col-md-4 col-12 wow fadeInUp"><div class="feature-box common-card"><i data-feather="file-text"></i><span>Informes aprobados</span><h3>{{ resumen.informes }}</h3></div></div>
   </div>
 </div></section>
@@ -30,8 +30,9 @@
     <div class="d-flex justify-content-between gap-2"><div><h3>{{ item.nombre }}</h3><span class="text-muted">Código {{ item.codigo }}</span></div><span class="badge badge-light-primary">{{ item.anio }}</span></div><hr>
     <div class="d-flex justify-content-between align-items-center"><span>Estado</span><span class="badge public-status status-{{ item.estado_clave }}">{% if item.estado_clave == 'aprobado' %}✓ Expediente aprobado{% elif item.estado_clave == 'revision' %}! En revisión{% elif item.estado_clave == 'rechazado' %}× {{ item.estado }}{% else %}○ {{ item.estado }}{% endif %}</span></div>
     <div class="public-number"><small>Número de expediente</small><strong>{{ item.correlativo }}</strong></div>
-    <div class="d-flex justify-content-between mt-3"><strong>Avance del expediente<br><small>{{ item.aprobados }} de {{ item.total }} aprobados</small></strong><b>{{ item.porcentaje }}%</b></div><div class="progress mt-2"><div class="progress-bar" role="progressbar" style="width:{{ item.porcentaje }}%" aria-valuenow="{{ item.porcentaje }}" aria-valuemin="0" aria-valuemax="100"></div></div>
-    <div class="public-reports mt-4"><h6>Informes mensuales</h6><div><span>✓ Aprobados</span><b>{{ item.informes_aprobados }}</b></div><div><span>! En revisión</span><b>{{ item.informes_revision }}</b></div><div><span>○ Pendientes</span><b>{{ item.informes_pendientes }}</b></div><div><span>— No requeridos</span><b>{{ item.informes_no_requeridos }}</b></div></div>
+    <div class="d-flex justify-content-between align-items-center mt-3"><span>Convenio</span><span class="badge {% if item.convenio_clave == 'firmado' %}bg-success{% elif item.convenio_clave == 'pendiente' %}bg-warning{% else %}bg-secondary{% endif %}">{{ item.convenio_estado }}</span></div>
+    <div class="d-flex justify-content-between mt-3"><strong>Avance del expediente digital<br><small>{{ item.aprobados }} de {{ item.total }} aprobados</small></strong><b>{{ item.porcentaje }}%</b></div><div class="progress mt-2"><div class="progress-bar" role="progressbar" style="width:{{ item.porcentaje }}%" aria-valuenow="{{ item.porcentaje }}" aria-valuemin="0" aria-valuemax="100"></div></div>
+    <div class="public-reports mt-4"><h6>Informes mensuales requeridos</h6><div><span>✓ Aprobados</span><b>{{ item.informes_aprobados }}</b></div><div><span>! En revisión</span><b>{{ item.informes_revision }}</b></div><div><span>○ Pendientes</span><b>{{ item.informes_pendientes }}</b></div></div>
     <p class="text-muted small mt-3"><i data-feather="calendar"></i> Actualizado: {% if item.actualizado %}{{ item.actualizado|date:'d/m/Y h:i A' }}{% else %}Sin actividad registrada{% endif %}</p><a class="btn btn-outline-primary w-100 mt-auto" href="{% url 'asociacion_publica_detalle' item.pk %}">Ver detalle <i data-feather="arrow-right"></i></a>
   </article></div>{% empty %}<div class="col-12"><div class="common-card text-center"><h3>No se encontraron asociaciones</h3><p class="mb-0">Pruebe con otros criterios de consulta.</p></div></div>{% endfor %}
   </div>
