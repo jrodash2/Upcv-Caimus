@@ -71,6 +71,10 @@ class AsociacionesTests(TestCase):
         response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
         self.assertEqual(len(response.context["departamentos_publicos"]), 22)
         self.assertTrue(all(item["cantidad"] == 0 for item in response.context["departamentos_publicos"]))
+        self.assertEqual(response.content.count(b'class="gt-department"'), 22)
+        self.assertContains(response, 'class="guatemala-interactive-map"')
+        self.assertContains(response, 'id="departamentos-publicos"')
+        self.assertContains(response, 'path.parentNode.appendChild(path)')
 
     def test_mapa_respeta_el_anio_seleccionado(self):
         peten = Departamento.objects.get(codigo="17")
