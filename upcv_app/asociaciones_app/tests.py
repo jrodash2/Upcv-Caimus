@@ -73,8 +73,10 @@ class AsociacionesTests(TestCase):
         self.assertTrue(all(item["cantidad"] == 0 for item in response.context["departamentos_publicos"]))
         self.assertEqual(response.content.count(b'class="gt-department"'), 22)
         self.assertContains(response, 'class="guatemala-interactive-map"')
-        self.assertContains(response, 'id="departamentos-publicos"')
-        self.assertContains(response, 'path.parentNode.appendChild(path)')
+        self.assertContains(response, 'id="departamentos-publicos-data"')
+        self.assertContains(response, 'id="departamentoPublicoModal"', count=1)
+        self.assertContains(response, "window.caimusPublicMapInitialized")
+        self.assertNotContains(response, "path.parentNode.appendChild(path)")
 
     def test_mapa_respeta_el_anio_seleccionado(self):
         peten = Departamento.objects.get(codigo="17")
@@ -89,6 +91,24 @@ class AsociacionesTests(TestCase):
         peten_2027 = next(item for item in response_2027.context["departamentos_publicos"] if item["codigo"] == "17")
         self.assertEqual([item["nombre"] for item in peten_2026["asociaciones"]], ["Asociacion X"])
         self.assertEqual([item["nombre"] for item in peten_2027["asociaciones"]], ["Asociacion Z"])
+
+    def test_mapa_publico_incluye_asociacion_de_izabal_para_el_modal(self):
+        izabal = Departamento.objects.get(codigo="18")
+        self.asociacion.nombre = "ADIPAT"
+        self.asociacion.departamento = izabal
+        self.asociacion.save(update_fields=["nombre", "departamento"])
+
+        response = Client().get(reverse("asociaciones_publicas"), {"anio": 2026})
+
+        datos_izabal = next(
+            item for item in response.context["departamentos_publicos"] if item["codigo"] == "18"
+        )
+        self.assertEqual(datos_izabal["cantidad"], 1)
+        self.assertEqual(datos_izabal["asociaciones"][0]["nombre"], "ADIPAT")
+        self.assertEqual(
+            datos_izabal["asociaciones"][0]["detalle_url"],
+            reverse("asociacion_publica_detalle", args=[self.asociacion.pk]),
+        )
 
     def _crear_expediente_aprobado_completo(self):
         ChecklistAnioItem.objects.create(anio=self.anio, numero=1, titulo="Doc 1", activo=True)
