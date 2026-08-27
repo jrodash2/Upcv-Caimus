@@ -5,7 +5,7 @@
     <div class="row align-items-center g-5">
       <div class="col-lg-5 wow fadeInUp public-hero-content"><span class="public-kicker">Información pública institucional</span><h1 class="public-hero-title">Seguimiento Público CAIMUS</h1><p class="public-hero-subtitle">Consulta territorial de asociaciones y seguimiento del expediente digital.</p><p class="public-map-instruction">Seleccione un departamento para consultar las asociaciones registradas.</p></div>
       <div class="col-lg-7 wow fadeInUp">
-        <div class="public-map-card public-map-container"><div class="map-heading"><div><span class="public-map-eyebrow">Cobertura territorial</span><h2>Mapa de Guatemala</h2></div><span class="badge badge-light-primary">{{ anio_seleccionado|default:'Sin año' }}</span></div>
+        <div class="public-map-card public-map-container"><div class="map-heading public-map-heading"><div><span class="public-map-eyebrow">Cobertura territorial</span><h2>Mapa de Guatemala</h2></div><span class="badge badge-light-primary">{{ anio_seleccionado|default:'Sin año' }}</span></div>
           <div class="public-map-canvas">{% include "asociaciones_app/publico/includes/mapa_guatemala.html" %}</div>
           <div class="map-legend"><span><i class="legend-empty"></i> Sin asociaciones</span><span><i class="legend-active"></i> Con asociaciones</span></div>
           <div id="mapTooltip" class="map-tooltip" role="tooltip" aria-hidden="true"></div>
@@ -15,7 +15,28 @@
   </div>
 </section>
 {{ departamentos_publicos|json_script:"departamentos-publicos" }}
-<div class="modal fade" id="departamentoModal" tabindex="-1" aria-labelledby="departamentoModalTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4 shadow-lg border-0"><div class="modal-header"><div><span class="public-map-eyebrow">Consulta territorial</span><h3 class="modal-title" id="departamentoModalTitle"></h3></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div><div class="modal-body"><label for="mapAssociationSearch" class="visually-hidden">Buscar asociación</label><input id="mapAssociationSearch" class="form-control mb-3" type="search" placeholder="Buscar asociación..."><div id="mapAssociationResults" class="row g-3"></div><p id="mapNoResults" class="text-center text-muted py-4" hidden>No se encontraron asociaciones.</p></div></div></div></div>
+<div class="modal fade public-department-modal" id="departamentoModal" tabindex="-1" aria-labelledby="departamentoModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0">
+      <div class="modal-header department-modal-header">
+        <div class="department-modal-heading">
+          <span class="department-modal-kicker">Cobertura territorial</span>
+          <div class="department-modal-title-row">
+            <h3 class="modal-title department-modal-title" id="departamentoModalTitle"></h3>
+            <span id="departmentAssociationCount" class="badge badge-light-primary"></span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <label for="mapAssociationSearch" class="visually-hidden">Buscar asociación por nombre o código</label>
+        <input id="mapAssociationSearch" class="form-control department-search" type="search" placeholder="Buscar asociación por nombre o código...">
+        <div id="mapAssociationResults" class="department-associations-grid"></div>
+        <p id="mapNoResults" class="text-center text-muted py-4 mb-0" hidden>No se encontraron asociaciones.</p>
+      </div>
+    </div>
+  </div>
+</div>
 <section id="expedientes" class="section-py-space public-summary"><div class="container">
   <div class="title text-center wow fadeInUp"><h2>Resumen del proceso</h2><p>Indicadores correspondientes a los filtros seleccionados.</p></div>
   <div class="row g-3">
@@ -68,12 +89,15 @@ document.addEventListener("DOMContentLoaded", function () {
   const results = document.getElementById("mapAssociationResults");
   const noResults = document.getElementById("mapNoResults");
   const search = document.getElementById("mapAssociationSearch");
+  const associationCount = document.getElementById("departmentAssociationCount");
   const modalElement = document.getElementById("departamentoModal");
   const modal = new bootstrap.Modal(modalElement);
   let seleccionadas = [];
   const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+  const statusBadgeClass = key => ({aprobado: "bg-success", revision: "bg-info text-dark", rechazado: "bg-danger", borrador: "bg-secondary", pendiente: "bg-warning text-dark", sin_iniciar: "bg-secondary"}[key] || "bg-secondary");
+  const agreementBadgeClass = key => key === "firmado" ? "bg-success" : key === "pendiente" ? "bg-warning text-dark" : "bg-secondary";
   function render(items) {
-    results.innerHTML = items.map(item => `<div class="col-md-6 map-association-item"><article class="public-map-association h-100"><div class="d-flex justify-content-between gap-2"><div><h4>${escapeHtml(item.nombre)}</h4><small>Código: ${escapeHtml(item.codigo)}</small></div><span class="badge badge-light-primary">${escapeHtml(item.anio)}</span></div><hr><div class="map-detail-row"><span>Expediente digital</span><strong>${escapeHtml(item.estado)}</strong></div><div class="public-number"><small>Número de expediente</small><strong>${escapeHtml(item.correlativo)}</strong></div><div class="map-detail-row"><span>Avance</span><strong>${escapeHtml(item.porcentaje)}%</strong></div><div class="map-detail-row"><span>Convenio</span><strong>${escapeHtml(item.convenio_estado)}</strong></div><a class="btn btn-outline-primary w-100 mt-3" href="${escapeHtml(item.detalle_url)}">Ver detalle</a></article></div>`).join("");
+    results.innerHTML = items.map(item => `<article class="public-map-association public-association-card"><div class="d-flex justify-content-between align-items-start gap-2"><div><h4>${escapeHtml(item.nombre)}</h4><small class="association-code">Código: ${escapeHtml(item.codigo)}</small></div><span class="badge badge-light-primary">${escapeHtml(item.anio)}</span></div><div class="map-detail-row"><span>Expediente digital</span><span class="badge ${statusBadgeClass(item.estado_clave)}">${escapeHtml(item.estado)}</span></div><div class="association-progress"><div class="d-flex justify-content-between small mb-1"><span>Avance expediente digital</span><strong>${escapeHtml(item.porcentaje)}%</strong></div><div class="progress"><div class="progress-bar" role="progressbar" style="width:${escapeHtml(item.porcentaje)}%" aria-valuenow="${escapeHtml(item.porcentaje)}" aria-valuemin="0" aria-valuemax="100"></div></div></div><div class="map-detail-row"><span>Convenio</span><span class="badge ${agreementBadgeClass(item.convenio_clave)}">${escapeHtml(item.convenio_estado)}</span></div><div class="expediente-number-box"><small>Número de expediente</small><strong>${escapeHtml(item.correlativo)}</strong></div><a class="btn public-primary-btn btn-sm w-100 mt-3" href="${escapeHtml(item.detalle_url)}">Ver detalle de la asociación</a></article>`).join("");
     noResults.hidden = items.length > 0;
   }
   document.querySelectorAll(".gt-department").forEach(path => {
@@ -85,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
     path.addEventListener("pointerenter", () => { path.parentNode.appendChild(path); map.classList.add("is-hovering"); path.classList.add("is-hovered"); });
     path.addEventListener("pointermove", showTooltip);
     path.addEventListener("pointerleave", () => { tooltip.classList.remove("show"); tooltip.setAttribute("aria-hidden", "true"); map.classList.remove("is-hovering"); path.classList.remove("is-hovered"); });
-    const open = () => { if (!departamento.cantidad) return; document.querySelectorAll(".gt-department.selected").forEach(node => node.classList.remove("selected")); path.classList.add("selected"); document.getElementById("departamentoModalTitle").textContent = `Asociaciones de ${departamento.nombre}`; seleccionadas = departamento.asociaciones; search.value = ""; render(seleccionadas); modal.show(); };
+    const open = () => { if (!departamento.cantidad) return; document.querySelectorAll(".gt-department.selected").forEach(node => node.classList.remove("selected")); path.classList.add("selected"); document.getElementById("departamentoModalTitle").textContent = `Asociaciones de ${departamento.nombre}`; associationCount.textContent = `${departamento.cantidad} ${departamento.cantidad === 1 ? "asociación" : "asociaciones"}`; seleccionadas = departamento.asociaciones; search.value = ""; render(seleccionadas); modal.show(); };
     path.addEventListener("click", open); path.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
     if (departamento.cantidad) { const box = path.getBBox(); const badge = document.createElementNS("http://www.w3.org/2000/svg", "g"); badge.classList.add("map-count"); badge.innerHTML = `<circle cx="${box.x + box.width / 2}" cy="${box.y + box.height / 2}" r="15"></circle><text x="${box.x + box.width / 2}" y="${box.y + box.height / 2 + 5}" text-anchor="middle">${departamento.cantidad}</text>`; document.getElementById("mapCounters").appendChild(badge); }
   });
