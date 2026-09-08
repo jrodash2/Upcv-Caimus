@@ -35,6 +35,7 @@
                       <span class="summary-chip accordion-meta-item"><i data-feather="file-text" aria-hidden="true"></i>Narrativo <span class="badge accessible-badge rounded-pill {% if informe.archivo_narrativo %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_narrativo %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_narrativo %}Subido{% else %}Pendiente{% endif %}</span></span>
                       <span class="summary-chip accordion-meta-item"><i data-feather="bar-chart-2" aria-hidden="true"></i>Presupuestario <span class="badge accessible-badge rounded-pill {% if informe.archivo_presupuestario %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_presupuestario %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_presupuestario %}Subido{% else %}Pendiente{% endif %}</span></span>
                       <span class="summary-chip accordion-meta-item"><i data-feather="grid" aria-hidden="true"></i>Presupuestario Excel <span class="badge accessible-badge rounded-pill {% if informe.archivo_presupuestario_excel %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_presupuestario_excel %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_presupuestario_excel %}Subido{% else %}Pendiente{% endif %}</span></span>
+                      {% if asociacion.es_caimus %}<span class="summary-chip accordion-meta-item"><i data-feather="clipboard" aria-hidden="true"></i>CONAPREVI <span class="badge accessible-badge rounded-pill {% if informe.archivo_conaprevi %}bg-success{% else %}bg-secondary{% endif %}"><i data-feather="{% if informe.archivo_conaprevi %}check-circle{% else %}alert-circle{% endif %}" aria-hidden="true"></i>{% if informe.archivo_conaprevi %}Subido{% else %}Pendiente{% endif %}</span></span>{% endif %}
                     </div>
                   </div>
                   <div class="summary-side d-flex align-items-center gap-2 ms-auto">
@@ -107,6 +108,24 @@
                       </form>
                     {% endif %}
                   </div>
+                  {% if asociacion.es_caimus %}
+                  <div class="col-lg-6">
+                    <h6>Informe CONAPREVI</h6>
+                    {% if informe.archivo_conaprevi %}
+                      <span class="badge accessible-badge bg-success"><i data-feather="check-circle" aria-hidden="true"></i>Subido</span>
+                      <div class="mt-1"><a href="{{ informe.archivo_conaprevi.url }}" target="_blank"><i data-feather="eye" aria-hidden="true"></i>Ver PDF</a></div>
+                    {% else %}
+                      <span class="badge accessible-badge bg-warning text-dark"><i data-feather="alert-circle" aria-hidden="true"></i>Pendiente</span>
+                    {% endif %}
+                    {% if puede_subir and informe.es_requerido %}
+                      <form method="post" enctype="multipart/form-data" class="mt-2" action="{% url 'asociaciones:informe_upload_conaprevi' asociacion.pk informe.mes %}">
+                        {% csrf_token %}
+                        <input type="file" name="pdf" class="form-control form-control-sm" accept=".pdf,application/pdf" required>
+                        <button class="btn btn-primary btn-sm mt-2" type="submit"><i data-feather="upload" aria-hidden="true"></i>{% if informe.archivo_conaprevi %}Re-subir CONAPREVI{% else %}Subir CONAPREVI{% endif %}</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                  {% endif %}
                   <div class="col-lg-6">
                     <label class="form-label">Observaciones</label>
                     <textarea class="form-control observaciones-usuario" rows="2" {% if es_admin %}readonly{% endif %}>{{ informe.observaciones_usuario }}</textarea>

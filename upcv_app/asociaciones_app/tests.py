@@ -5,6 +5,7 @@ from io import BytesIO
 
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.exceptions import ValidationError
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -27,6 +28,8 @@ from .models import (
     ItemChecklistCAIMUS,
     crear_items_expediente,
     ConfiguracionInformeAnio,
+    resumen_documentos_informe,
+    tipos_informes_requeridos,
     Departamento,
 )
 from .permissions import expediente_items_100_aprobados
@@ -1867,3 +1870,59 @@ class AsociacionesTests(TestCase):
         texto_pdf = "".join(page.extract_text() or "" for page in PdfReader(BytesIO(response.content)).pages)
         self.assertIn("RES-2026-001", texto_pdf)
         self.assertIn("Aprobado", texto_pdf)
+
+
+class InformesConapreviTests(TestCase):
+    def setUp(self):
+        self.anio = Anio.objects.create(anio=2030)
+        self.caimus = Asociacion.objects.create(anio=self.anio, nombre="CAIMUS", codigo="CAIMUS")
+        self.no_caimus = Asociacion.objects.create(
+            anio=self.anio, nombre="Asociación general", codigo="GENERAL", es_caimus=False
+        )
+
+    def _archivo(self, nombre, contenido=b"contenido"):
+        return SimpleUploadedFile(nombre, contenido)
+
+    def _informe_con_tres_documentos(self, asociacion):
+        return InformeMensual.objects.create(
+            asociacion=asociacion,
+            mes=1,
+            archivo_narrativo=self._archivo("narrativo.pdf", b"%PDF- narrativo"),
+            archivo_presupuestario=self._archivo("presupuesto.pdf", b"%PDF- presupuesto"),
+            archivo_presupuestario_excel=self._archivo("presupuesto.xlsx"),
+        )
+
+    def test_documentos_requeridos_y_aprobacion_dependen_del_tipo(self):
+        informe_caimus = self._informe_con_tres_documentos(self.caimus)
+        informe_no_caimus = self._informe_con_tres_documentos(self.no_caimus)
+
+        self.assertEqual(tipos_informes_requeridos(self.caimus)[-1], "conaprevi")
+        self.assertNotIn("conaprevi", tipos_informes_requeridos(self.no_caimus))
+        self.assertFalse(informe_caimus.tiene_archivos_completos())
+        self.assertTrue(informe_no_caimus.tiene_archivos_completos())
+
+    def test_porcentaje_excluye_conaprevi_para_no_caimus(self):
+        resumen_caimus = resumen_documentos_informe(self._informe_con_tres_documentos(self.caimus))
+        resumen_no_caimus = resumen_documentos_informe(self._informe_con_tres_documentos(self.no_caimus))
+
+        self.assertEqual(resumen_caimus["porcentaje"], 75)
+        self.assertEqual(resumen_no_caimus["porcentaje"], 100)
+
+    def test_interfaz_mensual_oculta_conaprevi_para_no_caimus(self):
+        grupo = Group.objects.create(name="Administrador")
+        usuario = User.objects.create_user(username="admin-conaprevi", password="pass123")
+        usuario.groups.add(grupo)
+        client = Client()
+        client.login(username="admin-conaprevi", password="pass123")
+
+        response_caimus = client.get(reverse("asociaciones:informes_mensuales", args=[self.caimus.pk]))
+        response_no_caimus = client.get(reverse("asociaciones:informes_mensuales", args=[self.no_caimus.pk]))
+
+        self.assertContains(response_caimus, "CONAPREVI")
+        self.assertNotContains(response_no_caimus, "CONAPREVI")
+
+    def test_conaprevi_rechaza_archivo_que_no_es_pdf(self):
+        campo = InformeMensual._meta.get_field("archivo_conaprevi")
+        archivo = self._archivo("conaprevi.xlsx")
+        with self.assertRaises(ValidationError):
+            campo.run_validators(archivo)

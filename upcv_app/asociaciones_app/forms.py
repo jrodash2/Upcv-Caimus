@@ -51,6 +51,7 @@ class AsociacionForm(forms.ModelForm):
             "dpi_representante_legal",
             "acuerdo_gubernativo",
             "convenio_firmado",
+            "es_caimus",
             "activo",
         ]
         labels = {
@@ -60,6 +61,7 @@ class AsociacionForm(forms.ModelForm):
             "acuerdo_gubernativo": "Acuerdo gubernativo",
             "convenio_firmado": "Convenio firmado",
             "departamento": "Departamento",
+            "es_caimus": "Asociación CAIMUS",
         }
         widgets = {
             "anio": forms.Select(attrs={"class": "form-select"}),
@@ -73,6 +75,7 @@ class AsociacionForm(forms.ModelForm):
                 attrs={"class": "form-control", "accept": "application/pdf,.pdf"}
             ),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "es_caimus": forms.CheckboxInput(attrs={"class": "form-check-input", "role": "switch"}),
         }
 
     def __init__(self, *args, **kwargs):

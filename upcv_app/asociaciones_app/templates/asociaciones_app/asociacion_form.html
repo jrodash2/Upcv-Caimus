@@ -47,6 +47,18 @@
               {{ form.acuerdo_gubernativo }}
             </div>
             <div class="col-md-4 mb-3">
+              <label class="form-label d-block">Tipo de asociación</label>
+              <div class="form-check form-switch">
+                {{ form.es_caimus }}
+                <label class="form-check-label" for="{{ form.es_caimus.id_for_label }}">Asociación CAIMUS</label>
+              </div>
+              <small class="text-muted d-block mt-1">Active esta opción si a la asociación le corresponde presentar el informe CONAPREVI.</small>
+              {% if asociacion.pk %}
+                <span class="badge mt-2 {% if asociacion.es_caimus %}bg-primary{% else %}bg-secondary{% endif %}">{% if asociacion.es_caimus %}CAIMUS{% else %}NO CAIMUS{% endif %}</span>
+              {% endif %}
+              {{ form.es_caimus.errors }}
+            </div>
+            <div class="col-md-4 mb-3">
               <div class="form-check mt-4">
                 {{ form.activo }}
                 <label class="form-check-label" for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label>

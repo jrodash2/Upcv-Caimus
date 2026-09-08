@@ -71,6 +71,7 @@ from .models import (
     generar_correlativo_informe,
     obtener_configuracion_informes_anio,
     resumen_informes_asociacion,
+    tipos_informes_requeridos,
 )
 from .mixins import admin_required, asociacion_required
 from .permissions import (
@@ -200,7 +201,25 @@ def _datos_publicos_asociacion(asociacion, detalle=False):
                 clave, etiqueta, icono = "revision", "En revisión", "!"
             else:
                 clave, etiqueta, icono = "pendiente", "Pendiente", "○"
-            meses.append({"mes": PUBLIC_MONTHS[mes - 1], "estado": etiqueta, "estado_clave": clave, "icono": icono})
+            documentos = []
+            nombres_documentos = {
+                "narrativo": "Narrativo",
+                "presupuestario": "Presupuestario",
+                "presupuestario_excel": "Presupuestario Excel",
+                "conaprevi": "CONAPREVI",
+            }
+            for tipo in tipos_informes_requeridos(asociacion):
+                documentos.append({
+                    "nombre": nombres_documentos[tipo],
+                    "cargado": bool(informe and getattr(informe, "archivo_" + tipo)),
+                })
+            meses.append({
+                "mes": PUBLIC_MONTHS[mes - 1],
+                "estado": etiqueta,
+                "estado_clave": clave,
+                "icono": icono,
+                "documentos": documentos,
+            })
         data["meses"] = meses
     return data
 
@@ -219,10 +238,10 @@ def _asociaciones_publicas_queryset():
             to_attr="resolucion_publica",
         ),
     )
-    informes = InformeMensual.objects.only("asociacion_id", "mes", "estado", "actualizado_en")
+    informes = InformeMensual.objects.only("asociacion_id", "mes", "estado", "actualizado_en", "archivo_narrativo", "archivo_presupuestario", "archivo_presupuestario_excel", "archivo_conaprevi")
     configs = ConfiguracionInformeAnio.objects.filter(activo=True).only("anio_id", "mes", "requerido")
     return Asociacion.objects.filter(activo=True, anio__activo=True).select_related("anio", "departamento").only(
-        "id", "nombre", "codigo", "convenio_firmado", "anio_id", "anio__anio",
+        "id", "nombre", "codigo", "convenio_firmado", "es_caimus", "anio_id", "anio__anio",
         "departamento_id", "departamento__codigo", "departamento__nombre"
     ).prefetch_related(
         Prefetch("expediente_caimus", queryset=expedientes, to_attr="expedientes_publicos"),
@@ -1323,6 +1342,12 @@ def informe_upload_presupuestario_excel(request, asociacion_id, mes):
 
 @asociacion_required
 @require_POST
+def informe_upload_conaprevi(request, asociacion_id, mes):
+    return _informe_upload_por_tipo(request, asociacion_id, mes, "conaprevi")
+
+
+@asociacion_required
+@require_POST
 def informe_upload(request, asociacion_id, mes):
     # Compatibilidad con endpoint previo: el archivo legado se guarda como narrativo.
     return _informe_upload_por_tipo(request, asociacion_id, mes, "narrativo")
@@ -1343,7 +1368,7 @@ def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
         mes=mes,
         defaults={"creado_por": request.user, "actualizado_por": request.user},
     )
-    if tipo_archivo not in ["narrativo", "presupuestario", "presupuestario_excel"]:
+    if tipo_archivo not in tipos_informes_requeridos(asociacion):
         messages.error(request, "Tipo de archivo inválido.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     archivo = request.FILES.get("pdf")
@@ -1359,7 +1384,7 @@ def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
             messages.error(request, "El archivo debe ser formato Excel (.xlsx)")
             return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     else:
-        if archivo.content_type != "application/pdf":
+        if not archivo.name.lower().endswith(".pdf") or archivo.content_type != "application/pdf":
             messages.error(request, "El archivo debe ser un PDF válido.")
             return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     if tipo_archivo == "presupuestario_excel" and informe.estado == InformeMensual.ESTADO_APROBADO:
@@ -1370,8 +1395,10 @@ def _informe_upload_por_tipo(request, asociacion_id, mes, tipo_archivo):
         informe.archivo_narrativo = archivo
     elif tipo_archivo == "presupuestario":
         informe.archivo_presupuestario = archivo
-    else:
+    elif tipo_archivo == "presupuestario_excel":
         informe.archivo_presupuestario_excel = archivo
+    else:
+        informe.archivo_conaprevi = archivo
     if is_asociacion(request.user):
         if informe.estado in [InformeMensual.ESTADO_RECHAZADO, InformeMensual.ESTADO_APROBADO]:
             informe.estado = InformeMensual.ESTADO_BORRADOR
@@ -1408,7 +1435,7 @@ def informe_enviar_revision(request, asociacion_id, mes):
         messages.warning(request, "El informe ya está aprobado.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     if not informe.tiene_archivos_completos():
-        messages.error(request, "Debes cargar ambos archivos antes de enviar a revisión.")
+        messages.error(request, "Debes cargar todos los documentos requeridos antes de enviar a revisión.")
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
     informe.estado = InformeMensual.ESTADO_EN_REVISION
     informe.actualizado_por = request.user
@@ -1494,7 +1521,7 @@ def informe_estado(request, asociacion_id, mes):
     if estado_nuevo == InformeMensual.ESTADO_APROBADO and not informe.tiene_archivos_completos():
         messages.error(
             request,
-            "Para aprobar el informe mensual deben cargarse tanto el informe narrativo como el presupuestario.",
+            "Para aprobar el informe mensual deben cargarse todos los documentos requeridos.",
         )
         return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
 

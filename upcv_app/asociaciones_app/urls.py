@@ -74,6 +74,11 @@ urlpatterns = [
         name="informe_upload_presupuestario_excel",
     ),
     path(
+        "<int:asociacion_id>/informes/<int:mes>/upload/conaprevi/",
+        views.informe_upload_conaprevi,
+        name="informe_upload_conaprevi",
+    ),
+    path(
         "<int:asociacion_id>/informes/<int:mes>/observacion/",
         views.informe_observacion,
         name="informe_observacion",
