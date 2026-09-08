@@ -166,6 +166,7 @@ class Asociacion(models.Model):
         validators=[PDF_VALIDATOR, validate_pdf_size, validate_pdf_content],
     )
     activo = models.BooleanField(default=True)
+    es_caimus = models.BooleanField(default=True, verbose_name="Asociación CAIMUS")
 
     class Meta:
         verbose_name = "Asociación"
@@ -630,6 +631,12 @@ class InformeMensual(models.Model):
         null=True,
         validators=[XLSX_VALIDATOR],
     )
+    archivo_conaprevi = models.FileField(
+        upload_to="informes/conaprevi/%Y/%m/",
+        blank=True,
+        null=True,
+        validators=[PDF_VALIDATOR, validate_pdf_size, validate_pdf_content],
+    )
     pdf = models.FileField(
         upload_to="informes/%Y/%m/",
         blank=True,
@@ -676,7 +683,14 @@ class InformeMensual(models.Model):
         return f"{self.asociacion} - {self.get_mes_display()}"
 
     def tiene_archivos_completos(self) -> bool:
-        return bool(self.archivo_narrativo and self.archivo_presupuestario and self.archivo_presupuestario_excel)
+        return all(bool(getattr(self, campo)) for campo in campos_informes_requeridos(self.asociacion))
+
+    def estado_documentos(self) -> Dict[str, bool]:
+        """Estado de los documentos aplicables, sin exponer CONAPREVI a NO CAIMUS."""
+        return {
+            tipo: bool(getattr(self, "archivo_" + tipo))
+            for tipo in tipos_informes_requeridos(self.asociacion)
+        }
 
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
@@ -722,6 +736,34 @@ def informe_mes_requerido(asociacion: Asociacion, mes: int) -> bool:
     asegurar_configuracion_informes_anio(asociacion.anio)
     config = asociacion.anio.configuracion_informes.filter(mes=mes, activo=True).first()
     return bool(config.requerido) if config else True
+
+
+TIPOS_INFORMES_BASE = ("narrativo", "presupuestario", "presupuestario_excel")
+
+
+def tipos_informes_requeridos(asociacion: Asociacion) -> List[str]:
+    """Fuente única de tipos documentales exigibles a una asociación."""
+    tipos = list(TIPOS_INFORMES_BASE)
+    if asociacion.es_caimus:
+        tipos.append("conaprevi")
+    return tipos
+
+
+def campos_informes_requeridos(asociacion: Asociacion) -> List[str]:
+    return ["archivo_" + tipo for tipo in tipos_informes_requeridos(asociacion)]
+
+
+def resumen_documentos_informe(informe: InformeMensual) -> Dict[str, object]:
+    tipos = tipos_informes_requeridos(informe.asociacion)
+    aprobados = sum(bool(getattr(informe, "archivo_" + tipo)) for tipo in tipos)
+    total = len(tipos)
+    return {
+        "tipos": tipos,
+        "aprobados": aprobados,
+        "pendientes": total - aprobados,
+        "requeridos": total,
+        "porcentaje": int(aprobados * 100 / total) if total else 0,
+    }
 
 
 def obtener_configuracion_informes_anio(anio: Anio) -> Dict[str, object]:
