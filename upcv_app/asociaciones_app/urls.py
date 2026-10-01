@@ -94,6 +94,16 @@ urlpatterns = [
         name="informe_estado",
     ),
     path(
+        "<int:asociacion_id>/informes/<int:mes>/respuesta-administrativa/",
+        views.informe_respuesta_admin_upload,
+        name="informe_respuesta_admin_upload",
+    ),
+    path(
+        "informes/respuestas-administrativas/<int:pk>/archivo/",
+        views.informe_respuesta_admin_archivo,
+        name="informe_respuesta_admin_archivo",
+    ),
+    path(
         "<int:asociacion_id>/informes/<int:mes>/resolucion/pdf/",
         views.informe_resolucion_pdf,
         name="informe_resolucion_pdf",

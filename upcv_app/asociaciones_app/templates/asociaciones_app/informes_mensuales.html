@@ -148,6 +148,55 @@
                       {% endif %}
                     {% endif %}
                   </div>
+                  {% if es_admin or informe.respuesta_admin_vigente %}
+                  <div class="col-12">
+                    <div class="admin-response-card">
+                      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                          <h6 class="mb-1"><i data-feather="file-text" aria-hidden="true"></i>{% if es_admin %}Respuesta documental del administrador{% else %}Respuesta del administrador{% endif %}</h6>
+                          {% if informe.respuesta_admin_vigente %}
+                            <span class="badge accessible-badge bg-success"><i data-feather="check-circle" aria-hidden="true"></i>PDF disponible</span>
+                            <span class="badge bg-light text-dark">Versión {{ informe.respuesta_admin_vigente.version }}</span>
+                            <div class="small fw-semibold mt-2 text-break">{{ informe.respuesta_admin_vigente.nombre_original }}</div>
+                            <div class="small text-muted mt-1">
+                              {% if es_admin %}Subido por: {{ informe.respuesta_admin_vigente.nombre_usuario }} · {% endif %}
+                              Fecha de respuesta: {{ informe.respuesta_admin_vigente.creado_en|date:"d/m/Y h:i A" }}
+                            </div>
+                          {% elif es_admin %}
+                            <span class="badge bg-light text-muted">Pendiente de respuesta</span>
+                          {% endif %}
+                        </div>
+                        {% if informe.respuesta_admin_vigente %}
+                        <div class="d-flex gap-2 flex-wrap">
+                          <a class="btn btn-primary btn-sm timeline-file-btn" href="{% url 'asociaciones:informe_respuesta_admin_archivo' informe.respuesta_admin_vigente.pk %}" target="_blank" rel="noopener">
+                            <i data-feather="eye" aria-hidden="true"></i>{% if es_admin %}Ver PDF{% else %}Ver respuesta PDF{% endif %}
+                          </a>
+                          <button class="btn btn-primary btn-sm timeline-file-btn" type="button" data-bs-toggle="modal" data-bs-target="#historialRespuestas{{ informe.pk }}">
+                            <i data-feather="clock" aria-hidden="true"></i>Historial
+                          </button>
+                        </div>
+                        {% endif %}
+                      </div>
+                      {% if es_admin %}
+                      <form method="post" enctype="multipart/form-data" class="admin-response-form mt-3" action="{% url 'asociaciones:informe_respuesta_admin_upload' asociacion.pk informe.mes %}">
+                        {% csrf_token %}
+                        <div class="row g-2 align-items-end">
+                          <div class="col-lg-8">
+                            <label class="form-label small" for="respuesta-admin-{{ informe.pk }}">Documento PDF</label>
+                            <input id="respuesta-admin-{{ informe.pk }}" type="file" name="archivo" class="form-control form-control-sm" accept=".pdf,application/pdf" required>
+                          </div>
+                          <div class="col-lg-4">
+                            <button class="btn btn-primary btn-sm timeline-file-btn" type="submit">
+                              <i data-feather="upload" aria-hidden="true"></i>{% if informe.respuesta_admin_vigente %}Reemplazar PDF{% else %}Subir respuesta PDF{% endif %}
+                            </button>
+                          </div>
+                        </div>
+                        <small class="text-muted d-block mt-1">PDF únicamente · Máximo 5 MB</small>
+                      </form>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap mt-3 action-group">
@@ -178,6 +227,79 @@
               </div>
             </div>
           </div>
+          {% if informe.respuestas_admin_lista %}
+          <div class="modal fade timeline-modal timeline-modal-subido admin-response-history-modal" id="historialRespuestas{{ informe.pk }}" tabindex="-1" aria-labelledby="historialRespuestasLabel{{ informe.pk }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="timeline-modal-header">
+                  <div class="timeline-modal-icon bg-white bg-opacity-25"><i data-feather="clock" aria-hidden="true"></i></div>
+                  <h5 class="mb-0" id="historialRespuestasLabel{{ informe.pk }}">Historial de respuestas</h5>
+                  <small>{{ informe.get_mes_display }} {{ asociacion.anio.anio }}</small>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="timeline-modal-body">
+                  <div class="history-wheel-wrapper admin-response-wheel-wrapper">
+                    <div class="history-wheel-track">
+                      {% for respuesta in informe.respuestas_admin_lista %}
+                      <div class="history-wheel-item {% if respuesta.vigente %}history-aprobado{% else %}admin-response-history-previous{% endif %}">
+                        <button type="button" class="history-wheel-dot admin-response-version-dot" data-response-detail-target="#respuestaDetalle{{ respuesta.pk }}" data-history-modal="#historialRespuestas{{ informe.pk }}" aria-label="Consultar versión {{ respuesta.version }}">
+                          {{ respuesta.version }}
+                        </button>
+                        <div class="history-wheel-title">Versión {{ respuesta.version }}</div>
+                        {% if respuesta.vigente %}<span class="badge bg-success admin-response-current-badge">Actual</span>{% endif %}
+                        <div class="history-wheel-date">{{ respuesta.creado_en|date:"d/m/Y H:i" }}</div>
+                      </div>
+                      {% if not forloop.last %}<div class="history-wheel-line"></div>{% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                  <p class="text-muted small text-center mb-0">Seleccione una versión para consultar el detalle.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% for respuesta in informe.respuestas_admin_lista %}
+          <div class="modal fade timeline-modal {% if respuesta.vigente %}timeline-modal-aprobado{% else %}timeline-modal-actualizado{% endif %} admin-response-detail-modal" id="respuestaDetalle{{ respuesta.pk }}" tabindex="-1" aria-labelledby="respuestaDetalleLabel{{ respuesta.pk }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="timeline-modal-header">
+                  <div class="timeline-modal-icon bg-white bg-opacity-25"><i data-feather="file-text" aria-hidden="true"></i></div>
+                  <h5 class="mb-0" id="respuestaDetalleLabel{{ respuesta.pk }}">Versión {{ respuesta.version }}</h5>
+                  <div class="small">Respuesta administrativa</div>
+                  <small>{{ respuesta.creado_en|date:"d/m/Y h:i A" }}</small>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="timeline-modal-body">
+                  <div class="timeline-detail-row">
+                    <span class="timeline-detail-label">Usuario</span>
+                    <span class="timeline-detail-value">{{ respuesta.nombre_usuario }}</span>
+                  </div>
+                  <div class="timeline-detail-row">
+                    <span class="timeline-detail-label">Fecha</span>
+                    <span class="timeline-detail-value">{{ respuesta.creado_en|date:"d/m/Y h:i A" }}</span>
+                  </div>
+                  <div class="timeline-detail-row">
+                    <span class="timeline-detail-label">Acción</span>
+                    <span class="timeline-detail-value">{{ respuesta.get_accion_display }}</span>
+                  </div>
+                  <div class="timeline-detail-row">
+                    <span class="timeline-detail-label">Versión</span>
+                    <span class="timeline-detail-value">{{ respuesta.version }}{% if respuesta.vigente %} · Actual{% endif %}</span>
+                  </div>
+                  <div class="timeline-detail-row">
+                    <span class="timeline-detail-label">Nombre del archivo</span>
+                    <span class="timeline-detail-value admin-response-filename">{{ respuesta.nombre_original }}</span>
+                  </div>
+                  {% if respuesta.descripcion %}<div class="timeline-description-box">{{ respuesta.descripcion }}</div>{% endif %}
+                  <div class="timeline-modal-action">
+                    <a class="btn btn-primary btn-sm px-4 timeline-file-btn" href="{% url 'asociaciones:informe_respuesta_admin_archivo' respuesta.pk %}" target="_blank" rel="noopener"><i data-feather="eye" aria-hidden="true"></i>Ver archivo</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          {% endif %}
           {% else %}
           <div class="card card-soft section-panel mb-2" id="informe-mes-{{ informe.mes }}">
             <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -247,4 +369,19 @@
   });
 </script>
 {% endif %}
+<script>
+  document.querySelectorAll('.admin-response-version-dot').forEach((button) => {
+    button.addEventListener('click', () => {
+      const historyElement = document.querySelector(button.dataset.historyModal);
+      const detailElement = document.querySelector(button.dataset.responseDetailTarget);
+      if (!historyElement || !detailElement || !window.bootstrap) return;
+
+      const historyModal = window.bootstrap.Modal.getOrCreateInstance(historyElement);
+      historyElement.addEventListener('hidden.bs.modal', () => {
+        window.bootstrap.Modal.getOrCreateInstance(detailElement).show();
+      }, { once: true });
+      historyModal.hide();
+    });
+  });
+</script>
 {% endblock %}

@@ -11,6 +11,7 @@ from .models import (
     InformeEstadoHistorial,
     InformeMensual,
     ResolucionExpediente,
+    RespuestaAdministrativaInforme,
 )
 
 
@@ -24,3 +25,4 @@ admin.site.register(ExpedienteEstadoHistorial)
 admin.site.register(InformeMensual)
 admin.site.register(InformeEstadoHistorial)
 admin.site.register(ResolucionExpediente)
+admin.site.register(RespuestaAdministrativaInforme)

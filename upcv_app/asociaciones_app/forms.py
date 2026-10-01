@@ -17,6 +17,7 @@ from .models import (
     FirmaConstancia,
     ItemChecklistCAIMUS,
     RevisorConstancia,
+    RespuestaAdministrativaInforme,
 )
 
 
@@ -272,3 +273,27 @@ class RevisionExpedienteForm(forms.ModelForm):
         if estado == ExpedienteCAIMUS.ESTADO_RECHAZADO and not observacion:
             raise ValidationError("Debe indicar la observación del rechazo.")
         return cleaned
+
+
+class RespuestaAdministrativaInformeForm(forms.ModelForm):
+    TIPOS_PDF = ("application/pdf", "application/x-pdf")
+
+    class Meta:
+        model = RespuestaAdministrativaInforme
+        fields = ["archivo"]
+        widgets = {
+            "archivo": forms.ClearableFileInput(
+                attrs={
+                    "class": "form-control form-control-sm",
+                    "accept": ".pdf,application/pdf",
+                }
+            )
+        }
+
+    def clean_archivo(self):
+        archivo = self.cleaned_data["archivo"]
+        if not archivo.name.lower().endswith(".pdf"):
+            raise ValidationError("El archivo debe tener extensión .pdf.")
+        if getattr(archivo, "content_type", "") not in self.TIPOS_PDF:
+            raise ValidationError("El tipo de archivo debe ser PDF.")
+        return archivo
