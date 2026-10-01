@@ -449,7 +449,7 @@
   border: 1px solid #e4e8ef;
   border-radius: 10px;
   background: #fbfcfe;
-  padding: 14px 16px;
+  padding: 12px 14px;
   box-shadow: 0 3px 10px rgba(15, 23, 42, .04);
 }
 
@@ -465,29 +465,92 @@
   padding-top: 12px;
 }
 
-.admin-response-timeline {
-  margin-left: 9px;
+.timeline-file-btn {
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(115, 102, 255, .16);
+  transition: all .2s ease;
 }
 
-.admin-response-event {
-  position: relative;
-  border-left: 2px solid #dce4ec;
-  padding: 0 0 22px 22px;
+.timeline-file-btn:hover,
+.timeline-file-btn:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 15px rgba(115, 102, 255, .24);
 }
 
-.admin-response-event:last-child {
-  border-left-color: transparent;
-  padding-bottom: 0;
+.timeline-file-btn svg,
+.timeline-modal-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
-.admin-response-dot {
-  position: absolute;
-  left: -7px;
-  top: 2px;
-  width: 12px;
-  height: 12px;
-  border: 3px solid #fff;
-  border-radius: 50%;
-  background: #007f83;
-  box-shadow: 0 0 0 2px #007f83;
+.timeline-modal-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.admin-response-wheel-wrapper {
+  justify-content: flex-start;
+  padding-top: 8px;
+}
+
+.admin-response-wheel-wrapper .history-wheel-track {
+  margin: 0 auto;
+}
+
+.admin-response-version-dot:hover {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.admin-response-history-previous .history-wheel-dot {
+  background: #fff;
+  border-color: #c8ced8;
+  color: #6c757d;
+}
+
+.admin-response-current-badge {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.admin-response-filename {
+  max-width: 68%;
+  overflow-wrap: anywhere;
+}
+
+.admin-response-history-modal .modal-dialog,
+.admin-response-detail-modal .modal-dialog {
+  max-width: 520px;
+}
+
+@media (max-width: 575.98px) {
+  .admin-response-history-modal .modal-dialog,
+  .admin-response-detail-modal .modal-dialog {
+    margin: .75rem;
+  }
+
+  .admin-response-wheel-wrapper {
+    margin: 0 -8px;
+  }
+
+  .admin-response-wheel-wrapper .history-wheel-track {
+    margin: 0;
+  }
+
+  .admin-response-wheel-wrapper .history-wheel-item {
+    width: 92px;
+  }
+
+  .admin-response-wheel-wrapper .history-wheel-line {
+    flex-basis: 28px;
+  }
+
+  .timeline-detail-row {
+    align-items: flex-start;
+  }
+
+  .timeline-detail-value,
+  .admin-response-filename {
+    max-width: 62%;
+    overflow-wrap: anywhere;
+  }
 }
