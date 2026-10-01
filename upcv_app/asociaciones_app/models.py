@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
 from django.utils.html import escape, format_html, format_html_join
+from django.utils.text import get_valid_filename
 
 
 PDF_VALIDATOR = FileExtensionValidator(["pdf"])
@@ -694,6 +695,76 @@ class InformeMensual(models.Model):
 
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
+
+
+def respuesta_administrativa_upload_to(instance, filename):
+    """Keep every administrative response in its report-specific directory."""
+    nombre = get_valid_filename(filename)
+    informe = instance.informe
+    return "informes/respuestas/{0}/{1}/{2:02d}/v{3}_{4}".format(
+        informe.asociacion_id,
+        informe.asociacion.anio.anio,
+        informe.mes,
+        instance.version,
+        nombre,
+    )
+
+
+class RespuestaAdministrativaInforme(models.Model):
+    ACCION_SUBIDA = "RESPUESTA_ADMIN_SUBIDA"
+    ACCION_ACTUALIZADA = "RESPUESTA_ADMIN_ACTUALIZADA"
+    ACCIONES = [
+        (ACCION_SUBIDA, "Respuesta administrativa cargada"),
+        (ACCION_ACTUALIZADA, "Respuesta administrativa actualizada"),
+    ]
+
+    informe = models.ForeignKey(
+        InformeMensual,
+        on_delete=models.CASCADE,
+        related_name="respuestas_administrativas",
+    )
+    archivo = models.FileField(
+        upload_to=respuesta_administrativa_upload_to,
+        validators=[PDF_VALIDATOR, validate_pdf_size, validate_pdf_content],
+    )
+    nombre_original = models.CharField(max_length=255)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="respuestas_administrativas_informes",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    version = models.PositiveIntegerField(default=1)
+    vigente = models.BooleanField(default=True)
+    accion = models.CharField(max_length=40, choices=ACCIONES)
+    descripcion = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Respuesta administrativa de informe"
+        verbose_name_plural = "Respuestas administrativas de informes"
+        ordering = ["-version", "-creado_en"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["informe", "version"],
+                name="unique_respuesta_admin_version_informe",
+            ),
+            models.UniqueConstraint(
+                fields=["informe"],
+                condition=models.Q(vigente=True),
+                name="unique_respuesta_admin_vigente_informe",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return "{0} - respuesta v{1}".format(self.informe, self.version)
+
+    @property
+    def nombre_usuario(self):
+        if not self.usuario:
+            return "Usuario no disponible"
+        return self.usuario.get_full_name() or self.usuario.username
 
 
 class ConfiguracionInformeAnio(models.Model):

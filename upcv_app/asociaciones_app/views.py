@@ -15,7 +15,8 @@ from django.core.files.base import ContentFile
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.core.signing import BadSignature, Signer
-from django.db.models import Count, Prefetch, Q
+from django.db import transaction
+from django.db.models import Count, Max, Prefetch, Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
@@ -39,6 +40,7 @@ from .forms import (
     ItemChecklistFormSet,
     RevisorConstanciaForm,
     RevisionExpedienteForm,
+    RespuestaAdministrativaInformeForm,
 )
 from .models import (
     Anio,
@@ -60,6 +62,7 @@ from .models import (
     ResolucionInformeMensual,
     ResolucionExpediente,
     RevisorConstancia,
+    RespuestaAdministrativaInforme,
     crear_notificacion_asociacion,
     crear_notificacion_admin,
     crear_entrada_revision_admin,
@@ -1301,10 +1304,19 @@ def informes_mensuales(request, pk):
         raise PermissionDenied
     crear_informes_mensuales(asociacion, request.user)
     asegurar_configuracion_informes_anio(asociacion.anio)
-    informes = asociacion.informes_mensuales.all()
+    respuestas_qs = RespuestaAdministrativaInforme.objects.select_related("usuario").order_by(
+        "-version", "-creado_en"
+    )
+    informes = asociacion.informes_mensuales.prefetch_related(
+        Prefetch("respuestas_administrativas", queryset=respuestas_qs, to_attr="respuestas_admin_lista")
+    )
     config_map = {c.mes: c for c in asociacion.anio.configuracion_informes.filter(activo=True)}
     for informe in informes:
         informe.es_requerido = config_map.get(informe.mes).requerido if config_map.get(informe.mes) else True
+        informe.respuesta_admin_vigente = next(
+            (respuesta for respuesta in informe.respuestas_admin_lista if respuesta.vigente),
+            None,
+        )
     resumen_informes = resumen_informes_asociacion(asociacion)
     puede_subir = is_admin(request.user) or user_has_asociacion_access(request.user, asociacion)
     return render(
@@ -1319,6 +1331,81 @@ def informes_mensuales(request, pk):
             "config_map": config_map,
             "resumen_informes": resumen_informes,
         },
+    )
+
+
+@admin_required
+@require_POST
+def informe_respuesta_admin_upload(request, asociacion_id, mes):
+    asociacion = get_object_or_404(Asociacion, pk=asociacion_id)
+    if mes not in range(1, 13):
+        raise Http404
+    informe = get_object_or_404(InformeMensual, asociacion=asociacion, mes=mes)
+    form = RespuestaAdministrativaInformeForm(request.POST, request.FILES)
+    if not form.is_valid():
+        messages.error(request, " ".join(form.errors.get("archivo", ["Seleccione un PDF válido."])))
+        return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+    archivo = form.cleaned_data["archivo"]
+    with transaction.atomic():
+        # Lock the parent because it is the stable row shared by every version.
+        InformeMensual.objects.select_for_update().get(pk=informe.pk)
+        respuestas = RespuestaAdministrativaInforme.objects.filter(informe=informe)
+        ultima_version = respuestas.aggregate(maxima=Max("version"))["maxima"] or 0
+        nueva_version = ultima_version + 1
+        respuestas.filter(vigente=True).update(vigente=False)
+        accion = (
+            RespuestaAdministrativaInforme.ACCION_SUBIDA
+            if nueva_version == 1
+            else RespuestaAdministrativaInforme.ACCION_ACTUALIZADA
+        )
+        descripcion = (
+            "El administrador cargó un documento de respuesta al informe mensual."
+            if nueva_version == 1
+            else "El administrador actualizó el documento de respuesta al informe mensual."
+        )
+        respuesta = RespuestaAdministrativaInforme(
+            informe=informe,
+            archivo=archivo,
+            nombre_original=archivo.name[:255],
+            usuario=request.user,
+            version=nueva_version,
+            vigente=True,
+            accion=accion,
+            descripcion=descripcion,
+        )
+        respuesta.full_clean()
+        respuesta.save()
+
+    messages.success(
+        request,
+        "Respuesta administrativa {0} correctamente (versión {1}).".format(
+            "cargada" if nueva_version == 1 else "actualizada",
+            nueva_version,
+        ),
+    )
+    return redirect("asociaciones:informes_mensuales", pk=asociacion.pk)
+
+
+@asociacion_required
+def informe_respuesta_admin_archivo(request, pk):
+    respuesta = get_object_or_404(
+        RespuestaAdministrativaInforme.objects.select_related("informe__asociacion"),
+        pk=pk,
+    )
+    if not user_has_asociacion_access(request.user, respuesta.informe.asociacion):
+        raise PermissionDenied
+    if not respuesta.archivo:
+        raise Http404
+    try:
+        archivo = respuesta.archivo.storage.open(respuesta.archivo.name, "rb")
+    except OSError:
+        raise Http404
+    return FileResponse(
+        archivo,
+        content_type="application/pdf",
+        as_attachment=False,
+        filename=respuesta.nombre_original,
     )
 
 

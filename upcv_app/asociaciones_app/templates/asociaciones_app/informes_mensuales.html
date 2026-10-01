@@ -148,6 +148,55 @@
                       {% endif %}
                     {% endif %}
                   </div>
+                  {% if es_admin or informe.respuesta_admin_vigente %}
+                  <div class="col-12">
+                    <div class="admin-response-card">
+                      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                          <h6 class="mb-1"><i data-feather="file-text" aria-hidden="true"></i>{% if es_admin %}Respuesta documental del administrador{% else %}Respuesta del administrador{% endif %}</h6>
+                          {% if informe.respuesta_admin_vigente %}
+                            <span class="badge accessible-badge bg-success"><i data-feather="check-circle" aria-hidden="true"></i>PDF disponible</span>
+                            <span class="badge bg-light text-dark">Versión {{ informe.respuesta_admin_vigente.version }}</span>
+                            <div class="small fw-semibold mt-2 text-break">{{ informe.respuesta_admin_vigente.nombre_original }}</div>
+                            <div class="small text-muted mt-1">
+                              {% if es_admin %}Subido por: {{ informe.respuesta_admin_vigente.nombre_usuario }} · {% endif %}
+                              Fecha de respuesta: {{ informe.respuesta_admin_vigente.creado_en|date:"d/m/Y h:i A" }}
+                            </div>
+                          {% elif es_admin %}
+                            <span class="badge bg-light text-muted">Pendiente de respuesta</span>
+                          {% endif %}
+                        </div>
+                        {% if informe.respuesta_admin_vigente %}
+                        <div class="d-flex gap-2 flex-wrap">
+                          <a class="btn btn-primary btn-sm" href="{% url 'asociaciones:informe_respuesta_admin_archivo' informe.respuesta_admin_vigente.pk %}" target="_blank" rel="noopener">
+                            <i data-feather="eye" aria-hidden="true"></i>{% if es_admin %}Ver PDF{% else %}Ver respuesta PDF{% endif %}
+                          </a>
+                          <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#historialRespuestas{{ informe.pk }}">
+                            <i data-feather="clock" aria-hidden="true"></i>Historial de respuestas
+                          </button>
+                        </div>
+                        {% endif %}
+                      </div>
+                      {% if es_admin %}
+                      <form method="post" enctype="multipart/form-data" class="admin-response-form mt-3" action="{% url 'asociaciones:informe_respuesta_admin_upload' asociacion.pk informe.mes %}">
+                        {% csrf_token %}
+                        <div class="row g-2 align-items-end">
+                          <div class="col-lg-8">
+                            <label class="form-label small" for="respuesta-admin-{{ informe.pk }}">Documento PDF</label>
+                            <input id="respuesta-admin-{{ informe.pk }}" type="file" name="archivo" class="form-control form-control-sm" accept=".pdf,application/pdf" required>
+                          </div>
+                          <div class="col-lg-4">
+                            <button class="btn btn-primary btn-sm" type="submit">
+                              <i data-feather="upload" aria-hidden="true"></i>{% if informe.respuesta_admin_vigente %}Reemplazar PDF{% else %}Subir respuesta PDF{% endif %}
+                            </button>
+                          </div>
+                        </div>
+                        <small class="text-muted d-block mt-1">PDF únicamente · Máximo 5 MB</small>
+                      </form>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap mt-3 action-group">
@@ -178,6 +227,39 @@
               </div>
             </div>
           </div>
+          {% if informe.respuestas_admin_lista %}
+          <div class="modal fade" id="historialRespuestas{{ informe.pk }}" tabindex="-1" aria-labelledby="historialRespuestasLabel{{ informe.pk }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <div>
+                    <h5 class="modal-title" id="historialRespuestasLabel{{ informe.pk }}">Historial de respuestas administrativas</h5>
+                    <small class="text-muted">{{ informe.get_mes_display }} {{ asociacion.anio.anio }}</small>
+                  </div>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="admin-response-timeline">
+                    {% for respuesta in informe.respuestas_admin_lista %}
+                    <div class="admin-response-event">
+                      <span class="admin-response-dot"></span>
+                      <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                        <span class="badge bg-primary">Versión {{ respuesta.version }}</span>
+                        {% if respuesta.vigente %}<span class="badge bg-success">Actual</span>{% endif %}
+                        <strong class="small">{% if respuesta.version == 1 %}Respuesta inicial{% else %}Respuesta actualizada{% endif %}</strong>
+                      </div>
+                      <div class="small text-muted">{{ respuesta.creado_en|date:"d/m/Y h:i A" }}</div>
+                      <div class="small">{{ respuesta.nombre_usuario }}</div>
+                      <div class="small fw-semibold text-break mt-1">{{ respuesta.nombre_original }}</div>
+                      <a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'asociaciones:informe_respuesta_admin_archivo' respuesta.pk %}" target="_blank" rel="noopener"><i data-feather="eye" aria-hidden="true"></i>Ver PDF</a>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
           {% else %}
           <div class="card card-soft section-panel mb-2" id="informe-mes-{{ informe.mes }}">
             <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">

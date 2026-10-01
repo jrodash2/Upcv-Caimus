@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date
 from io import BytesIO
+import os
+import tempfile
 
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -25,6 +27,7 @@ from .models import (
     NotificacionAsociacion,
     ResolucionInformeMensual,
     ResolucionExpediente,
+    RespuestaAdministrativaInforme,
     ItemChecklistCAIMUS,
     crear_items_expediente,
     ConfiguracionInformeAnio,
@@ -1926,3 +1929,151 @@ class InformesConapreviTests(TestCase):
         archivo = self._archivo("conaprevi.xlsx")
         with self.assertRaises(ValidationError):
             campo.run_validators(archivo)
+
+
+class RespuestasAdministrativasInformeTests(TestCase):
+    PDF = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF"
+
+    def setUp(self):
+        self.media_dir = tempfile.TemporaryDirectory()
+        self.media_override = self.settings(MEDIA_ROOT=self.media_dir.name)
+        self.media_override.enable()
+        admin_group = Group.objects.create(name="Administrador")
+        asociacion_group = Group.objects.create(name="Asociacion")
+        self.admin = User.objects.create_user(
+            username="admin-respuestas", password="pass123", first_name="Ana", last_name="Revisora"
+        )
+        self.admin.groups.add(admin_group)
+        self.usuario = User.objects.create_user(username="asociacion-respuestas", password="pass123")
+        self.usuario.groups.add(asociacion_group)
+        self.otro_usuario = User.objects.create_user(username="otra-asociacion", password="pass123")
+        self.otro_usuario.groups.add(asociacion_group)
+        anio = Anio.objects.create(anio=2031)
+        self.asociacion = Asociacion.objects.create(anio=anio, nombre="ADIPAT", codigo="ADIPAT")
+        self.otra_asociacion = Asociacion.objects.create(anio=anio, nombre="Otra", codigo="OTRA")
+        AsociacionUsuario.objects.create(
+            asociacion=self.asociacion, usuario=self.usuario, rol_en_asociacion="Representante"
+        )
+        AsociacionUsuario.objects.create(
+            asociacion=self.otra_asociacion, usuario=self.otro_usuario, rol_en_asociacion="Representante"
+        )
+        self.informe = InformeMensual.objects.create(
+            asociacion=self.asociacion,
+            mes=9,
+            estado=InformeMensual.ESTADO_EN_REVISION,
+        )
+        self.upload_url = reverse(
+            "asociaciones:informe_respuesta_admin_upload", args=[self.asociacion.pk, self.informe.mes]
+        )
+
+    def tearDown(self):
+        self.media_override.disable()
+        self.media_dir.cleanup()
+
+    def archivo(self, nombre, contenido=None, content_type="application/pdf"):
+        return SimpleUploadedFile(nombre, contenido or self.PDF, content_type=content_type)
+
+    def subir(self, nombre):
+        self.client.force_login(self.admin)
+        return self.client.post(self.upload_url, {"archivo": self.archivo(nombre)})
+
+    def test_admin_carga_primera_version_con_usuario_fecha_e_historial(self):
+        response = self.subir("respuesta_septiembre_v1.pdf")
+
+        self.assertRedirects(response, reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]))
+        respuesta = RespuestaAdministrativaInforme.objects.get(informe=self.informe)
+        self.assertEqual(respuesta.version, 1)
+        self.assertTrue(respuesta.vigente)
+        self.assertEqual(respuesta.usuario, self.admin)
+        self.assertIsNotNone(respuesta.creado_en)
+        self.assertEqual(respuesta.accion, RespuestaAdministrativaInforme.ACCION_SUBIDA)
+        self.assertTrue(os.path.exists(respuesta.archivo.path))
+        self.informe.refresh_from_db()
+        self.assertEqual(self.informe.estado, InformeMensual.ESTADO_EN_REVISION)
+
+    def test_reemplazos_conservan_tres_versiones_y_archivos(self):
+        for version in range(1, 4):
+            self.subir("respuesta_v{0}.pdf".format(version))
+
+        respuestas = list(self.informe.respuestas_administrativas.order_by("version"))
+        self.assertEqual([r.version for r in respuestas], [1, 2, 3])
+        self.assertEqual([r.vigente for r in respuestas], [False, False, True])
+        self.assertEqual(
+            [r.accion for r in respuestas],
+            [
+                RespuestaAdministrativaInforme.ACCION_SUBIDA,
+                RespuestaAdministrativaInforme.ACCION_ACTUALIZADA,
+                RespuestaAdministrativaInforme.ACCION_ACTUALIZADA,
+            ],
+        )
+        for respuesta in respuestas:
+            self.assertTrue(os.path.exists(respuesta.archivo.path))
+            archivo_url = reverse("asociaciones:informe_respuesta_admin_archivo", args=[respuesta.pk])
+            self.assertEqual(self.client.get(archivo_url).status_code, 200)
+
+        pagina = self.client.get(reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]))
+        contenido = pagina.content.decode()
+        self.assertLess(contenido.index("Versión 3"), contenido.index("Versión 2"))
+        self.assertLess(contenido.index("Versión 2"), contenido.index("Versión 1"))
+
+    def test_asociacion_no_puede_subir_y_no_ve_controles(self):
+        self.client.force_login(self.usuario)
+        response = self.client.post(self.upload_url, {"archivo": self.archivo("intruso.pdf")})
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(RespuestaAdministrativaInforme.objects.exists())
+
+        pagina = self.client.get(reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]))
+        self.assertNotContains(pagina, "Subir respuesta PDF")
+        self.assertNotContains(pagina, 'name="archivo"')
+        self.assertNotContains(pagina, "Ver respuesta PDF")
+
+        self.subir("respuesta_visible.pdf")
+        self.client.force_login(self.usuario)
+        pagina = self.client.get(reverse("asociaciones:informes_mensuales", args=[self.asociacion.pk]))
+        self.assertContains(pagina, "Ver respuesta PDF")
+        self.assertContains(pagina, "Historial de respuestas")
+        self.assertNotContains(pagina, "Reemplazar PDF")
+
+    def test_rechaza_extensiones_tipos_y_contenido_invalidos(self):
+        self.client.force_login(self.admin)
+        casos = [
+            ("respuesta.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"docx"),
+            ("respuesta.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b"xlsx"),
+            ("respuesta.jpg", "image/jpeg", b"jpg"),
+            ("respuesta.exe", "application/octet-stream", b"exe"),
+            ("falso.pdf", "application/pdf", b"no es pdf"),
+        ]
+        for nombre, content_type, contenido in casos:
+            response = self.client.post(
+                self.upload_url,
+                {"archivo": self.archivo(nombre, contenido=contenido, content_type=content_type)},
+            )
+            self.assertEqual(response.status_code, 302)
+        self.assertFalse(RespuestaAdministrativaInforme.objects.exists())
+
+    def test_archivos_historicos_exigen_autenticacion_y_asociacion_correcta(self):
+        self.subir("privado.pdf")
+        respuesta = RespuestaAdministrativaInforme.objects.get()
+        archivo_url = reverse("asociaciones:informe_respuesta_admin_archivo", args=[respuesta.pk])
+
+        self.client.logout()
+        anonimo = self.client.get(archivo_url)
+        self.assertEqual(anonimo.status_code, 302)
+        self.client.force_login(self.otro_usuario)
+        self.assertEqual(self.client.get(archivo_url).status_code, 403)
+        self.client.force_login(self.usuario)
+        permitido = self.client.get(archivo_url)
+        self.assertEqual(permitido.status_code, 200)
+        self.assertEqual(permitido["Content-Type"], "application/pdf")
+
+    def test_funciona_para_informe_no_caimus(self):
+        self.otra_asociacion.es_caimus = False
+        self.otra_asociacion.save(update_fields=["es_caimus"])
+        informe = InformeMensual.objects.create(asociacion=self.otra_asociacion, mes=10)
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("asociaciones:informe_respuesta_admin_upload", args=[self.otra_asociacion.pk, 10]),
+            {"archivo": self.archivo("respuesta_no_caimus.pdf")},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(informe.respuestas_administrativas.filter(vigente=True).exists())
